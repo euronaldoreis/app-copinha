@@ -1,5 +1,7 @@
 // Aplica as migrações do banco. Local: arquivo SQLite em ./data.
-// Produção: banco Turso definido em TURSO_DATABASE_URL / TURSO_AUTH_TOKEN.
+// Produção: banco Turso definido em COPINHA_DATABASE_URL / COPINHA_DATABASE_TOKEN
+// ou, se não houver, em TURSO_DATABASE_URL / TURSO_AUTH_TOKEN (mesma regra de
+// src/db/index.ts).
 import {
   copyFileSync,
   existsSync,
@@ -32,14 +34,20 @@ function backup(file) {
   for (const name of old) rmSync(join(dir, name));
 }
 
-const url = process.env.TURSO_DATABASE_URL || "file:./data/copinha.db";
+const url =
+  process.env.COPINHA_DATABASE_URL ||
+  process.env.TURSO_DATABASE_URL ||
+  "file:./data/copinha.db";
+const authToken = process.env.COPINHA_DATABASE_URL
+  ? process.env.COPINHA_DATABASE_TOKEN || undefined
+  : process.env.TURSO_AUTH_TOKEN || undefined;
 
 if (url.startsWith("file:")) {
   // Num servidor de hospedagem o disco é apagado a cada deploy: um banco em
   // arquivo perderia todos os dados. Melhor parar o build do que perder tudo.
   if (process.env.VERCEL) {
     console.error(
-      "ERRO: TURSO_DATABASE_URL não está definida. Em produção o banco precisa ser o Turso: um arquivo local é apagado a cada deploy e todos os dados se perderiam. Cadastre TURSO_DATABASE_URL e TURSO_AUTH_TOKEN nas variáveis do projeto.",
+      "ERRO: nenhum banco na nuvem configurado (COPINHA_DATABASE_URL ou TURSO_DATABASE_URL). Em produção o banco precisa ser o Turso: um arquivo local é apagado a cada deploy e todos os dados se perderiam. Cadastre as variáveis do banco nas configurações do projeto.",
     );
     process.exit(1);
   }
@@ -50,7 +58,7 @@ if (url.startsWith("file:")) {
 
 const client = createClient({
   url,
-  authToken: process.env.TURSO_AUTH_TOKEN || undefined,
+  authToken,
 });
 
 await migrate(drizzle(client), { migrationsFolder: "./drizzle" });

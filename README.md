@@ -47,12 +47,20 @@ A forma mais simples e gratuita é Vercel (site) + Turso (banco).
 1. Crie um banco no [Turso](https://turso.tech) e anote a URL (`libsql://...`) e um token de acesso.
 2. Suba este projeto para um repositório no GitHub e importe na [Vercel](https://vercel.com).
 3. Na Vercel, cadastre as variáveis de ambiente:
-   - `TURSO_DATABASE_URL` e `TURSO_AUTH_TOKEN`
+   - `TURSO_DATABASE_URL` e `TURSO_AUTH_TOKEN` (ou, se usar a integração do Turso na Vercel, veja o aviso abaixo)
    - `ADMIN_PASSWORD` (a senha de administrador)
    - `AUTH_SECRET` (qualquer texto longo e aleatório)
 4. Faça o deploy. As tabelas do banco são criadas automaticamente durante o build.
 
 Sem as variáveis do Turso o site usa um arquivo local, que não persiste na Vercel.
+
+**Atenção com a integração do Turso na Vercel:** ela cria uma *branch* do banco para cada deploy (`dpl-...`) e aponta `TURSO_DATABASE_URL` para ela. Assim, os dados lançados num deploy ficam só naquela branch e o deploy seguinte começa sem eles. Para o site de produção usar sempre o mesmo banco:
+
+1. No Turso, abra o banco principal (o que não é uma branch `dpl-...`) e anote a URL e crie um token de acesso.
+2. Na Vercel, em Settings > Environment Variables, cadastre `COPINHA_DATABASE_URL` e `COPINHA_DATABASE_TOKEN` com esses valores, **só no ambiente Production**. Elas têm prioridade sobre as do Turso.
+3. Faça um novo deploy. O log do build mostra "Banco atualizado: <endereço>"; confira que é o do banco principal.
+
+Os deploys de teste (Preview) continuam usando branches, o que é bom para testar sem mexer nos dados reais.
 
 ## Para desenvolver
 
