@@ -21,7 +21,7 @@ export function StandingsTable({
     <table className="w-full text-body">
       <thead className="text-muted">
         <tr>
-          <th className="w-9 pb-2 text-left font-normal">
+          <th className="w-14 pb-2 text-left font-normal">
             <span className="sr-only">Posição</span>
           </th>
           <th className="pb-2 text-left font-normal">Jogador</th>
@@ -41,7 +41,7 @@ export function StandingsTable({
           if (!entry) return null;
           return (
             <tr key={row.entryId} className="h-[52px]">
-              <td className="num pr-2 text-muted">
+              <td className="num pl-4 pr-3 text-muted">
                 <span className="flex items-center gap-1.5">
                   {i + 1}
                   {i < qualifying && (

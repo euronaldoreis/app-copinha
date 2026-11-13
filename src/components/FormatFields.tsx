@@ -115,14 +115,18 @@ export function FormatFields({
   const hasGroupStage = config.format === "grupos" || config.format === "liga";
   const mixed = config.format === "grupos" && config.pairing === "misto";
   // Opções de 1 até "todos menos um"; sem participantes ainda, oferece até 7.
+  // Só existe no misto: em mata-mata e pontos corridos groupsCount é 0 ou 1 e
+  // a conta abaixo não faz sentido (dividir por zero quebrava a página).
   const groupSize =
-    participants >= config.groupsCount * 2
+    config.groupsCount >= 2 && participants >= config.groupsCount * 2
       ? Math.floor(participants / config.groupsCount)
       : 8;
-  const crossOptions = Array.from(
-    { length: Math.max(groupSize - 1, config.crossGames) },
-    (_, i) => i + 1,
-  );
+  const crossOptions = mixed
+    ? Array.from(
+        { length: Math.max(groupSize - 1, config.crossGames) },
+        (_, i) => i + 1,
+      )
+    : [];
   const canHaveThird =
     config.format === "mata" ||
     (hasGroupStage && config.qualifiers >= 4);

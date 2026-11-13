@@ -31,10 +31,30 @@ const displayFont = Press_Start_2P({
 // Tudo é lido do banco a cada visita: os placares mudam durante a Copinha.
 export const dynamic = "force-dynamic";
 
+// Endereço público do site: as imagens de pré-visualização precisam de um link
+// absoluto. Na Vercel ele vem das variáveis do projeto; para domínio próprio,
+// defina NEXT_PUBLIC_SITE_URL.
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : "http://localhost:3000");
+
+const description =
+  "Histórico, tabelas e ranking da Copinha dos Lixos, o torneio de FIFA e Bomba Patch da galera.";
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: { default: "Copinha dos Lixos", template: "%s · Copinha dos Lixos" },
-  description:
-    "Histórico, tabelas e ranking da Copinha dos Lixos, o torneio de FIFA e Bomba Patch da galera.",
+  description,
+  openGraph: {
+    title: "Copinha dos Lixos",
+    description,
+    siteName: "Copinha dos Lixos",
+    locale: "pt_BR",
+    type: "website",
+  },
+  twitter: { card: "summary_large_image" },
 };
 
 export const viewport: Viewport = {

@@ -67,7 +67,7 @@ function RankTable({
       <table className="w-full text-body">
         <thead className="text-muted">
           <tr>
-            <th className="w-7 pb-2 text-left font-normal">
+            <th className="w-12 pb-2 text-left font-normal">
               <span className="sr-only">Posição</span>
             </th>
             <th className="pb-2 text-left font-normal">Jogador</th>
@@ -85,7 +85,7 @@ function RankTable({
         <tbody>
           {rows.map((r, i) => (
             <tr key={r.player.id} className="h-[68px]">
-              <td className="num text-muted">{i + 1}</td>
+              <td className="num pl-4 pr-3 text-muted">{i + 1}</td>
               <td className="w-full max-w-0">
                 <Link
                   href={`/jogadores/${r.player.id}`}
@@ -187,7 +187,7 @@ export default async function RankingPage(props: PageProps<"/ranking">) {
           rows={ranking}
           columns={TITLE_COLUMNS}
           detail={(r) =>
-            r.bestResult ? `Melhor: ${resultLabel(r.bestResult).toLowerCase()}` : "Estreante"
+            r.bestResult ? resultLabel(r.bestResult) : "Estreante"
           }
         />
         <Legend columns={TITLE_COLUMNS} />

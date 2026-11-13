@@ -10,9 +10,15 @@ import {
   updateEditionAction,
 } from "@/app/actions";
 import { Avatar } from "@/components/Avatar";
+import {
+  ChampionParty,
+  PartyButton,
+  type PartyPerson,
+} from "@/components/ChampionParty";
 import { DrawPanel } from "@/components/DrawPanel";
 import { FormatFields } from "@/components/FormatFields";
 import { StartPanel } from "@/components/GroupDraw";
+import { Tabs, type TabItem } from "@/components/Tabs";
 import { MatchRow, type MatchSide } from "@/components/MatchRow";
 import { StandingsTable } from "@/components/StandingsTable";
 import { ActionForm, SubmitButton } from "@/components/forms";
@@ -115,6 +121,9 @@ function Podium({ view }: { view: EditionView }) {
           ))}
         </div>
       )}
+      <div className="-mb-2 -ml-2 mt-2">
+        <PartyButton />
+      </div>
     </div>
   );
 }
@@ -202,13 +211,15 @@ function Tournament({ view, admin }: { view: EditionView; admin: boolean }) {
 
   const rounds = [...new Set(groupMatches.map((m) => m.round))].sort((a, b) => a - b);
 
-  return (
-    <>
-      {tables.length > 0 && (
-        <Section
-          title={edition.format === "liga" ? "Classificação" : "Grupos"}
-          aside={rule}
-        >
+  const tabs: TabItem[] = [];
+
+  if (tables.length > 0) {
+    tabs.push({
+      id: "grupos",
+      label: edition.format === "liga" ? "Classificação" : "Grupos",
+      content: (
+        <>
+          <p className="mb-4 text-body text-muted">{rule}</p>
           <div className="grid grid-cols-1 gap-4">
             {tables.map((t) => (
               <div key={t.label} className="card px-5 pb-2 pt-4">
@@ -223,11 +234,17 @@ function Tournament({ view, admin }: { view: EditionView; admin: boolean }) {
               </div>
             ))}
           </div>
-        </Section>
-      )}
+        </>
+      ),
+    });
+  }
 
-      {stages.length > 0 && (
-        <Section title="Mata-mata">
+  if (stages.length > 0) {
+    tabs.push({
+      id: "mata",
+      label: "Mata-mata",
+      content: (
+        <>
           {stages.map((s) => (
             <div key={s.label} className="mt-5 first:mt-0">
               <SubHeading>{s.label}</SubHeading>
@@ -239,18 +256,22 @@ function Tournament({ view, admin }: { view: EditionView; admin: boolean }) {
               />
             </div>
           ))}
-        </Section>
-      )}
+        </>
+      ),
+    });
+  }
 
-      {rounds.length > 0 && (
-        <Section
-          title={edition.format === "liga" ? "Jogos" : "Jogos da fase de grupos"}
-          aside={
-            edition.format === "grupos" && edition.pairing !== "interno"
-              ? pairingNote(edition.pairing, edition.crossGames)
-              : undefined
-          }
-        >
+  if (rounds.length > 0) {
+    tabs.push({
+      id: "jogos",
+      label: edition.format === "grupos" ? "Jogos dos grupos" : "Jogos",
+      content: (
+        <>
+          {edition.format === "grupos" && edition.pairing !== "interno" && (
+            <p className="mb-4 text-body text-muted">
+              {pairingNote(edition.pairing, edition.crossGames)}
+            </p>
+          )}
           {rounds.map((round) => {
             const ms = groupMatches
               .filter((m) => m.round === round)
@@ -271,10 +292,20 @@ function Tournament({ view, admin }: { view: EditionView; admin: boolean }) {
               </div>
             );
           })}
-        </Section>
-      )}
-    </>
-  );
+        </>
+      ),
+    });
+  }
+
+  // Abre direto no mata-mata quando a fase de grupos já acabou.
+  const groupsDone =
+    groupMatches.length > 0 && groupMatches.every((m) => m.homeScore != null);
+  const initial = groupsDone && stages.length > 0 ? "mata" : undefined;
+
+  if (tabs.length === 0) return null;
+  // Uma só parte (ex.: mata-mata puro): não precisa de abas.
+  if (tabs.length === 1) return <div className="mt-10">{tabs[0].content}</div>;
+  return <Tabs tabs={tabs} initial={initial} />;
 }
 
 /** Time (e colocação, no registro histórico) de um participante. */
@@ -388,6 +419,13 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
     .filter(Boolean)
     .join(" · ");
 
+  const partyPerson = (result: string): PartyPerson | null => {
+    const e = entries.find((entry) => entry.result === result);
+    return e
+      ? { entryId: e.id, name: e.player.name, team: e.team?.name ?? null }
+      : null;
+  };
+
   const allPlayers = admin ? await listPlayers(getDb()) : [];
   const inEdition = new Set(entries.map((e) => e.playerId));
   const withoutTeam = entries.filter((e) => e.teamId == null).length;
@@ -402,6 +440,15 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
       {edition.notes && (
         <p className="-mt-4 mb-8 text-body text-muted">{edition.notes}</p>
       )}
+
+      {/* Sempre presente, para notar o instante em que surge um campeão. */}
+      <ChampionParty
+        editionName={edition.name}
+        champion={partyPerson("campeao")}
+        vice={partyPerson("vice")}
+        third={partyPerson("terceiro")}
+        auto={admin && !manual}
+      />
 
       <Podium view={view} />
 
