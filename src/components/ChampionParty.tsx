@@ -149,6 +149,7 @@ function PartyOverlay({
           </div>
           <div className="flex min-h-[104px] flex-col items-center justify-center gap-2 text-center">
             <p
+              key={`tag-${stage === "party" ? "champion" : stage}`}
               className={`font-pixel text-[10px] uppercase text-accent ${
                 stage === "drumroll" || big ? "blink" : ""
               }`}
