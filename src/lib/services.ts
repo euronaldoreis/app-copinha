@@ -18,12 +18,14 @@ import {
 import { RESULT_ORDER } from "./labels";
 import type { AllData } from "./stats";
 import {
+  GROUP_LABELS,
   assignGroups,
   computeResults,
   normalizeConfig,
   planMatches,
   resolveKnockout,
   validateConfig,
+  validateGroupSizes,
   type Format,
   type FormatConfig,
   type Pairing,
@@ -392,9 +394,50 @@ export interface GroupDrawItem {
   groupLabel: string | null;
 }
 
+interface Seeded {
+  id: number;
+  seed: number;
+  groupLabel: string | null;
+}
+
 /**
- * Sorteia grupos/chaves e gera todos os jogos. Devolve os participantes na
- * ordem em que foram sorteados, para a tela poder mostrar o sorteio.
+ * Grava a ordem e os grupos dos participantes, apaga os jogos que existiam e
+ * gera a tabela de novo. Placares e colocações são zerados.
+ */
+async function applyPlan(
+  tx: Db,
+  editionId: number,
+  config: FormatConfig,
+  seeded: Seeded[],
+) {
+  const planned = planMatches(config, seeded);
+  for (const e of seeded) {
+    await tx
+      .update(entries)
+      .set({ seed: e.seed, groupLabel: e.groupLabel, result: null })
+      .where(eq(entries.id, e.id));
+  }
+  await tx.delete(matches).where(eq(matches.editionId, editionId));
+  if (planned.length) {
+    await tx.insert(matches).values(planned.map((m) => ({ ...m, editionId })));
+  }
+  await tx
+    .update(editions)
+    .set({ status: "andamento" })
+    .where(eq(editions.id, editionId));
+}
+
+/** Quantos participantes há em cada grupo, na ordem A, B, C... */
+function countByGroup(labels: (string | null)[], groups: number) {
+  return GROUP_LABELS.slice(0, groups).map(
+    (label) => labels.filter((l) => l === label).length,
+  );
+}
+
+/**
+ * Sorteia grupos/chaves e gera todos os jogos. Se os grupos já foram definidos
+ * à mão (todos os participantes com grupo), usa esses grupos. Devolve os
+ * participantes na ordem em que foram sorteados, para a tela mostrar o sorteio.
  */
 export async function startEdition(
   db: Db,
@@ -415,30 +458,39 @@ export async function startEdition(
   if (current.some((e) => e.teamId == null))
     throw new UserError("Ainda há participantes sem time. Faça o sorteio primeiro.");
 
-  const order = shuffle(current.map((e) => e.id));
-  const groups =
-    config.format === "grupos"
-      ? assignGroups(order, config.groupsCount)
-      : order.map((id) => ({
-          id,
-          groupLabel: config.format === "liga" ? "A" : null,
-        }));
-  const seeded = groups.map((g, seed) => ({ ...g, seed }));
-  const planned = planMatches(config, seeded);
+  let seeded: Seeded[];
+  if (config.format === "grupos" && current.some((e) => e.groupLabel)) {
+    // Grupos definidos à mão: é tudo ou nada.
+    if (current.some((e) => !e.groupLabel))
+      throw new UserError(
+        "Defina o grupo de todos os participantes, ou de nenhum para sortear.",
+      );
+    const sizeProblem = validateGroupSizes(
+      config,
+      countByGroup(
+        current.map((e) => e.groupLabel),
+        config.groupsCount,
+      ),
+    );
+    if (sizeProblem) throw new UserError(sizeProblem);
+    seeded = shuffle(current).map((e, seed) => ({
+      id: e.id,
+      seed,
+      groupLabel: e.groupLabel,
+    }));
+  } else {
+    const order = shuffle(current.map((e) => e.id));
+    const groups =
+      config.format === "grupos"
+        ? assignGroups(order, config.groupsCount)
+        : order.map((id) => ({
+            id,
+            groupLabel: config.format === "liga" ? "A" : null,
+          }));
+    seeded = groups.map((g, seed) => ({ ...g, seed }));
+  }
 
-  await db.transaction(async (tx) => {
-    for (const e of seeded) {
-      await tx
-        .update(entries)
-        .set({ seed: e.seed, groupLabel: e.groupLabel, result: null })
-        .where(eq(entries.id, e.id));
-    }
-    await tx.insert(matches).values(planned.map((m) => ({ ...m, editionId })));
-    await tx
-      .update(editions)
-      .set({ status: "andamento" })
-      .where(eq(editions.id, editionId));
-  });
+  await db.transaction((tx) => applyPlan(tx, editionId, config, seeded));
 
   const names = await db
     .select({
@@ -457,6 +509,89 @@ export async function startEdition(
     teamName: byEntry.get(e.id)?.teamName ?? null,
     groupLabel: e.groupLabel,
   }));
+}
+
+export interface GroupAssignment {
+  entryId: number;
+  /** null = sem grupo (só vale antes de gerar a tabela). */
+  groupLabel: string | null;
+}
+
+/**
+ * Coloca participantes nos grupos à mão. Antes de gerar a tabela só guarda os
+ * grupos (a geração usa os que estiverem definidos). Com a tabela já gerada,
+ * exige todos com grupo e refaz as rodadas, apagando os placares.
+ */
+export async function setEntryGroups(
+  db: Db,
+  editionId: number,
+  assignments: GroupAssignment[],
+) {
+  const edition = await getEdition(db, editionId);
+  if (edition.format !== "grupos")
+    throw new UserError("Só edições com grupos têm grupos para ajustar.");
+  const config = configOf(edition);
+  const valid = new Set(GROUP_LABELS.slice(0, config.groupsCount));
+  const current = await db
+    .select()
+    .from(entries)
+    .where(eq(entries.editionId, editionId));
+  const byId = new Map(current.map((e) => [e.id, e]));
+
+  const labels = new Map<number, string | null>(
+    current.map((e) => [e.id, e.groupLabel]),
+  );
+  for (const a of assignments) {
+    if (!byId.has(a.entryId))
+      throw new UserError("Participante não encontrado nesta edição.");
+    if (a.groupLabel != null && !valid.has(a.groupLabel))
+      throw new UserError("Grupo inválido.");
+    labels.set(a.entryId, a.groupLabel);
+  }
+
+  if (edition.status === "inscricoes") {
+    await db.transaction(async (tx) => {
+      for (const [id, groupLabel] of labels) {
+        await tx.update(entries).set({ groupLabel }).where(eq(entries.id, id));
+      }
+    });
+    return;
+  }
+
+  if ([...labels.values()].some((l) => l == null))
+    throw new UserError("Todos os participantes precisam estar em um grupo.");
+  const problem = validateGroupSizes(
+    config,
+    countByGroup([...labels.values()], config.groupsCount),
+  );
+  if (problem) throw new UserError(problem);
+  const seeded = [...current]
+    .sort((a, b) => a.seed - b.seed)
+    .map((e, seed) => ({ id: e.id, seed, groupLabel: labels.get(e.id)! }));
+  await db.transaction((tx) => applyPlan(tx, editionId, config, seeded));
+}
+
+/**
+ * Gera as rodadas de novo, mantendo os grupos: embaralha a ordem dos
+ * participantes (e com ela os confrontos de cada rodada) e apaga os placares.
+ */
+export async function regenerateMatches(db: Db, editionId: number) {
+  const edition = await getEdition(db, editionId);
+  if (edition.format === "manual")
+    throw new UserError("Edições de registro histórico não têm rodadas.");
+  if (edition.status === "inscricoes")
+    throw new UserError("Gere a tabela antes de gerar as rodadas de novo.");
+  const config = configOf(edition);
+  const current = await db
+    .select()
+    .from(entries)
+    .where(eq(entries.editionId, editionId));
+  const seeded = shuffle(current).map((e, seed) => ({
+    id: e.id,
+    seed,
+    groupLabel: e.groupLabel,
+  }));
+  await db.transaction((tx) => applyPlan(tx, editionId, config, seeded));
 }
 
 /** Apaga a tabela de jogos e volta a edição para a fase de inscrições. */

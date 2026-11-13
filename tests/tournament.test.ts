@@ -10,6 +10,7 @@ import {
   roundRobin,
   standingsByGroup,
   validateConfig,
+  validateGroupSizes,
   type EntryLike,
   type FormatConfig,
   type MatchLike,
@@ -232,6 +233,37 @@ describe("confrontos entre grupos", () => {
     const { finished, results } = computeResults(config, entries, matches);
     expect(finished).toBe(true);
     expect(results.get(1)).toBe("campeao");
+  });
+});
+
+describe("grupos montados à mão", () => {
+  it("aceita tamanhos diferentes e recusa grupos pequenos demais", () => {
+    expect(validateGroupSizes(cfg({}), [5, 3])).toBeNull();
+    expect(validateGroupSizes(cfg({}), [4, 4])).toBeNull();
+    expect(validateGroupSizes(cfg({}), [7, 1])).toMatch(/Grupo B/);
+    expect(validateGroupSizes(cfg({}), [8])).toMatch(/2 grupos/);
+    expect(validateGroupSizes(cfg({ format: "mata" }), [4, 4])).toBeTruthy();
+  });
+
+  it("confere os classificados com o tamanho real de cada grupo", () => {
+    // 8 classificados de 2 grupos: 4 de cada um
+    const eight = cfg({ qualifiers: 8 });
+    expect(validateGroupSizes(eight, [4, 4])).toBeNull();
+    expect(validateGroupSizes(eight, [5, 3])).toBeTruthy();
+    // 4 grupos e 8 classificados: 2 de cada
+    expect(
+      validateGroupSizes(cfg({ groupsCount: 4, qualifiers: 8 }), [3, 3, 3, 2]),
+    ).toBeNull();
+    // 3 grupos e 4 classificados: 1 de cada e o melhor segundo
+    const odd = cfg({ groupsCount: 3, qualifiers: 4 });
+    expect(validateGroupSizes(odd, [2, 2, 2])).toBeNull();
+  });
+
+  it("jogos limitados entre grupos exigem o par com o mesmo tamanho", () => {
+    const limited = cfg({ pairing: "misto", crossGames: 2 });
+    expect(validateGroupSizes(limited, [4, 4])).toBeNull();
+    expect(validateGroupSizes(limited, [5, 3])).toMatch(/mesmo tamanho/);
+    expect(validateGroupSizes(cfg({ pairing: "misto" }), [5, 3])).toBeNull();
   });
 });
 

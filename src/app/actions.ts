@@ -173,6 +173,27 @@ export async function startEditionAction(
   }
 }
 
+/** Grupos de cada participante, vindos dos campos group_<id> do formulário. */
+export async function setGroupsAction(_prev: ActionState, fd: FormData) {
+  return run(() => {
+    const assignments: svc.GroupAssignment[] = [];
+    for (const [key, value] of fd.entries()) {
+      const m = /^group_(\d+)$/.exec(key);
+      if (m) {
+        assignments.push({
+          entryId: Number(m[1]),
+          groupLabel: String(value) || null,
+        });
+      }
+    }
+    return svc.setEntryGroups(getDb(), id(fd, "editionId"), assignments);
+  });
+}
+
+export async function regenerateMatchesAction(_prev: ActionState, fd: FormData) {
+  return run(() => svc.regenerateMatches(getDb(), id(fd, "editionId")));
+}
+
 export async function resetEditionAction(_prev: ActionState, fd: FormData) {
   return run(() => svc.resetEdition(getDb(), id(fd, "editionId")));
 }

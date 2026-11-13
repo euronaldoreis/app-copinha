@@ -18,6 +18,7 @@ import {
 import { DrawPanel } from "@/components/DrawPanel";
 import { FormatFields } from "@/components/FormatFields";
 import { StartPanel } from "@/components/GroupDraw";
+import { GroupsEditor } from "@/components/GroupsEditor";
 import { Tabs, type TabItem } from "@/components/Tabs";
 import { MatchRow, type MatchSide } from "@/components/MatchRow";
 import { StandingsTable } from "@/components/StandingsTable";
@@ -382,7 +383,11 @@ function Participants({
               name={e.player.name}
               photoUrl={e.player.photoUrl}
               detail={
-                [e.team?.name ?? "Sem time", manual ? resultLabel(e.result) : ""]
+                [
+                  e.team?.name ?? "Sem time",
+                  e.groupLabel ? `Grupo ${e.groupLabel}` : "",
+                  manual ? resultLabel(e.result) : "",
+                ]
                   .filter(Boolean)
                   .join(" · ")
               }
@@ -488,7 +493,11 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
                 editionId={edition.id}
                 hasTeams={entries.some((e) => e.teamId != null)}
               />
-              <StartPanel editionId={edition.id} hasGroups={format === "grupos"} />
+              <StartPanel
+                editionId={edition.id}
+                hasGroups={format === "grupos"}
+                manualGroups={entries.some((e) => e.groupLabel != null)}
+              />
             </div>
           </div>
         </Section>
@@ -554,6 +563,22 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
                     <SubmitButton className="btn">Salvar times</SubmitButton>
                   </div>
                 </ActionForm>
+              </Disclosure>
+            )}
+
+            {format === "grupos" && entries.length > 0 && (
+              <Disclosure title="Grupos e rodadas">
+                <GroupsEditor
+                  editionId={edition.id}
+                  groupsCount={edition.groupsCount}
+                  started={!setup}
+                  entries={entries.map((e) => ({
+                    id: e.id,
+                    name: e.player.name,
+                    team: e.team?.name ?? null,
+                    groupLabel: e.groupLabel,
+                  }))}
+                />
               </Disclosure>
             )}
 

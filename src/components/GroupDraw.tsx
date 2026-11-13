@@ -237,9 +237,12 @@ function GroupDrawOverlay({
 export function StartPanel({
   editionId,
   hasGroups,
+  manualGroups = false,
 }: {
   editionId: number;
   hasGroups: boolean;
+  /** Os grupos já foram montados à mão: não há sorteio para mostrar. */
+  manualGroups?: boolean;
 }) {
   const router = useRouter();
   const [draw, setDraw] = useState<GroupDrawItem[] | null>(null);
@@ -247,9 +250,11 @@ export function StartPanel({
   const [pending, startTransition] = useTransition();
 
   const start = () => {
-    const question = hasGroups
-      ? "Sortear os grupos e gerar a tabela de jogos?"
-      : "Sortear os confrontos e gerar a tabela de jogos?";
+    const question = manualGroups
+      ? "Gerar a tabela de jogos com os grupos que você montou?"
+      : hasGroups
+        ? "Sortear os grupos e gerar a tabela de jogos?"
+        : "Sortear os confrontos e gerar a tabela de jogos?";
     if (!window.confirm(question)) return;
     setError(null);
     startTransition(async () => {
@@ -258,7 +263,7 @@ export function StartPanel({
         setError(result.error ?? "Não foi possível gerar a tabela.");
         return;
       }
-      if (hasGroups) setDraw(result.draw);
+      if (hasGroups && !manualGroups) setDraw(result.draw);
       else router.refresh();
     });
   };

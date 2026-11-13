@@ -8,6 +8,8 @@ import { createDb } from "@/db";
 import { entries, matches } from "@/db/schema";
 import {
   UserError,
+  regenerateMatches,
+  setEntryGroups,
   createEdition,
   createPlayer,
   deletePlayer,
@@ -308,5 +310,113 @@ describe("histórico e ranking", () => {
     expect(
       await db.select().from(entries).where(eq(entries.editionId, edition.id)),
     ).toHaveLength(6);
+  });
+});
+
+// Fica por último: termina uma edição inteira e alteraria as contagens do ranking.
+describe("grupos manuais e rodadas novas", () => {
+  let editionId = 0;
+  const label = (n: number) => (n < 5 ? "A" : "B");
+
+  it("monta os grupos à mão antes de gerar a tabela", async () => {
+    const edition = await createEdition(db, {
+      ...baseEdition,
+      name: "Copinha manual",
+      number: 20,
+      playerIds,
+      teamPool: TEAMS,
+    });
+    editionId = edition.id;
+    await drawTeams(db, editionId);
+    const v = await view(editionId);
+
+    // só um participante com grupo: não gera, pede todos ou nenhum
+    await setEntryGroups(db, editionId, [
+      { entryId: v.entries[0].id, groupLabel: "A" },
+    ]);
+    await expect(startEdition(db, editionId)).rejects.toThrow("todos os participantes");
+
+    // grupo inexistente e participante de outra edição são recusados
+    await expect(
+      setEntryGroups(db, editionId, [{ entryId: v.entries[1].id, groupLabel: "Z" }]),
+    ).rejects.toBeInstanceOf(UserError);
+    await expect(
+      setEntryGroups(db, editionId, [{ entryId: 999999, groupLabel: "A" }]),
+    ).rejects.toBeInstanceOf(UserError);
+
+    // 5 no grupo A e 3 no B
+    await setEntryGroups(
+      db,
+      editionId,
+      v.entries.map((e, i) => ({ entryId: e.id, groupLabel: label(i) })),
+    );
+    await startEdition(db, editionId);
+    const after = await view(editionId);
+    expect(after.edition.status).toBe("andamento");
+    const groupOf = new Map(after.entries.map((e) => [e.id, e.groupLabel]));
+    for (const [i, e] of v.entries.entries()) expect(groupOf.get(e.id)).toBe(label(i));
+    // 10 jogos no grupo de 5, 3 no de 3, mais 4 do mata-mata
+    expect(after.matches.filter((m) => m.stage === "grupo")).toHaveLength(13);
+    expect(after.matches).toHaveLength(17);
+  });
+
+  it("muda um jogador de grupo depois de gerar e refaz as rodadas", async () => {
+    const v = await view(editionId);
+    const played = v.matches.find((m) => m.stage === "grupo")!;
+    await saveMatchResult(db, played.id, { homeScore: 2, awayScore: 1 });
+
+    // mover um do A para o B deixa 4 e 4
+    const moved = v.entries.find((e) => e.groupLabel === "A")!;
+    await setEntryGroups(db, editionId, [{ entryId: moved.id, groupLabel: "B" }]);
+    const after = await view(editionId);
+    expect(after.entries.find((e) => e.id === moved.id)!.groupLabel).toBe("B");
+    expect(after.matches.filter((m) => m.stage === "grupo")).toHaveLength(12);
+    expect(after.matches.every((m) => m.homeScore == null)).toBe(true);
+    expect(after.edition.status).toBe("andamento");
+
+    // deixar um grupo vazio ou sem dono é recusado e nada muda
+    await expect(
+      setEntryGroups(
+        db,
+        editionId,
+        after.entries.map((e) => ({ entryId: e.id, groupLabel: "A" })),
+      ),
+    ).rejects.toBeInstanceOf(UserError);
+    await expect(
+      setEntryGroups(db, editionId, [{ entryId: moved.id, groupLabel: null }]),
+    ).rejects.toThrow("em um grupo");
+    expect((await view(editionId)).matches).toHaveLength(16);
+  });
+
+  it("gera as rodadas de novo mantendo os grupos e apagando placares", async () => {
+    const before = await view(editionId);
+    const first = before.matches.find((m) => m.stage === "grupo")!;
+    await saveMatchResult(db, first.id, { homeScore: 3, awayScore: 0 });
+
+    await regenerateMatches(db, editionId);
+    const after = await view(editionId);
+    expect(after.matches).toHaveLength(before.matches.length);
+    expect(after.matches.every((m) => m.homeScore == null)).toBe(true);
+    const groups = (v: typeof before) =>
+      v.entries.map((e) => `${e.id}:${e.groupLabel}`).sort();
+    expect(groups(after)).toEqual(groups(before));
+    // cada jogo de grupo continua sendo entre dois do mesmo grupo
+    const groupOf = new Map(after.entries.map((e) => [e.id, e.groupLabel]));
+    for (const m of after.matches.filter((x) => x.stage === "grupo"))
+      expect(groupOf.get(m.homeEntryId!)).toBe(groupOf.get(m.awayEntryId!));
+
+    // continua dando para terminar a edição normalmente
+    await playEverything(editionId);
+    expect((await view(editionId)).edition.status).toBe("encerrada");
+  });
+
+  it("não gera rodadas antes de a tabela existir", async () => {
+    const draft = await createEdition(db, {
+      ...baseEdition,
+      name: "Rascunho",
+      number: 21,
+      playerIds: playerIds.slice(0, 4),
+    });
+    await expect(regenerateMatches(db, draft.id)).rejects.toBeInstanceOf(UserError);
   });
 });

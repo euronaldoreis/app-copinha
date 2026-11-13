@@ -163,6 +163,50 @@ export function validateConfig(raw: FormatConfig, n: number): string | null {
   return null;
 }
 
+/**
+ * Confere grupos montados à mão. `sizes` traz quantos participantes há em cada
+ * grupo, na ordem A, B, C... Devolve a mensagem de erro, ou null se serve.
+ */
+export function validateGroupSizes(
+  raw: FormatConfig,
+  sizes: number[],
+): string | null {
+  const config = normalizeConfig(raw);
+  if (config.format !== "grupos") return "Esta edição não tem grupos.";
+  const g = config.groupsCount;
+  if (sizes.length !== g) return `A edição tem ${g} grupos.`;
+  const n = sizes.reduce((sum, s) => sum + s, 0);
+  const small = sizes.findIndex((s) => s < 2);
+  if (small !== -1)
+    return `O Grupo ${GROUP_LABELS[small]} precisa de pelo menos 2 participantes.`;
+  if (config.pairing !== "interno" && g % 2 === 1)
+    return "Para um grupo enfrentar o outro é preciso um número par de grupos.";
+  if (config.crossGames > 0) {
+    // Com jogos limitados contra o outro grupo, os dois grupos do par
+    // precisam ter o mesmo tamanho, senão alguém jogaria menos que os colegas.
+    for (let i = 0; i + 1 < g; i += 2) {
+      const limited = config.crossGames < Math.max(sizes[i], sizes[i + 1]);
+      if (limited && sizes[i] !== sizes[i + 1])
+        return `Os grupos ${GROUP_LABELS[i]} e ${GROUP_LABELS[i + 1]} precisam ter o mesmo tamanho para limitar os jogos entre eles.`;
+    }
+  }
+  const k = config.qualifiers;
+  if (!isPowerOfTwo(k) || k < 2)
+    return "O número de classificados precisa ser 2, 4, 8 ou 16.";
+  if (k < g)
+    return "O número de classificados não pode ser menor que o número de grupos.";
+  if (k > n) return `Não dá para classificar ${k} com apenas ${n} participantes.`;
+  // Cada grupo manda os `full` primeiros; as vagas que sobram vão para os
+  // melhores da posição seguinte, que precisam existir em algum grupo.
+  const full = Math.floor(k / g);
+  const extra = k % g;
+  if (Math.min(...sizes) < full)
+    return "Algum grupo é pequeno demais para a quantidade de classificados.";
+  if (sizes.filter((s) => s > full).length < extra)
+    return "Os grupos são pequenos demais para a quantidade de classificados.";
+  return null;
+}
+
 /** Tamanhos dos grupos para n participantes (os primeiros grupos recebem as sobras). */
 export function groupSizes(n: number, groups: number): number[] {
   return Array.from(
