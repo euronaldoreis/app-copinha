@@ -34,7 +34,10 @@ export default async function AdminPage() {
         subtitle="Só quem organiza a Copinha precisa entrar. O resto do site é aberto para todo mundo ver."
       />
       {adminConfigured() ? (
-        <ActionForm action={loginAction} className="flex max-w-sm flex-col gap-3">
+        <ActionForm
+          action={loginAction}
+          className="flex max-w-sm flex-col gap-3"
+        >
           <label>
             <span className="label">Senha de administrador</span>
             <input
@@ -49,12 +52,7 @@ export default async function AdminPage() {
           <SubmitButton>Entrar</SubmitButton>
         </ActionForm>
       ) : (
-        <p className="card max-w-lg px-6 py-5 text-body text-muted">
-          A senha de administrador ainda não foi configurada. Defina a variável{" "}
-          <code className="text-ink">ADMIN_PASSWORD</code> no arquivo{" "}
-          <code className="text-ink">.env.local</code> (ou no painel da
-          hospedagem) e reinicie o servidor.
-        </p>
+        <p className="card max-w-lg px-6 py-5 text-body text-muted"></p>
       )}
     </>
   );

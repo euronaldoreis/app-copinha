@@ -21,7 +21,7 @@ Para entrar como administrador, clique em **Entrar** e use a senha definida em `
 
 1. **Nova edição** (botão + em Edições): nome, jogo, formato, participantes e a lista de times do sorteio.
 2. **Sortear times**: o site sorteia um time para cada participante e revela um por vez. Também dá para definir ou corrigir o time de alguém à mão.
-3. **Gerar tabela e começar**: sorteia os grupos (ou o chaveamento) e cria todos os jogos. Com grupos, o sorteio aparece numa animação, um participante por vez.
+3. **Gerar tabela e começar**: sorteia os grupos (ou o chaveamento) e cria todos os jogos. Com grupos, o sorteio vira uma cena de estádio: o placar sorteia o nome e o grupo, e o jogador sai do túnel para se juntar ao grupo dele no gramado.
 4. **Lançar placares**: toque em "Placar" no jogo. A classificação e o mata-mata se atualizam sozinhos; a edição encerra quando a final é lançada.
 
 Formatos disponíveis, escolhidos por edição:
