@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import { startEditionAction } from "@/app/actions";
+import { arcade } from "@/lib/labels";
 import type { GroupDrawItem } from "@/lib/services";
 
 /** Tempo da roleta girando, do nome parado na tela e de cada troca de nome. */
@@ -83,7 +84,7 @@ function GroupDrawOverlay({
           ) : landed && current ? (
             <>
               <p key={current.entryId} className="animate-reveal text-title">
-                {current.playerName}
+                {arcade(current.playerName)}
               </p>
               <p className="animate-reveal text-name font-semibold text-accent">
                 Grupo {current.groupLabel}
@@ -92,9 +93,11 @@ function GroupDrawOverlay({
           ) : (
             <>
               <p className="text-title text-faint" aria-hidden="true">
-                {spinning?.playerName}
+                {arcade(spinning?.playerName ?? "")}
               </p>
-              <p className="text-name text-faint">Sorteando...</p>
+              <p className="blink font-pixel text-[10px] uppercase text-accent">
+                Sorteando...
+              </p>
             </>
           )}
         </div>

@@ -32,6 +32,7 @@ import {
   RESULT_LABELS,
   RESULT_ORDER,
   STATUS_LABELS,
+  arcade,
   formatDate,
   pairingNote,
   plural,
@@ -92,8 +93,9 @@ function Podium({ view }: { view: EditionView }) {
           <Link
             href={`/jogadores/${champion.playerId}`}
             className="block truncate text-title"
+            aria-label={champion.player.name}
           >
-            {champion.player.name}
+            {arcade(champion.player.name)}
           </Link>
           <p className="truncate text-body text-muted">{champion.team?.name}</p>
         </div>
@@ -517,7 +519,7 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
                     <input name="name" className="field" defaultValue={edition.name} required />
                   </label>
                   <label>
-                    <span className="label">Edição nº</span>
+                    <span className="label">Número</span>
                     <input
                       name="number"
                       type="number"

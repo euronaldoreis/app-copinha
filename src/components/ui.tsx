@@ -1,8 +1,10 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { arcade } from "@/lib/labels";
 import { Avatar } from "./Avatar";
 import { ChevronIcon } from "./icons";
 
+/** Título da página sobre uma faixa de gramado, de ponta a ponta da coluna. */
 export function PageTitle({
   title,
   subtitle,
@@ -11,9 +13,11 @@ export function PageTitle({
   subtitle?: ReactNode;
 }) {
   return (
-    <header className="mb-8">
-      <h1 className="text-title">{title}</h1>
-      {subtitle && <p className="mt-1.5 text-body text-muted">{subtitle}</p>}
+    <header className="pitch -mx-6 mb-8 px-6 py-6">
+      <h1 className="text-title" aria-label={title}>
+        {arcade(title)}
+      </h1>
+      {subtitle && <p className="mt-2 text-body text-muted">{subtitle}</p>}
     </header>
   );
 }
@@ -29,8 +33,10 @@ export function Section({
 }) {
   return (
     <section className="mt-10">
-      <div className="mb-3.5 flex items-baseline justify-between gap-4">
-        <h2 className="text-name font-semibold">{title}</h2>
+      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h2 className="heading" aria-label={title}>
+          {arcade(title)}
+        </h2>
         {aside && <div className="text-body text-muted">{aside}</div>}
       </div>
       {children}
@@ -83,11 +89,12 @@ export function Empty({ children }: { children: ReactNode }) {
   return <p className="card px-6 py-8 text-body text-muted">{children}</p>;
 }
 
+/** Número grande com legenda, como um quadro de estatística do jogo. */
 export function Stat({ value, label }: { value: ReactNode; label: string }) {
   return (
-    <div className="card px-5 py-4">
-      <div className="num text-title">{value}</div>
-      <div className="text-body text-muted">{label}</div>
+    <div className="card px-4 py-4">
+      <div className="num text-title text-accent">{value}</div>
+      <div className="mt-1 text-body text-muted">{label}</div>
     </div>
   );
 }
@@ -104,7 +111,7 @@ export function Disclosure({
     <details className="card group">
       <summary className="flex min-h-[60px] cursor-pointer list-none items-center justify-between px-5 text-name font-semibold [&::-webkit-details-marker]:hidden">
         {title}
-        <ChevronIcon className="text-faint transition-transform group-open:rotate-90" />
+        <ChevronIcon className="text-accent group-open:rotate-90" />
       </summary>
       <div className="px-5 pb-5">{children}</div>
     </details>

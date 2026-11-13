@@ -4,7 +4,7 @@ import { ChevronIcon, TrophyIcon } from "@/components/icons";
 import { Empty, PageTitle, PersonRow, Section } from "@/components/ui";
 import { isAdmin } from "@/lib/auth";
 import { getData } from "@/lib/data";
-import { STATUS_LABELS, plural } from "@/lib/labels";
+import { STATUS_LABELS, arcade, plural } from "@/lib/labels";
 import { allEditionViews, type EditionView } from "@/lib/services";
 import { computeRanking } from "@/lib/stats";
 
@@ -21,10 +21,10 @@ function LiveEdition({ view }: { view: EditionView }) {
   return (
     <Link href={`/edicoes/${edition.id}`} className="card block p-6">
       <p className="flex items-center gap-2 text-body font-semibold text-accent">
-        <span className="size-2 rounded-full bg-accent" />
+        <span className="blink size-2 bg-accent" />
         {STATUS_LABELS[edition.status]}
       </p>
-      <p className="mt-1 text-title">{edition.name}</p>
+      <p className="mt-1 text-title">{arcade(edition.name)}</p>
       <p className="mt-1 text-body text-muted">
         {[
           edition.game,

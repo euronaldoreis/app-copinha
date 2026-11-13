@@ -32,9 +32,9 @@ interface Column {
 }
 
 const TITLE_COLUMNS: Column[] = [
-  { head: "Tít.", title: "Títulos", value: (r) => r.titles, strong: true },
+  { head: "Tit.", title: "Títulos", value: (r) => r.titles, strong: true },
   { head: "Fin.", title: "Finais disputadas", value: (r) => r.finals },
-  { head: "Pód.", title: "Pódios (1º, 2º ou 3º)", value: (r) => r.podiums, wide: true },
+  { head: "Pod.", title: "Pódios (1º, 2º ou 3º)", value: (r) => r.podiums, wide: true },
   { head: "Semi", title: "Vezes entre os 4 melhores", value: (r) => r.top4, wide: true },
   { head: "Part.", title: "Participações", value: (r) => r.participations },
 ];

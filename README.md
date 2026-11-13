@@ -67,3 +67,4 @@ Onde fica cada coisa:
 - `src/lib/services.ts`: leitura e escrita no banco.
 - `src/lib/stats.ts`: ranking, retrospecto e recordes.
 - `src/app`: páginas e ações do servidor (`actions.ts`).
+- `src/app/globals.css`: o tema visual de jogo 16 bits (cores, fontes, janelas, placar). Os ícones e os bonecos dos jogadores em pixel art ficam em `src/components/icons.tsx` e `src/components/Avatar.tsx`.

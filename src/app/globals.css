@@ -1,90 +1,211 @@
 @import "tailwindcss";
 
 /*
-  Tokens da interface. A regra é contenção: um acento, uma família, três
-  tamanhos de texto, um raio, e separação por espaço em vez de linhas.
+  Tema: jogo de futebol de videogame 16 bits. Janelas de menu azuis com borda
+  chanfrada, gramado listrado nos títulos, placar em LED amarelo, sombras duras
+  e nenhum canto arredondado. Três fontes pixeladas: a de 8x8 para títulos e
+  placares (--font-pixel), a Jersey 10 para o texto corrido e a Jersey 20, mais
+  encorpada, no lugar do negrito e nos botões (--font-strong). As Jersey só
+  ficam nítidas em 20px, então todo o texto usa esse tamanho e a hierarquia vem
+  da fonte e da cor. A 8x8 desenha mal maiúsculas acentuadas: o que vai nela
+  passa antes por arcade() (src/lib/labels.ts), que tira os acentos.
 */
 @theme inline {
-  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+  --font-sans: var(--font-body), ui-monospace, monospace;
+  --font-pixel: var(--font-display), ui-monospace, monospace;
+  --font-strong: var(--font-bold), var(--font-body), ui-monospace, monospace;
 
-  --color-canvas: #f3f3ef;
-  --color-surface: #ffffff;
-  --color-wash: #e8e8e3;
-  --color-ink: #16181a;
-  --color-muted: #666b70;
-  --color-faint: #9da1a5;
-  --color-accent: #0d7448;
-  --color-accent-wash: #dfeee6;
-  --color-danger: #b3261e;
+  --color-night: #04051a; /* contornos e fundo dos campos */
+  --color-canvas: #0b0e2e; /* fundo da tela */
+  --color-surface: #1a2670; /* janelas */
+  --color-wash: #2c3d9e; /* botões comuns e destaques */
+  --color-ink: #f6f6fa;
+  --color-muted: #aebbee;
+  --color-faint: #7582c4;
+  --color-accent: #ffd42a; /* amarelo de item selecionado */
+  --color-accent-wash: #17702f; /* opção escolhida: verde do gramado */
+  --color-danger: #ff7163;
+  --color-pitch: #1c9440;
+  --color-bevel-light: #8ea4ff;
+  --color-bevel-dark: #0c1450;
 
-  --text-title: 27px;
-  --text-title--line-height: 1.15;
-  --text-title--font-weight: 700;
-  --text-name: 16px;
-  --text-name--line-height: 1.3;
-  --text-body: 14px;
-  --text-body--line-height: 1.45;
+  --text-title: clamp(15px, 4.4vw, 22px);
+  --text-title--line-height: 1.55;
+  --text-title--font-weight: 400;
+  --text-name: 20px;
+  --text-name--line-height: 1.1;
+  --text-body: 20px;
+  --text-body--line-height: 1.15;
 
-  --radius-card: 22px;
+  --radius-card: 0px;
 
-  --shadow-float: 0 8px 28px rgb(22 24 26 / 0.12);
-  --shadow-soft: 0 1px 2px rgb(22 24 26 / 0.04);
+  --shadow-float: 6px 6px 0 rgb(0 0 0 / 0.5);
+  --shadow-soft: 4px 4px 0 rgb(0 0 0 / 0.45);
 }
 
 html {
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 body {
-  background: var(--color-canvas);
   color: var(--color-ink);
   font-family: var(--font-sans);
-  font-size: 14px;
-  line-height: 1.45;
+  font-size: 20px;
+  line-height: 1.15;
+  /* Negrito simulado borra fonte de pixel; o destaque é a Jersey 20. */
+  font-synthesis: none;
+  /* Xadrez miúdo, como fundo de tela de menu. */
+  background-color: var(--color-canvas);
+  background-image:
+    linear-gradient(45deg, #11154a 25%, transparent 25%, transparent 75%, #11154a 75%),
+    linear-gradient(45deg, #11154a 25%, transparent 25%, transparent 75%, #11154a 75%);
+  background-size: 8px 8px;
+  background-position:
+    0 0,
+    4px 4px;
+}
+
+/* Linhas de varredura de TV de tubo, bem leves, por cima de tudo. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0 2px,
+    rgb(0 0 0 / 0.12) 2px 3px
+  );
+}
+
+/* Em 16 bits não existe curva: tudo é quadrado. */
+*,
+::before,
+::after {
+  border-radius: 0 !important;
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-accent);
+  outline: 3px solid var(--color-accent);
   outline-offset: 2px;
 }
 
+/* "Negrito" do tema: troca para a fonte encorpada em vez de engrossar. */
+.text-name,
+.font-semibold {
+  font-weight: 400;
+}
+.font-semibold {
+  font-family: var(--font-strong);
+}
+
+/* Títulos na fonte de 8x8, em caixa alta e com sombra dura. */
+.text-title {
+  font-family: var(--font-pixel);
+  text-transform: uppercase;
+  text-shadow: 3px 3px 0 var(--color-night);
+  overflow-wrap: anywhere;
+}
+
+/* Tabelas: cabeçalho de placar e linhas zebradas. */
+thead th {
+  font-family: var(--font-pixel);
+  font-size: 8px;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+tbody tr:nth-child(odd) {
+  background: rgb(255 255 255 / 0.07);
+}
+th:first-child,
+td:first-child {
+  padding-left: 6px;
+}
+th:last-child,
+td:last-child {
+  padding-right: 6px;
+}
+
+/* Opção de formato escolhida: moldura amarela de cursor. */
+fieldset label:has(input[type="radio"]:checked) {
+  outline: 3px solid var(--color-accent);
+}
+
 @layer components {
+  /* Janela de menu: borda chanfrada, contorno preto e sombra dura. */
   .card {
     background: var(--color-surface);
-    border-radius: var(--radius-card);
-    box-shadow: var(--shadow-soft);
+    border: 3px solid;
+    border-color: var(--color-bevel-light) var(--color-bevel-dark)
+      var(--color-bevel-dark) var(--color-bevel-light);
+    box-shadow:
+      0 0 0 3px var(--color-night),
+      6px 6px 0 3px rgb(0 0 0 / 0.45);
   }
 
-  /* Material translúcido dos controles flutuantes. */
-  .glass {
-    background: rgb(255 255 255 / 0.72);
-    backdrop-filter: blur(18px) saturate(1.6);
-    -webkit-backdrop-filter: blur(18px) saturate(1.6);
-    border: 1px solid rgb(255 255 255 / 0.7);
-    box-shadow: var(--shadow-float);
+  /* Faixa de gramado com as linhas laterais, usada nos títulos de página. */
+  .pitch {
+    background-color: var(--color-pitch);
+    background-image: repeating-linear-gradient(
+      90deg,
+      rgb(0 0 0 / 0.12) 0 28px,
+      transparent 28px 56px
+    );
+    border-block: 4px solid var(--color-ink);
+    box-shadow:
+      0 4px 0 var(--color-night),
+      0 -4px 0 var(--color-night);
+  }
+  .pitch .text-muted {
+    color: var(--color-ink);
+    text-shadow: 2px 2px 0 rgb(0 0 0 / 0.55);
+  }
+
+  /* Título de seção: quadradinho amarelo e letras de menu. */
+  .heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: var(--font-pixel);
+    font-size: 11px;
+    line-height: 1.6;
+    text-transform: uppercase;
+    color: var(--color-accent);
+    text-shadow: 2px 2px 0 var(--color-night);
+  }
+  .heading::before {
+    content: "";
+    flex: none;
+    width: 8px;
+    height: 8px;
+    background: var(--color-accent);
+    box-shadow: 2px 2px 0 var(--color-night);
   }
 
   .field {
     width: 100%;
     height: 44px;
-    padding: 0 16px;
-    border-radius: var(--radius-card);
-    background: var(--color-surface);
-    font-size: 14px;
+    padding: 0 12px;
+    background: var(--color-night);
     color: var(--color-ink);
+    font-size: 20px;
+    /* chanfro invertido: o campo parece afundado na janela */
+    border: 3px solid;
+    border-color: var(--color-bevel-dark) var(--color-bevel-light)
+      var(--color-bevel-light) var(--color-bevel-dark);
   }
   .field::placeholder {
     color: var(--color-faint);
   }
+  .field:focus-visible {
+    outline-offset: 0;
+  }
   textarea.field {
     height: auto;
-    padding: 12px 16px;
-    line-height: 1.45;
+    padding: 8px 12px;
+    line-height: 1.2;
     resize: vertical;
-  }
-  /* Campo dentro de um card branco: usa o tom do canvas para aparecer. */
-  .card .field {
-    background: var(--color-canvas);
   }
 
   .btn {
@@ -92,19 +213,31 @@ body {
     align-items: center;
     justify-content: center;
     gap: 8px;
-    height: 44px;
-    padding: 0 20px;
-    border-radius: var(--radius-card);
+    min-height: 44px;
+    padding: 0 16px;
     background: var(--color-wash);
-    font-size: 14px;
-    font-weight: 600;
     color: var(--color-ink);
+    font-family: var(--font-strong);
+    font-size: 20px;
+    line-height: 1;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
     white-space: nowrap;
     cursor: pointer;
-    transition: opacity 0.15s;
+    border: 3px solid;
+    border-color: var(--color-bevel-light) var(--color-bevel-dark)
+      var(--color-bevel-dark) var(--color-bevel-light);
+    box-shadow:
+      0 0 0 3px var(--color-night),
+      4px 4px 0 3px rgb(0 0 0 / 0.45);
   }
   .btn:hover {
-    opacity: 0.85;
+    filter: brightness(1.15);
+  }
+  /* Apertar o botão: ele desce para cima da própria sombra. */
+  .btn:active {
+    transform: translate(3px, 3px);
+    box-shadow: 0 0 0 3px var(--color-night);
   }
   .btn:disabled {
     opacity: 0.5;
@@ -112,41 +245,71 @@ body {
   }
   .btn-primary {
     background: var(--color-accent);
-    color: #fff;
+    color: var(--color-night);
+    border-color: #fff3a8 #a87400 #a87400 #fff3a8;
   }
-  .btn-quiet {
-    background: transparent;
-    color: var(--color-muted);
-    padding: 0 12px;
-  }
+  .btn-quiet,
   .btn-danger {
     background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    padding: 0 8px;
+  }
+  .btn-quiet {
+    color: var(--color-muted);
+  }
+  .btn-danger {
     color: var(--color-danger);
-    padding: 0 12px;
+  }
+  .btn-quiet:active,
+  .btn-danger:active {
+    box-shadow: none;
   }
 
+  /* Ficha de seleção (abas, participantes). Escolhida = amarela. */
   .chip {
     display: inline-flex;
     align-items: center;
-    height: 36px;
-    padding: 0 16px;
-    border-radius: var(--radius-card);
-    font-size: 14px;
+    min-height: 36px;
+    padding: 0 12px;
+    border: 2px solid var(--color-faint);
+    font-size: 20px;
     color: var(--color-muted);
     white-space: nowrap;
+    cursor: pointer;
   }
   .chip[aria-current="page"],
-  .chip[aria-pressed="true"] {
-    background: var(--color-wash);
-    color: var(--color-ink);
-    font-weight: 600;
+  .chip[aria-pressed="true"],
+  .chip:has(input:checked) {
+    background: var(--color-accent);
+    border-color: var(--color-night);
+    color: var(--color-night);
+    font-family: var(--font-strong);
   }
 
   .label {
     display: block;
-    margin-bottom: 6px;
-    font-size: 14px;
-    color: var(--color-muted);
+    margin-bottom: 4px;
+    font-size: 20px;
+    line-height: 1.1;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: var(--color-accent);
+  }
+
+  /* Dígito de placar eletrônico. */
+  .led {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 30px;
+    height: 32px;
+    padding: 0 4px;
+    background: var(--color-night);
+    border: 2px solid var(--color-faint);
+    color: var(--color-accent);
+    font-family: var(--font-pixel);
+    font-size: 13px;
   }
 
   .num {
@@ -154,22 +317,34 @@ body {
   }
 }
 
+/* Entrada em quadros, sem suavização, como sprite aparecendo na tela. */
 @keyframes reveal {
-  from {
+  0% {
     opacity: 0;
-    transform: translateY(10px) scale(0.96);
+    transform: translateY(12px) scale(0.6);
   }
-  to {
+  100% {
     opacity: 1;
     transform: none;
   }
 }
 .animate-reveal {
-  animation: reveal 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  animation: reveal 0.32s steps(4, jump-end) both;
+}
+
+/* Pisca-pisca de "aperte start". */
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+.blink {
+  animation: blink 1s steps(1, jump-end) infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-reveal {
+  .animate-reveal,
+  .blink {
     animation: none;
   }
 }

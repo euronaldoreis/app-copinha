@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { arcade } from "@/lib/labels";
 import { CalendarIcon, ChartIcon, HomeIcon, PeopleIcon } from "./icons";
 
 const ITEMS = [
@@ -11,31 +12,33 @@ const ITEMS = [
   { href: "/jogadores", label: "Jogadores", icon: PeopleIcon },
 ];
 
-/** Navegação flutuante: só o item atual mostra o nome, os outros ficam em ícone. */
+/** Menu fixo no rodapé, como a barra de um jogo: o item atual fica aceso. */
 export function NavBar() {
   const pathname = usePathname();
   return (
     <nav
       aria-label="Principal"
-      className="glass fixed bottom-5 left-1/2 z-40 flex -translate-x-1/2 gap-1 rounded-full p-1.5"
+      className="fixed inset-x-0 bottom-0 z-40 border-t-[3px] border-ink bg-night"
     >
-      {ITEMS.map(({ href, label, icon: Icon }) => {
-        const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
-        return (
-          <Link
-            key={href}
-            href={href}
-            aria-label={label}
-            aria-current={active ? "page" : undefined}
-            className={`flex h-11 items-center gap-2 rounded-full px-3.5 text-body ${
-              active ? "bg-ink font-semibold text-white" : "text-muted"
-            }`}
-          >
-            <Icon />
-            {active && <span>{label}</span>}
-          </Link>
-        );
-      })}
+      <div className="mx-auto grid w-full max-w-3xl grid-cols-4">
+        {ITEMS.map(({ href, label, icon: Icon }) => {
+          const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+          return (
+            <Link
+              key={href}
+              href={href}
+              aria-label={label}
+              aria-current={active ? "page" : undefined}
+              className={`flex h-16 flex-col items-center justify-center gap-1.5 font-pixel text-[8px] uppercase ${
+                active ? "bg-accent text-night" : "text-muted"
+              }`}
+            >
+              <Icon width={22} height={22} />
+              {arcade(label)}
+            </Link>
+          );
+        })}
+      </div>
     </nav>
   );
 }

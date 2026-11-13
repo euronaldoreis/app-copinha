@@ -52,7 +52,7 @@ export default async function EditionsPage() {
                     size={52}
                   />
                 ) : (
-                  <span className="num flex size-[52px] shrink-0 items-center justify-center rounded-full bg-canvas text-name font-semibold text-muted">
+                  <span className="flex size-[52px] shrink-0 items-center justify-center border-2 border-night bg-night font-pixel text-[13px] text-accent">
                     {edition.number}
                   </span>
                 )}
@@ -63,7 +63,7 @@ export default async function EditionsPage() {
                     </span>
                     {open && (
                       <span
-                        className="size-2 shrink-0 rounded-full bg-accent"
+                        className="blink size-2 shrink-0 bg-accent"
                         title={STATUS_LABELS[edition.status]}
                       />
                     )}
@@ -108,7 +108,7 @@ export default async function EditionsPage() {
           href="/edicoes/nova"
           aria-label="Nova edição"
           title="Nova edição"
-          className="glass fixed bottom-24 right-5 z-40 flex size-14 items-center justify-center rounded-full text-ink sm:right-[max(1.25rem,calc(50%-24rem+1.5rem))]"
+          className="btn btn-primary fixed bottom-24 right-5 z-40 size-14 p-0 sm:right-[max(1.25rem,calc(50%-24rem+1.5rem))]"
         >
           <PlusIcon width={24} height={24} />
         </Link>

@@ -7,7 +7,7 @@ import { ActionForm, SubmitButton } from "@/components/forms";
 import { Disclosure, Empty, Section, Stat } from "@/components/ui";
 import { isAdmin } from "@/lib/auth";
 import { getData } from "@/lib/data";
-import { formatDate, plural, resultLabel } from "@/lib/labels";
+import { arcade, formatDate, plural, resultLabel } from "@/lib/labels";
 import { sortEditions } from "@/lib/services";
 import { computeHeadToHead, computeRanking, pct } from "@/lib/stats";
 
@@ -49,10 +49,12 @@ export default async function PlayerPage(props: PageProps<"/jogadores/[id]">) {
 
   return (
     <>
-      <header className="mb-8 flex items-center gap-5">
+      <header className="pitch -mx-6 mb-8 flex items-center gap-5 px-6 py-5">
         <Avatar name={player.name} photoUrl={player.photoUrl} size={88} />
         <div className="min-w-0">
-          <h1 className="truncate text-title">{player.name}</h1>
+          <h1 className="truncate text-title" aria-label={player.name}>
+            {arcade(player.name)}
+          </h1>
           <p className="mt-1.5 text-body text-muted">
             {stats.participations
               ? plural(stats.participations, "participação", "participações")
@@ -129,7 +131,7 @@ export default async function PlayerPage(props: PageProps<"/jogadores/[id]">) {
             <table className="w-full text-body">
               <thead className="text-muted">
                 <tr>
-                  <th className="pb-2 text-left font-normal">Adversário</th>
+                  <th className="pb-2 text-left font-normal">Rival</th>
                   <th className="px-1.5 pb-2 text-right font-normal" title="Jogos">J</th>
                   <th className="px-1.5 pb-2 text-right font-normal" title="Vitórias">V</th>
                   <th className="px-1.5 pb-2 text-right font-normal" title="Empates">E</th>

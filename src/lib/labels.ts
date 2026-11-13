@@ -1,5 +1,15 @@
 import type { Format, Pairing, ResultCode } from "./tournament";
 
+/**
+ * Texto para a fonte de 8x8 dos títulos: sem acentos, como nos jogos da época.
+ * A fonte espreme as maiúsculas acentuadas (o "Í" fica irreconhecível), então
+ * "Ítalo" vira "ITALO" nos títulos e continua "Ítalo" no texto comum.
+ */
+export function arcade(text: string) {
+  // Separa letra e acento (NFD) e descarta os acentos (marcas combinantes).
+  return text.normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
 export const FORMAT_LABELS: Record<Format, string> = {
   grupos: "Grupos + mata-mata",
   liga: "Pontos corridos",

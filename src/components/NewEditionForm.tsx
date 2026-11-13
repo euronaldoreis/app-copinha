@@ -79,7 +79,7 @@ export function NewEditionForm({
             />
           </label>
           <label>
-            <span className="label">Edição nº</span>
+            <span className="label">Número</span>
             <input
               className="field num"
               type="number"

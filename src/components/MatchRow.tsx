@@ -113,9 +113,11 @@ export function MatchRow(props: MatchRowProps) {
     : 0;
 
   const scoreline = played ? (
-    <span className="flex flex-col items-center">
-      <span className="num text-name font-semibold">
-        {homeScore} – {awayScore}
+    <span className="flex flex-col items-center gap-1">
+      {/* Placar eletrônico: um dígito aceso para cada lado. */}
+      <span className="flex items-center gap-1">
+        <span className="led">{homeScore}</span>
+        <span className="led">{awayScore}</span>
       </span>
       {homePens != null && awayPens != null && (
         <span className="num text-body text-muted">
@@ -124,9 +126,9 @@ export function MatchRow(props: MatchRowProps) {
       )}
     </span>
   ) : editable ? (
-    <span className="chip bg-wash text-ink">Placar</span>
+    <span className="btn btn-primary min-h-8 px-2">Placar</span>
   ) : (
-    <span className="text-name text-faint">×</span>
+    <span className="font-pixel text-[10px] text-faint">VS</span>
   );
 
   return (

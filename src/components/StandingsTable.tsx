@@ -46,7 +46,7 @@ export function StandingsTable({
                   {i + 1}
                   {i < qualifying && (
                     <span
-                      className="size-1.5 rounded-full bg-accent"
+                      className="size-1.5 bg-accent"
                       title="Zona de classificação"
                     />
                   )}
