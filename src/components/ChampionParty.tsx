@@ -15,16 +15,18 @@ export interface PartyPerson {
 /** Evento que o botão "Rever a festa" dispara para reabrir a cerimônia. */
 const REPLAY_EVENT = "copinha:festa";
 
-type Stage = "intro" | "third" | "vice" | "drumroll" | "champion" | "party";
+type Stage = "intro" | "third" | "vice" | "drumroll" | "champion" | "party" | "leaving" | "gone";
 
-// Quanto tempo cada etapa da cerimônia fica na tela ("party" é a última e fica).
+// Quanto tempo cada etapa da cerimônia fica na tela ("gone" é a última e fica).
 const STAGE_MS: Record<Stage, number> = {
-  intro: 1300,
+  intro: 1600, // dá tempo do caminhão chegar antes de alguém descer
   third: 2000,
   vice: 2000,
   drumroll: 1800,
   champion: 1900,
-  party: 0,
+  party: 4500,
+  leaving: 1900, // todos voltam para o caminhão
+  gone: 0, // o caminhão vai embora
 };
 
 const CONFETTI_COLORS = ["#ffd42a", "#f6f6fa", "#e23b2e", "#2f6fe0", "#19b5c9"];
@@ -43,6 +45,7 @@ function PodiumStep({
   place,
   present,
   walk,
+  leave,
   tunnel,
   celebrating = false,
 }: {
@@ -50,6 +53,7 @@ function PodiumStep({
   place: 1 | 2 | 3;
   present: boolean;
   walk: boolean;
+  leave: boolean;
   tunnel: TunnelRef;
   celebrating?: boolean;
 }) {
@@ -62,7 +66,7 @@ function PodiumStep({
         style={{ height: champion ? 100 : 52 }}
       >
         {present && (
-          <Walker walk={walk} tunnel={tunnel}>
+          <Walker walk={walk} leave={leave} tunnel={tunnel}>
             <div
               className={`flex flex-col items-center ${celebrating ? "jumping" : ""}`}
             >
@@ -107,6 +111,8 @@ function PartyOverlay({
     "drumroll",
     "champion",
     "party",
+    "leaving",
+    "gone",
   ];
   const [step, setStep] = useState(0);
   const [skipped, setSkipped] = useState(false);
@@ -114,13 +120,16 @@ function PartyOverlay({
   const stage = stages[step];
   const reached = (s: Stage) => stages.indexOf(s) !== -1 && step >= stages.indexOf(s);
   const party = stage === "party";
+  // Da festa em diante: o botão vira "Fechar" e o nome do campeão fica no placar.
+  const finale = reached("party");
+  const leaving = reached("leaving");
 
   useEffect(() => {
-    if (party) return;
+    if (stage === "gone") return;
     const ms = prefersCalm() ? 700 : STAGE_MS[stage];
     const next = setTimeout(() => setStep((s) => s + 1), ms);
     return () => clearTimeout(next);
-  }, [stage, party]);
+  }, [stage]);
 
   // O que o placar anuncia em cada etapa.
   const board: Record<Stage, { tag: string; name: string; sub: string }> = {
@@ -130,9 +139,11 @@ function PartyOverlay({
     drumroll: { tag: "E o campeão é...", name: "? ? ?", sub: "" },
     champion: { tag: "Campeão!", name: champion.name, sub: champion.team ?? "" },
     party: { tag: "Campeão!", name: champion.name, sub: champion.team ?? "" },
+    leaving: { tag: "Campeão!", name: champion.name, sub: champion.team ?? "" },
+    gone: { tag: "Campeão!", name: champion.name, sub: champion.team ?? "" },
   };
   const { tag, name, sub } = board[stage];
-  const big = stage === "champion" || party;
+  const big = stage === "champion" || finale;
 
   return (
     <div
@@ -156,7 +167,7 @@ function PartyOverlay({
               {arcade(tag)}
             </p>
             <p
-              key={stage === "party" ? "champion" : stage}
+              key={finale ? "champion" : stage}
               className={`animate-reveal w-full truncate text-title ${big ? "text-accent" : ""}`}
             >
               {arcade(name)}
@@ -165,7 +176,7 @@ function PartyOverlay({
           </div>
         </div>
 
-        <Stadium tunnel={tunnel} party={party}>
+        <Stadium tunnel={tunnel} entrance="truck" party={party} truckLeaving={stage === "gone"}>
           <div className="turf relative z-10 flex min-h-[230px] items-end justify-center gap-2 px-3 pb-4 pt-6">
             {vice && (
               <PodiumStep
@@ -173,6 +184,7 @@ function PartyOverlay({
                 place={2}
                 present={reached("vice")}
                 walk={!skipped}
+                leave={leaving}
                 tunnel={tunnel}
               />
             )}
@@ -181,6 +193,7 @@ function PartyOverlay({
               place={1}
               present={reached("champion")}
               walk={!skipped}
+              leave={leaving}
               tunnel={tunnel}
               celebrating={party}
             />
@@ -190,6 +203,7 @@ function PartyOverlay({
                 place={3}
                 present={reached("third")}
                 walk={!skipped}
+                leave={leaving}
                 tunnel={tunnel}
               />
             )}
@@ -213,7 +227,7 @@ function PartyOverlay({
         </Stadium>
 
         <div className="flex justify-center pb-4">
-          {party ? (
+          {finale ? (
             <button type="button" className="btn btn-primary" onClick={onClose} autoFocus>
               Fechar
             </button>
@@ -223,7 +237,7 @@ function PartyOverlay({
               className="btn btn-quiet"
               onClick={() => {
                 setSkipped(true);
-                setStep(stages.length - 1);
+                setStep(stages.indexOf("party"));
               }}
             >
               Pular
