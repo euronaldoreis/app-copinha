@@ -1,5 +1,6 @@
 // Ícones em pixel art, desenhados numa grade de 12x12 (cada "#" é um pixel).
 import type { SVGProps } from "react";
+import { RECYCLE_PIXELS } from "@/lib/sprite";
 
 type P = SVGProps<SVGSVGElement>;
 
@@ -23,12 +24,15 @@ function pixelRects(rows: string[]) {
 
 function pixelIcon(rows: string[]) {
   const rects = pixelRects(rows);
+  // A grade pode ter qualquer tamanho; o desenho se ajusta a ela.
+  const cols = Math.max(...rows.map((r) => r.length));
+  const lines = rows.length;
   return function PixelIcon(props: P) {
     return (
       <svg
         width="20"
         height="20"
-        viewBox="0 0 12 12"
+        viewBox={`0 0 ${cols} ${lines}`}
         fill="currentColor"
         shapeRendering="crispEdges"
         aria-hidden="true"
@@ -208,3 +212,6 @@ export const BallIcon = pixelIcon([
   "..##.##.##..",
   "....####....",
 ]);
+
+/** Reciclagem: a marca da Copinha dos Lixos. */
+export const RecycleIcon = pixelIcon(RECYCLE_PIXELS);

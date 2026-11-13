@@ -3,7 +3,7 @@ import { Jersey_10, Jersey_20, Press_Start_2P } from "next/font/google";
 import Link from "next/link";
 import { logoutAction } from "./actions";
 import { NavBar } from "@/components/NavBar";
-import { BallIcon, LockIcon } from "@/components/icons";
+import { BallIcon, LockIcon, RecycleIcon } from "@/components/icons";
 import { isAdmin } from "@/lib/auth";
 import "./globals.css";
 
@@ -77,6 +77,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
               className="flex items-center gap-2 font-pixel text-[9px] uppercase text-accent"
             >
               <BallIcon width={16} height={16} className="text-ink" />
+              <RecycleIcon width={16} height={15} className="text-[#39d36b]" />
               Copinha dos Lixos
             </Link>
             {admin ? (

@@ -15,7 +15,8 @@ function LiveEdition({ view }: { view: EditionView }) {
   const played = matches.filter((m) => m.homeScore != null).length;
   const upcoming = matches
     .filter(
-      (m) => m.homeScore == null && m.homeEntryId != null && m.awayEntryId != null,
+      (m) =>
+        m.homeScore == null && m.homeEntryId != null && m.awayEntryId != null,
     )
     .slice(0, 3);
   return (
@@ -29,7 +30,9 @@ function LiveEdition({ view }: { view: EditionView }) {
         {[
           edition.game,
           plural(entries.length, "participante", "participantes"),
-          matches.length ? `${played} de ${plural(matches.length, "jogo", "jogos")}` : "",
+          matches.length
+            ? `${played} de ${plural(matches.length, "jogo", "jogos")}`
+            : "",
         ]
           .filter(Boolean)
           .join(" · ")}
@@ -74,11 +77,12 @@ export default async function HomePage() {
   return (
     <>
       <PageTitle
+        recycle
         title="Copinha dos Lixos"
         subtitle={
           views.length
             ? summary
-            : "O torneio de FIFA e Bomba Patch em que cada um joga com o time que o sorteio mandar."
+            : "O torneio de FIFA e Bomba Patch mais lixosa que existe."
         }
       />
 
@@ -89,7 +93,10 @@ export default async function HomePage() {
             sortear os times e gerar a tabela, ou registre as edições antigas
             para montar o histórico e o ranking.
           </p>
-          <Link href={admin ? "/edicoes/nova" : "/admin"} className="btn btn-primary">
+          <Link
+            href={admin ? "/edicoes/nova" : "/admin"}
+            className="btn btn-primary"
+          >
             {admin ? "Criar a primeira edição" : "Entrar como organizador"}
           </Link>
         </div>

@@ -1,7 +1,7 @@
 // Caminhão de lixo em pixel art, de lado: cabine à esquerda, caçamba com o
 // símbolo de reciclagem e, na traseira, o compactor aberto por onde os
 // jogadores saem no sorteio dos grupos. Desenhado numa grade de 61x26.
-import { pixelRects } from "@/lib/sprite";
+import { RECYCLE_PIXELS, pixelRects } from "@/lib/sprite";
 
 const WHITE = "#f6f6fa";
 const SHADE = "#c9cbe0";
@@ -14,23 +14,6 @@ export const TRUCK_GRID = { width: 61, height: 26 };
 /** Faixa horizontal (em pixels da grade) da boca do compactor, na traseira. */
 export const TRUCK_HATCH = { x: 53, width: 7 };
 
-// Três setas em triângulo, girando no sentido horário.
-const RECYCLE = [
-  ".....##........",
-  "...####........",
-  "..#####..##....",
-  "...####..###...",
-  "...###....##...",
-  "..###.....###..",
-  ".###.......####",
-  ".###......#####",
-  "...........####",
-  "............###",
-  "....##........#",
-  "..#########....",
-  ".##########....",
-  "...###.........",
-];
 
 function Wheel({ x }: { x: number }) {
   return (
@@ -73,7 +56,7 @@ export function GarbageTruck({ width = 183 }: { width?: number }) {
       <rect x={16} y={3} width={36} height={17} fill={WHITE} />
       <rect x={16} y={17} width={36} height={3} fill={GREEN} />
       <rect x={51} y={3} width={1} height={14} fill={SHADE} />
-      {pixelRects(RECYCLE, { "#": GREEN }, 3).map((r) => (
+      {pixelRects(RECYCLE_PIXELS, { "#": GREEN }, 3).map((r) => (
         <rect
           key={`${r.x}-${r.y}`}
           x={r.x + 26}

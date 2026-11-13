@@ -2,20 +2,33 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { arcade } from "@/lib/labels";
 import { Avatar } from "./Avatar";
-import { ChevronIcon } from "./icons";
+import { ChevronIcon, RecycleIcon } from "./icons";
 
 /** Título da página sobre uma faixa de gramado, de ponta a ponta da coluna. */
 export function PageTitle({
   title,
   subtitle,
+  recycle = false,
 }: {
   title: string;
   subtitle?: ReactNode;
+  /** Mostra o símbolo de reciclagem ao lado do título (página inicial). */
+  recycle?: boolean;
 }) {
   return (
     <header className="pitch -mx-6 mb-8 px-6 py-6">
-      <h1 className="text-title" aria-label={title}>
-        {arcade(title)}
+      <h1
+        className={recycle ? "flex items-center gap-3 text-title" : "text-title"}
+        aria-label={title}
+      >
+        {recycle && (
+          <RecycleIcon
+            width={40}
+            height={37}
+            className="h-[27px] w-[29px] shrink-0 text-ink drop-shadow-[3px_3px_0_#04051a] sm:h-[37px] sm:w-[40px]"
+          />
+        )}
+        <span className="min-w-0">{arcade(title)}</span>
       </h1>
       {subtitle && <p className="mt-2 text-body text-muted">{subtitle}</p>}
     </header>
