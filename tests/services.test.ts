@@ -10,6 +10,7 @@ import {
   UserError,
   regenerateMatches,
   setEntryGroups,
+  setKnockoutSlots,
   createEdition,
   createPlayer,
   deletePlayer,
@@ -418,5 +419,113 @@ describe("grupos manuais e rodadas novas", () => {
       playerIds: playerIds.slice(0, 4),
     });
     await expect(regenerateMatches(db, draft.id)).rejects.toBeInstanceOf(UserError);
+  });
+});
+
+describe("confrontos do mata-mata editados à mão", () => {
+  let editionId = 0;
+
+  it("troca os adversários das semifinais e refaz o que depende deles", async () => {
+    const edition = await createEdition(db, {
+      ...baseEdition,
+      name: "Mata-mata manual",
+      number: 30,
+      config: { ...baseEdition.config, format: "mata" },
+      playerIds: playerIds.slice(0, 4),
+      teamPool: TEAMS,
+    });
+    editionId = edition.id;
+    await drawTeams(db, editionId);
+    await startEdition(db, editionId);
+
+    const v = await view(editionId);
+    const [semi1, semi2] = v.matches
+      .filter((m) => m.stage === "mata" && m.round === 1)
+      .sort((a, b) => a.slot - b.slot);
+    const ids = v.entries.map((e) => e.id);
+    const pair = async (m: typeof semi1) => {
+      const now = (await view(editionId)).matches.find((x) => x.id === m.id)!;
+      return [now.homeEntryId, now.awayEntryId];
+    };
+
+    // novos confrontos: [a, c] e [b, d]
+    const [a, b, c, d] = ids;
+    await setKnockoutSlots(db, editionId, [
+      { matchId: semi1.id, side: "home", entryId: a },
+      { matchId: semi1.id, side: "away", entryId: c },
+      { matchId: semi2.id, side: "home", entryId: b },
+      { matchId: semi2.id, side: "away", entryId: d },
+    ]);
+    expect(await pair(semi1)).toEqual([a, c]);
+    expect(await pair(semi2)).toEqual([b, d]);
+
+    // lançar a 1ª semi, depois trocar quem a joga: o placar some
+    await saveMatchResult(db, semi1.id, { homeScore: 1, awayScore: 0 });
+    expect(
+      (await view(editionId)).matches.find((m) => m.id === semi1.id)!.homeScore,
+    ).toBe(1);
+    await setKnockoutSlots(db, editionId, [
+      { matchId: semi1.id, side: "away", entryId: d },
+      { matchId: semi2.id, side: "away", entryId: c },
+    ]);
+    const after = await view(editionId);
+    expect(await pair(semi1)).toEqual([a, d]);
+    expect(await pair(semi2)).toEqual([b, c]);
+    expect(after.matches.find((m) => m.id === semi1.id)!.homeScore).toBeNull();
+    // a final ainda não tem os dois lados
+    expect(
+      after.matches.find((m) => m.stage === "mata" && m.round === 2)!.homeEntryId,
+    ).toBeNull();
+  });
+
+  it("recusa repetir participante, mexer em vaga de vencedor e ids de fora", async () => {
+    const v = await view(editionId);
+    const [semi1, semi2] = v.matches
+      .filter((m) => m.stage === "mata" && m.round === 1)
+      .sort((a, b) => a.slot - b.slot);
+    const final = v.matches.find((m) => m.stage === "mata" && m.round === 2)!;
+    const before = JSON.stringify(v.matches);
+
+    await expect(
+      setKnockoutSlots(db, editionId, [
+        { matchId: semi1.id, side: "home", entryId: v.entries[0].id },
+        { matchId: semi2.id, side: "home", entryId: v.entries[0].id },
+      ]),
+    ).rejects.toThrow("dois confrontos");
+    await expect(
+      setKnockoutSlots(db, editionId, [
+        { matchId: semi1.id, side: "away", entryId: semi1.homeEntryId },
+      ]),
+    ).rejects.toThrow("ele mesmo");
+    await expect(
+      setKnockoutSlots(db, editionId, [
+        { matchId: final.id, side: "home", entryId: v.entries[0].id },
+      ]),
+    ).rejects.toThrow("outro jogo");
+    await expect(
+      setKnockoutSlots(db, editionId, [
+        { matchId: semi1.id, side: "home", entryId: 999999 },
+      ]),
+    ).rejects.toBeInstanceOf(UserError);
+    // nada mudou nas tentativas recusadas
+    expect(JSON.stringify((await view(editionId)).matches)).toBe(before);
+  });
+
+  it("a edição continua até o campeão depois da troca", async () => {
+    await playEverything(editionId);
+    const v = await view(editionId);
+    expect(v.edition.status).toBe("encerrada");
+    expect(v.entries.filter((e) => e.result === "campeao")).toHaveLength(1);
+  });
+
+  it("não edita antes de a tabela existir", async () => {
+    const draft = await createEdition(db, {
+      ...baseEdition,
+      name: "Rascunho mata-mata",
+      number: 31,
+      config: { ...baseEdition.config, format: "mata" },
+      playerIds: playerIds.slice(0, 4),
+    });
+    await expect(setKnockoutSlots(db, draft.id, [])).rejects.toBeInstanceOf(UserError);
   });
 });

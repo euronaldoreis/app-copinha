@@ -190,6 +190,24 @@ export async function setGroupsAction(_prev: ActionState, fd: FormData) {
   });
 }
 
+/** Confrontos do mata-mata, vindos dos campos slot_<jogo>_<home|away>. */
+export async function setKnockoutAction(_prev: ActionState, fd: FormData) {
+  return run(() => {
+    const slots: svc.KnockoutSlotInput[] = [];
+    for (const [key, value] of fd.entries()) {
+      const m = /^slot_(\d+)_(home|away)$/.exec(key);
+      if (m) {
+        slots.push({
+          matchId: Number(m[1]),
+          side: m[2] as "home" | "away",
+          entryId: String(value) ? Number(value) : null,
+        });
+      }
+    }
+    return svc.setKnockoutSlots(getDb(), id(fd, "editionId"), slots);
+  });
+}
+
 export async function regenerateMatchesAction(_prev: ActionState, fd: FormData) {
   return run(() => svc.regenerateMatches(getDb(), id(fd, "editionId")));
 }

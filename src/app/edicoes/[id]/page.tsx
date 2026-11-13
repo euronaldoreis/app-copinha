@@ -19,6 +19,7 @@ import { DrawPanel } from "@/components/DrawPanel";
 import { FormatFields } from "@/components/FormatFields";
 import { StartPanel } from "@/components/GroupDraw";
 import { GroupsEditor } from "@/components/GroupsEditor";
+import { KnockoutEditor } from "@/components/KnockoutEditor";
 import { Tabs, type TabItem } from "@/components/Tabs";
 import { MatchRow, type MatchSide } from "@/components/MatchRow";
 import { StandingsTable } from "@/components/StandingsTable";
@@ -577,6 +578,21 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
                     name: e.player.name,
                     team: e.team?.name ?? null,
                     groupLabel: e.groupLabel,
+                  }))}
+                />
+              </Disclosure>
+            )}
+
+            {!manual && !setup && knockoutRounds(matches) > 0 && (
+              <Disclosure title="Confrontos do mata-mata">
+                <KnockoutEditor
+                  editionId={edition.id}
+                  totalRounds={knockoutRounds(matches)}
+                  matches={matches.filter((m) => m.stage === "mata")}
+                  entries={entries.map((e) => ({
+                    id: e.id,
+                    name: e.player.name,
+                    team: e.team?.name ?? null,
                   }))}
                 />
               </Disclosure>

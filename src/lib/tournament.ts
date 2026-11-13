@@ -723,6 +723,15 @@ export function resolveKnockout(entries: EntryLike[], matches: MatchLike[]) {
   return { changes, matches: work };
 }
 
+/**
+ * Uma vaga do mata-mata pode ser escolhida à mão quando vem direto de um
+ * participante ou da classificação dos grupos. As que dependem do vencedor ou
+ * do perdedor de outro jogo (W: e L:) são sempre resultado de partida.
+ */
+export function isEditableSlot(source: string | null) {
+  return source == null || source.startsWith("G:") || source.startsWith("B:");
+}
+
 export function knockoutRounds(matches: { stage: string; round: number }[]) {
   return matches
     .filter((m) => m.stage === "mata")

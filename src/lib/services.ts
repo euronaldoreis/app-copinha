@@ -19,6 +19,7 @@ import { RESULT_ORDER } from "./labels";
 import type { AllData } from "./stats";
 import {
   GROUP_LABELS,
+  isEditableSlot,
   assignGroups,
   computeResults,
   normalizeConfig,
@@ -592,6 +593,88 @@ export async function regenerateMatches(db: Db, editionId: number) {
     groupLabel: e.groupLabel,
   }));
   await db.transaction((tx) => applyPlan(tx, editionId, config, seeded));
+}
+
+export interface KnockoutSlotInput {
+  matchId: number;
+  side: "home" | "away";
+  /** null = deixa a vaga como está. */
+  entryId: number | null;
+}
+
+/**
+ * Escolhe à mão quem joga cada confronto do mata-mata. Só vagas que não vêm
+ * do vencedor de outro jogo podem ser mudadas. Uma vaga escolhida deixa de
+ * seguir a classificação dos grupos. Quem muda de confronto tem o placar
+ * apagado, e os jogos seguintes são refeitos.
+ */
+export async function setKnockoutSlots(
+  db: Db,
+  editionId: number,
+  slots: KnockoutSlotInput[],
+) {
+  const edition = await getEdition(db, editionId);
+  if (edition.format === "manual" || edition.status === "inscricoes")
+    throw new UserError("Gere a tabela antes de editar o mata-mata.");
+
+  await db.transaction(async (tx) => {
+    const [entryRows, matchRows] = await Promise.all([
+      tx.select().from(entries).where(eq(entries.editionId, editionId)),
+      tx.select().from(matches).where(eq(matches.editionId, editionId)),
+    ]);
+    const entryIds = new Set(entryRows.map((e) => e.id));
+    const matchById = new Map(matchRows.map((m) => [m.id, m]));
+
+    // Só o que realmente mudou é gravado: o resto continua seguindo as regras.
+    const changes = new Map<number, Partial<typeof matches.$inferInsert>>();
+    for (const slot of slots) {
+      if (slot.entryId == null) continue;
+      const match = matchById.get(slot.matchId);
+      if (!match || match.stage !== "mata")
+        throw new UserError("Confronto não encontrado no mata-mata.");
+      if (!entryIds.has(slot.entryId))
+        throw new UserError("Participante não encontrado nesta edição.");
+      const home = slot.side === "home";
+      if (!isEditableSlot(home ? match.homeSource : match.awaySource))
+        throw new UserError(
+          "Essa vaga é decidida pelo resultado de outro jogo e não pode ser editada.",
+        );
+      if ((home ? match.homeEntryId : match.awayEntryId) === slot.entryId) continue;
+      const change = changes.get(match.id) ?? {
+        homeScore: null,
+        awayScore: null,
+        homePens: null,
+        awayPens: null,
+        playedAt: null,
+      };
+      if (home) Object.assign(change, { homeEntryId: slot.entryId, homeSource: null });
+      else Object.assign(change, { awayEntryId: slot.entryId, awaySource: null });
+      changes.set(match.id, change);
+    }
+    if (changes.size === 0) return;
+
+    for (const [matchId, change] of changes) {
+      await tx.update(matches).set(change).where(eq(matches.id, matchId));
+    }
+    await syncEdition(tx, editionId);
+
+    // Depois de refazer tudo: ninguém joga duas vezes na mesma fase, nem contra si.
+    const after = await tx.select().from(matches).where(eq(matches.editionId, editionId));
+    const seen = new Set<string>();
+    for (const m of after.filter((x) => x.stage === "mata")) {
+      if (m.homeEntryId != null && m.homeEntryId === m.awayEntryId)
+        throw new UserError("Um participante não pode jogar contra ele mesmo.");
+      for (const id of [m.homeEntryId, m.awayEntryId]) {
+        if (id == null) continue;
+        const key = `${m.round}:${id}`;
+        if (seen.has(key))
+          throw new UserError(
+            "O mesmo participante não pode estar em dois confrontos da mesma fase. Troque os dois lados.",
+          );
+        seen.add(key);
+      }
+    }
+  });
 }
 
 /** Apaga a tabela de jogos e volta a edição para a fase de inscrições. */

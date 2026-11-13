@@ -32,7 +32,7 @@ Formatos disponíveis, escolhidos por edição:
 - **Mata-mata**: chaveamento direto; se o número de participantes não for potência de 2, alguns folgam na primeira fase.
 - **Registro histórico**: para edições antigas, só participantes, times e colocações, sem jogos.
 
-Na página da edição, o admin pode montar os grupos à mão (antes de gerar a tabela ou depois, refazendo as rodadas) e gerar as rodadas de novo mantendo os grupos. Nos dois casos os placares lançados são apagados.
+Na página da edição, o admin pode montar os grupos à mão (antes de gerar a tabela ou depois, refazendo as rodadas) e gerar as rodadas de novo mantendo os grupos. Nos dois casos os placares lançados são apagados. O admin também pode escolher à mão quem joga cada confronto do mata-mata (as vagas que dependem do vencedor de outro jogo não são editáveis); quem muda de confronto perde o placar e os jogos seguintes são refeitos.
 
 Regras que o site aplica:
 
