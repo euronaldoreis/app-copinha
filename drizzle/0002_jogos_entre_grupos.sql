@@ -1,0 +1,1 @@
+ALTER TABLE `editions` ADD `cross_games` integer DEFAULT 0 NOT NULL;

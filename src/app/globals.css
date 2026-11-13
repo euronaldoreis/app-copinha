@@ -1,0 +1,175 @@
+@import "tailwindcss";
+
+/*
+  Tokens da interface. A regra é contenção: um acento, uma família, três
+  tamanhos de texto, um raio, e separação por espaço em vez de linhas.
+*/
+@theme inline {
+  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
+
+  --color-canvas: #f3f3ef;
+  --color-surface: #ffffff;
+  --color-wash: #e8e8e3;
+  --color-ink: #16181a;
+  --color-muted: #666b70;
+  --color-faint: #9da1a5;
+  --color-accent: #0d7448;
+  --color-accent-wash: #dfeee6;
+  --color-danger: #b3261e;
+
+  --text-title: 27px;
+  --text-title--line-height: 1.15;
+  --text-title--font-weight: 700;
+  --text-name: 16px;
+  --text-name--line-height: 1.3;
+  --text-body: 14px;
+  --text-body--line-height: 1.45;
+
+  --radius-card: 22px;
+
+  --shadow-float: 0 8px 28px rgb(22 24 26 / 0.12);
+  --shadow-soft: 0 1px 2px rgb(22 24 26 / 0.04);
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
+}
+
+@layer components {
+  .card {
+    background: var(--color-surface);
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-soft);
+  }
+
+  /* Material translúcido dos controles flutuantes. */
+  .glass {
+    background: rgb(255 255 255 / 0.72);
+    backdrop-filter: blur(18px) saturate(1.6);
+    -webkit-backdrop-filter: blur(18px) saturate(1.6);
+    border: 1px solid rgb(255 255 255 / 0.7);
+    box-shadow: var(--shadow-float);
+  }
+
+  .field {
+    width: 100%;
+    height: 44px;
+    padding: 0 16px;
+    border-radius: var(--radius-card);
+    background: var(--color-surface);
+    font-size: 14px;
+    color: var(--color-ink);
+  }
+  .field::placeholder {
+    color: var(--color-faint);
+  }
+  textarea.field {
+    height: auto;
+    padding: 12px 16px;
+    line-height: 1.45;
+    resize: vertical;
+  }
+  /* Campo dentro de um card branco: usa o tom do canvas para aparecer. */
+  .card .field {
+    background: var(--color-canvas);
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    height: 44px;
+    padding: 0 20px;
+    border-radius: var(--radius-card);
+    background: var(--color-wash);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-ink);
+    white-space: nowrap;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .btn:hover {
+    opacity: 0.85;
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .btn-primary {
+    background: var(--color-accent);
+    color: #fff;
+  }
+  .btn-quiet {
+    background: transparent;
+    color: var(--color-muted);
+    padding: 0 12px;
+  }
+  .btn-danger {
+    background: transparent;
+    color: var(--color-danger);
+    padding: 0 12px;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    height: 36px;
+    padding: 0 16px;
+    border-radius: var(--radius-card);
+    font-size: 14px;
+    color: var(--color-muted);
+    white-space: nowrap;
+  }
+  .chip[aria-current="page"],
+  .chip[aria-pressed="true"] {
+    background: var(--color-wash);
+    color: var(--color-ink);
+    font-weight: 600;
+  }
+
+  .label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 14px;
+    color: var(--color-muted);
+  }
+
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-reveal {
+  animation: reveal 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-reveal {
+    animation: none;
+  }
+}

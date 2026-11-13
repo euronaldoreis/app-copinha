@@ -1,0 +1,1 @@
+ALTER TABLE `editions` ADD `pairing` text DEFAULT 'interno' NOT NULL;
