@@ -16,7 +16,6 @@ const font = await readFile(
 );
 
 const NIGHT = "#04051a";
-const PANEL = "#1a2670";
 const YELLOW = "#ffd42a";
 const WHITE = "#f6f6fa";
 const GREEN = "#1c9440";
@@ -90,6 +89,7 @@ export default async function Image() {
           height: "100%",
           display: "flex",
           flexDirection: "column",
+          justifyContent: "center",
           background: NIGHT,
           fontFamily: "Press Start 2P",
           color: WHITE,
@@ -99,8 +99,7 @@ export default async function Image() {
         <div
           style={{
             display: "flex",
-            height: 400,
-            marginTop: 50,
+            height: 420,
             borderTop: `10px solid ${WHITE}`,
             borderBottom: `10px solid ${WHITE}`,
             background: `repeating-linear-gradient(90deg, ${GREEN} 0px, ${GREEN} 70px, #178038 70px, #178038 140px)`,
@@ -118,6 +117,19 @@ export default async function Image() {
               textAlign: "center",
             }}
           >
+            <div style={{ display: "flex", marginBottom: 24 }}>
+              {/* Setas vetoriais: o desenho em pixels perde a forma em tamanho grande. */}
+              <svg width={150} height={150} viewBox="4 6 92 92">
+                {[0, 120, 240].map((angle) => (
+                  <path
+                    key={angle}
+                    d="M73 73 H47 V63 L26 79 L47 95 V85 H73 Z"
+                    fill={WHITE}
+                    transform={`rotate(${angle} 50 56)`}
+                  />
+                ))}
+              </svg>
+            </div>
             <div
               style={{
                 display: "flex",
@@ -141,29 +153,6 @@ export default async function Image() {
             </div>
           </div>
           <Pixels rows={TROPHY} px={16} color={YELLOW} />
-        </div>
-
-        {/* Faixa de baixo: assunto do site, como o placar de um jogo */}
-        <div
-          style={{
-            display: "flex",
-            flex: 1,
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              padding: "18px 40px",
-              background: PANEL,
-              border: `6px solid ${WHITE}`,
-              fontSize: 30,
-              color: YELLOW,
-            }}
-          >
-            FIFA E BOMBA PATCH
-          </div>
         </div>
       </div>
     ),
