@@ -86,6 +86,7 @@ export interface NewEditionPayload {
   number: number;
   game: string;
   playedOn: string;
+  useTeams: boolean;
   config: FormatConfig;
   playerIds: number[];
   newPlayerNames: string[];
@@ -111,6 +112,7 @@ export async function updateEditionAction(_prev: ActionState, fd: FormData) {
       game: fd.get("game"),
       playedOn: fd.get("playedOn"),
       notes: fd.get("notes"),
+      useTeams: fd.get("useTeams") === "on",
       config: configFrom(fd),
     }),
   );

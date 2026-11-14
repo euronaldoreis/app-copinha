@@ -34,6 +34,8 @@ Formatos disponíveis, escolhidos por edição:
 
 Na página da edição, o admin pode montar os grupos à mão (antes de gerar a tabela ou depois, refazendo as rodadas) e gerar as rodadas de novo mantendo os grupos. Nos dois casos os placares lançados são apagados. O admin também pode escolher à mão quem joga cada confronto do mata-mata (as vagas que dependem do vencedor de outro jogo não são editáveis); quem muda de confronto perde o placar e os jogos seguintes são refeitos. Também dá para aumentar (ou diminuir) as fases do mata-mata com a copa em andamento (por exemplo, de semifinais para quartas): os jogos dos grupos e seus placares continuam, e o mata-mata é refeito.
 
+Dá para criar a edição só com os jogadores, sem times: desmarque "Cada participante joga com um time" ao criar (ou em "Dados e formato", antes de gerar a tabela). Sem times não há sorteio nem lista de times, e a tabela é gerada direto.
+
 Regras que o site aplica:
 
 - Desempate nos grupos: pontos, vitórias, saldo, gols pró, confronto direto e, por último, a ordem do sorteio.

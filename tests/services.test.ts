@@ -11,6 +11,7 @@ import {
   regenerateMatches,
   removeEntry,
   setKnockoutPhases,
+  updateEdition,
   setEntryGroups,
   setKnockoutSlots,
   createEdition,
@@ -691,5 +692,71 @@ describe("mais fases no mata-mata com a copa em andamento", () => {
     expect(v.edition.status).toBe("andamento"); // agora falta o mata-mata
     expect(v.matches.filter((m) => m.stage === "mata")).toHaveLength(3);
     expect(v.matches.filter((m) => m.stage === "grupo").every((m) => m.homeScore != null)).toBe(true);
+  });
+});
+
+describe("torneio só com os jogadores, sem times", () => {
+  it("cria, gera a tabela e termina sem nenhum time", async () => {
+    const edition = await createEdition(db, {
+      ...baseEdition,
+      name: "Só os jogadores",
+      number: 60,
+      useTeams: false,
+      playerIds: playerIds.slice(0, 4),
+      teamPool: TEAMS, // ignorada: a edição não usa times
+    });
+    expect(edition.useTeams).toBe(false);
+    expect(edition.teamPool).toEqual([]);
+
+    await expect(drawTeams(db, edition.id)).rejects.toThrow("sem times");
+    const v = await view(edition.id);
+    await expect(setEntryTeam(db, v.entries[0].id, "Íbis")).rejects.toThrow("sem times");
+
+    // gera a tabela sem sorteio de times
+    await startEdition(db, edition.id);
+    await playEverything(edition.id);
+    const done = await view(edition.id);
+    expect(done.edition.status).toBe("encerrada");
+    expect(done.entries.every((e) => e.team == null)).toBe(true);
+    expect(done.entries.filter((e) => e.result === "campeao")).toHaveLength(1);
+  });
+
+  it("as edições com times continuam exigindo o sorteio", async () => {
+    const edition = await createEdition(db, {
+      ...baseEdition,
+      name: "Com times",
+      number: 61,
+      playerIds: playerIds.slice(0, 4),
+      teamPool: TEAMS,
+    });
+    expect(edition.useTeams).toBe(true);
+    await expect(startEdition(db, edition.id)).rejects.toThrow("sem time");
+  });
+
+  it("ao desligar os times antes de gerar, os vínculos são desfeitos", async () => {
+    const edition = await createEdition(db, {
+      ...baseEdition,
+      name: "Desistiu dos times",
+      number: 62,
+      playerIds: playerIds.slice(0, 4),
+      teamPool: TEAMS,
+    });
+    await drawTeams(db, edition.id);
+    expect((await view(edition.id)).entries.every((e) => e.team != null)).toBe(true);
+
+    await updateEdition(db, edition.id, {
+      name: edition.name,
+      number: edition.number,
+      game: edition.game,
+      playedOn: edition.playedOn,
+      useTeams: false,
+      config: baseEdition.config,
+    });
+    const v = await view(edition.id);
+    expect(v.edition.useTeams).toBe(false);
+    expect(v.edition.teamPool).toEqual([]);
+    expect(v.entries.every((e) => e.team == null)).toBe(true);
+    await startEdition(db, edition.id);
+    expect((await view(edition.id)).edition.status).toBe("andamento");
   });
 });

@@ -20,6 +20,7 @@ export function EntryControls({
   team,
   result,
   manual,
+  useTeams,
 }: {
   entryId: number;
   playerName: string;
@@ -27,31 +28,39 @@ export function EntryControls({
   team: string | null;
   result: string | null;
   manual: boolean;
+  /** Falso = edição só com os jogadores: sem campo de time. */
+  useTeams: boolean;
 }) {
   const [teamValue, setTeamValue] = useState(team ?? "");
   const [resultValue, setResultValue] = useState(result ?? "");
 
   const dirty =
-    teamValue.trim() !== (team ?? "") || (manual && resultValue !== (result ?? ""));
-  const saved = team != null && !dirty;
+    (useTeams && teamValue.trim() !== (team ?? "")) ||
+    (manual && resultValue !== (result ?? ""));
+  const saved = useTeams && team != null && !dirty;
+  // Sem time e sem colocação para editar, só resta remover.
+  const hasForm = useTeams || manual;
 
   return (
     // Começa na borda esquerda da foto e ocupa a largura toda no celular.
-    <div className="flex items-center gap-2 pb-3 sm:pb-0">
+    <div className={`flex items-center gap-2 ${hasForm ? "pb-3 sm:pb-0" : ""}`}>
+      {hasForm && (
       <ActionForm
         action={saveEntryAction}
         className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:flex-none"
       >
         <input type="hidden" name="entryId" value={entryId} />
-        <input
-          name="team"
-          list="known-teams"
-          value={teamValue}
-          onChange={(e) => setTeamValue(e.target.value)}
-          placeholder="Time"
-          aria-label={`Time de ${playerName}`}
-          className="field min-w-0 flex-1 sm:w-40 sm:flex-none"
-        />
+        {useTeams && (
+          <input
+            name="team"
+            list="known-teams"
+            value={teamValue}
+            onChange={(e) => setTeamValue(e.target.value)}
+            placeholder="Time"
+            aria-label={`Time de ${playerName}`}
+            className="field min-w-0 flex-1 sm:w-40 sm:flex-none"
+          />
+        )}
         {manual && (
           <select
             name="result"
@@ -78,6 +87,7 @@ export function EntryControls({
           <span className="sr-only">{saved ? "Time salvo" : "Salvar"}</span>
         </SubmitButton>
       </ActionForm>
+      )}
       {/* Formulário à parte: formulários não podem ficar um dentro do outro. */}
       <ActionForm action={removeEntryAction}>
         <input type="hidden" name="entryId" value={entryId} />

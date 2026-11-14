@@ -47,6 +47,8 @@ export const editions = sqliteTable("editions", {
     .default(false),
   /** inscricoes | andamento | encerrada */
   status: text("status").notNull().default("inscricoes"),
+  /** Falso = torneio só com os jogadores, sem times. */
+  useTeams: integer("use_teams", { mode: "boolean" }).notNull().default(true),
   /** Times disponíveis para o sorteio (JSON com os nomes). */
   teamPool: text("team_pool", { mode: "json" })
     .$type<string[]>()

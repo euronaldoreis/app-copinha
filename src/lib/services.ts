@@ -168,6 +168,8 @@ export interface EditionInput {
   game: unknown;
   playedOn: unknown;
   notes?: unknown;
+  /** Falso = torneio só com os jogadores. Sem informar, usa times. */
+  useTeams?: unknown;
   config: FormatConfig;
 }
 
@@ -182,7 +184,14 @@ function parseEditionMeta(input: EditionInput) {
     throw new UserError("O número da edição precisa ser 1 ou mais.");
   if (playedOn && !/^\d{4}-\d{2}-\d{2}$/.test(playedOn))
     throw new UserError("Data inválida.");
-  return { name, game, number, playedOn, notes: clean(input.notes, 500) || null };
+  return {
+    name,
+    game,
+    number,
+    playedOn,
+    notes: clean(input.notes, 500) || null,
+    useTeams: input.useTeams === undefined ? true : Boolean(input.useTeams),
+  };
 }
 
 function parseConfig(config: FormatConfig) {
@@ -238,7 +247,7 @@ export async function createEdition(
         ...meta,
         ...config,
         status: config.format === "manual" ? "encerrada" : "inscricoes",
-        teamPool: cleanTeamList(input.teamPool ?? []),
+        teamPool: meta.useTeams ? cleanTeamList(input.teamPool ?? []) : [],
       })
       .returning();
     if (ids.size) {
@@ -267,10 +276,23 @@ export async function updateEdition(db: Db, id: number, input: EditionInput) {
   const canChangeFormat =
     edition.status === "inscricoes" && input.config.format !== "manual";
   const config = canChangeFormat ? parseConfig(input.config) : {};
-  await db
-    .update(editions)
-    .set({ ...meta, ...config })
-    .where(eq(editions.id, id));
+  // Usar times ou não também só muda antes de gerar a tabela.
+  const { useTeams, ...rest } = meta;
+  const canChangeTeams = edition.status === "inscricoes";
+  await db.transaction(async (tx) => {
+    await tx
+      .update(editions)
+      .set({
+        ...rest,
+        ...config,
+        ...(canChangeTeams ? { useTeams, ...(useTeams ? {} : { teamPool: [] }) } : {}),
+      })
+      .where(eq(editions.id, id));
+    if (canChangeTeams && !useTeams) {
+      // Sem times: quem já tinha um perde o vínculo.
+      await tx.update(entries).set({ teamId: null }).where(eq(entries.editionId, id));
+    }
+  });
 }
 
 function assertEditable(edition: Edition) {
@@ -342,6 +364,8 @@ export async function setEntryTeam(db: Db, entryId: number, teamName: unknown) {
     await db.update(entries).set({ teamId: null }).where(eq(entries.id, entryId));
     return;
   }
+  if (!(await getEdition(db, entry.editionId)).useTeams)
+    throw new UserError("Esta edição é só com os jogadores, sem times.");
   const team = await ensureTeam(db, name);
   const siblings = await db
     .select()
@@ -361,6 +385,8 @@ export interface DrawAssignment {
 /** Sorteia um time da lista para cada participante. */
 export async function drawTeams(db: Db, editionId: number): Promise<DrawAssignment[]> {
   const edition = await getEdition(db, editionId);
+  if (!edition.useTeams)
+    throw new UserError("Esta edição é só com os jogadores, sem times.");
   if (edition.status !== "inscricoes")
     throw new UserError("O sorteio só pode ser feito antes de gerar a tabela.");
   const rows = await db
@@ -463,7 +489,7 @@ export async function startEdition(
     .where(eq(entries.editionId, editionId));
   const problem = validateConfig(config, current.length);
   if (problem) throw new UserError(problem);
-  if (current.some((e) => e.teamId == null))
+  if (edition.useTeams && current.some((e) => e.teamId == null))
     throw new UserError("Ainda há participantes sem time. Faça o sorteio primeiro.");
 
   let seeded: Seeded[];

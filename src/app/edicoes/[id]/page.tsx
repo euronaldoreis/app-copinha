@@ -335,7 +335,14 @@ function Participants({
       {list.map((e) => (
         <div
           key={e.id}
-          className={admin && editable ? "sm:flex sm:items-center sm:gap-3" : ""}
+          className={
+            admin && editable
+              ? view.edition.useTeams || manual
+                ? "sm:flex sm:items-center sm:gap-3"
+                : // só a lixeira: fica na mesma linha, à direita do nome
+                  "flex items-center gap-3"
+              : ""
+          }
         >
           <div className="min-w-0 flex-1">
             <PersonRow
@@ -344,7 +351,7 @@ function Participants({
               photoUrl={e.player.photoUrl}
               detail={
                 [
-                  e.team?.name ?? "Sem time",
+                  view.edition.useTeams ? (e.team?.name ?? "Sem time") : "",
                   e.groupLabel ? `Grupo ${e.groupLabel}` : "",
                   manual ? resultLabel(e.result) : "",
                 ]
@@ -362,6 +369,7 @@ function Participants({
               team={e.team?.name ?? null}
               result={e.result}
               manual={manual}
+              useTeams={view.edition.useTeams}
             />
           )}
         </div>
@@ -435,11 +443,13 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
           aside={entries.length ? plural(entries.length, "inscrito", "inscritos") : ""}
         >
           <Participants view={view} admin={admin} editable />
-          <datalist id="known-teams">
-            {knownTeams.map((t) => (
-              <option key={t} value={t} />
-            ))}
-          </datalist>
+          {edition.useTeams && (
+            <datalist id="known-teams">
+              {knownTeams.map((t) => (
+                <option key={t} value={t} />
+              ))}
+            </datalist>
+          )}
         </Section>
       )}
 
@@ -447,22 +457,31 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
         <Section title="Sorteio e início">
           <div className="card flex flex-col gap-4 p-5">
             <p className="text-body text-muted">
-              {plural(edition.teamPool.length, "time", "times")} na lista do
-              sorteio para {plural(entries.length, "participante", "participantes")}.
-              {withoutTeam > 0
-                ? ` ${plural(withoutTeam, "ainda está", "ainda estão")} sem time.`
-                : entries.length > 0
-                  ? " Todos já têm time."
-                  : ""}
+              {edition.useTeams ? (
+                <>
+                  {plural(edition.teamPool.length, "time", "times")} na lista do
+                  sorteio para{" "}
+                  {plural(entries.length, "participante", "participantes")}.
+                  {withoutTeam > 0
+                    ? ` ${plural(withoutTeam, "ainda está", "ainda estão")} sem time.`
+                    : entries.length > 0
+                      ? " Todos já têm time."
+                      : ""}
+                </>
+              ) : (
+                `Torneio só com os jogadores, sem times: ${plural(entries.length, "participante", "participantes")}.`
+              )}
             </p>
             {configProblem && (
               <p className="text-body text-danger">{configProblem}</p>
             )}
             <div className="flex flex-wrap items-center gap-2">
-              <DrawPanel
-                editionId={edition.id}
-                hasTeams={entries.some((e) => e.teamId != null)}
-              />
+              {edition.useTeams && (
+                <DrawPanel
+                  editionId={edition.id}
+                  hasTeams={entries.some((e) => e.teamId != null)}
+                />
+              )}
               <StartPanel
                 editionId={edition.id}
                 hasGroups={format === "grupos"}
@@ -513,7 +532,7 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
               </Disclosure>
             )}
 
-            {setup && (
+            {setup && edition.useTeams && (
               <Disclosure title="Times do sorteio">
                 <ActionForm
                   key={edition.teamPool.join("|")}
@@ -625,6 +644,17 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
                     placeholder="Onde foi, quem levou a pizza, polêmicas..."
                   />
                 </label>
+                {setup && (
+                  <label className="flex items-center gap-2.5 text-body">
+                    <input
+                      type="checkbox"
+                      name="useTeams"
+                      defaultChecked={edition.useTeams}
+                      className="size-4 accent-accent"
+                    />
+                    Cada participante joga com um time
+                  </label>
+                )}
                 {setup ? (
                   <FormatFields
                     initial={configOf(edition)}
