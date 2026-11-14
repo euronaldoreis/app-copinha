@@ -1,6 +1,8 @@
 // Caminhão de lixo em pixel art, de lado: cabine amarela à esquerda, caçamba
 // verde com painéis, três eixos e, na traseira inclinada, o compactor por onde
 // os jogadores saem. Desenhado numa grade de 61x26.
+import { RECYCLE_PIXELS, pixelRects } from "@/lib/sprite";
+
 const OUTLINE = "#04051a";
 const YELLOW = "#ffb20f";
 const YELLOW_DARK = "#d98a00";
@@ -51,8 +53,20 @@ export function GarbageTruck({ width = 183 }: { width?: number }) {
       {/* caçamba verde, com a faixa amarela embaixo */}
       <rect x={15} y={2} width={35} height={19} fill={OUTLINE} />
       <rect x={16} y={3} width={33} height={17} fill={GREEN_LIGHT} />
-      {[17, 23, 29, 35, 41].map((x) => (
+      {[17, 23].map((x) => (
         <rect key={x} x={x} y={5} width={5} height={12} fill={GREEN_DARK} />
+      ))}
+      {/* painel central com o símbolo de reciclagem */}
+      <rect x={28} y={4} width={17} height={14} fill={GREEN_DARK} />
+      {pixelRects(RECYCLE_PIXELS, { "#": "#f6f6fa" }, 4).map((r) => (
+        <rect
+          key={`${r.x}-${r.y}`}
+          x={r.x + 29}
+          y={r.y}
+          width={r.w}
+          height={1}
+          fill={r.fill}
+        />
       ))}
       <rect x={16} y={3} width={33} height={1} fill={GREEN} />
       <rect x={16} y={17} width={33} height={1} fill={GREEN} />
