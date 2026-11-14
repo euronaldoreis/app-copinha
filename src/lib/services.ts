@@ -1,12 +1,13 @@
 // Operações de leitura e escrita no banco. Não dependem do Next.js, então
 // podem ser exercitadas direto nos testes.
 import { randomInt } from "node:crypto";
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import type { Db } from "@/db";
 import {
   editions,
   entries,
   matches,
+  playerPhotos,
   players,
   teams,
   type Edition,
@@ -16,6 +17,8 @@ import {
   type Team,
 } from "@/db/schema";
 import { RESULT_ORDER } from "./labels";
+import { PHOTO_MAX_BYTES, isUploadedPhoto, photoPath } from "./photo";
+import { parseAvatar, type AvatarLook } from "./sprite";
 import type { AllData } from "./stats";
 import {
   GROUP_LABELS,
@@ -92,32 +95,125 @@ function cleanPhotoUrl(value: unknown) {
   return url;
 }
 
-export async function createPlayer(db: Db, rawName: unknown, photo?: unknown) {
+interface PhotoData {
+  contentType: string;
+  base64: string;
+}
+
+/** Valida a foto enviada ("data:image/jpeg;base64,..."); devolve null se não veio nada. */
+function parsePhotoData(value: unknown): PhotoData | null {
+  const text = String(value ?? "").trim();
+  if (!text) return null;
+  const m = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(text);
+  if (!m) throw new UserError("Foto inválida. Use uma imagem JPG, PNG ou WebP.");
+  const bytes = Buffer.from(m[2], "base64");
+  if (bytes.length > PHOTO_MAX_BYTES)
+    throw new UserError("A foto ficou grande demais. Tente uma imagem menor.");
+  // Confere o conteúdo, e não só o que o envio diz ser.
+  const starts = (...b: number[]) => b.every((v, i) => bytes[i] === v);
+  const isJpeg = starts(0xff, 0xd8, 0xff);
+  const isPng = starts(0x89, 0x50, 0x4e, 0x47);
+  const isWebp =
+    starts(0x52, 0x49, 0x46, 0x46) && bytes.subarray(8, 12).toString("ascii") === "WEBP";
+  if (!isJpeg && !isPng && !isWebp)
+    throw new UserError("Foto inválida. Use uma imagem JPG, PNG ou WebP.");
+  return { contentType: m[1], base64: m[2] };
+}
+
+async function storePhoto(db: Db, playerId: number, photo: PhotoData) {
+  const updatedAt = new Date().toISOString();
+  await db
+    .insert(playerPhotos)
+    .values({ playerId, contentType: photo.contentType, data: photo.base64, updatedAt })
+    .onConflictDoUpdate({
+      target: playerPhotos.playerId,
+      set: { contentType: photo.contentType, data: photo.base64, updatedAt },
+    });
+  return photoPath(playerId);
+}
+
+/** Foto enviada de um jogador, ou null. */
+export async function getPlayerPhoto(db: Db, playerId: number) {
+  const [row] = await db
+    .select()
+    .from(playerPhotos)
+    .where(eq(playerPhotos.playerId, playerId));
+  return row ? { contentType: row.contentType, data: row.data } : null;
+}
+
+export async function createPlayer(
+  db: Db,
+  rawName: unknown,
+  photo?: unknown,
+  /** Foto enviada, como "data:image/...;base64,...". Vale mais que o link. */
+  photoData?: unknown,
+) {
   const name = clean(rawName, 40);
   if (!name) throw new UserError("Informe o nome do jogador.");
   if (await findPlayerByName(db, name))
     throw new UserError(`Já existe um jogador chamado ${name}.`);
-  const [row] = await db
-    .insert(players)
-    .values({ name, photoUrl: cleanPhotoUrl(photo) })
-    .returning();
-  return row;
+  // Valida tudo antes de gravar, para uma foto ruim não deixar o jogador pela metade.
+  const upload = parsePhotoData(photoData);
+  const link = upload ? null : cleanPhotoUrl(photo);
+  const [row] = await db.insert(players).values({ name, photoUrl: link }).returning();
+  if (!upload) return row;
+  const photoUrl = await storePhoto(db, row.id, upload);
+  await db.update(players).set({ photoUrl }).where(eq(players.id, row.id));
+  return { ...row, photoUrl };
 }
 
 export async function updatePlayer(
   db: Db,
   id: number,
-  input: { name: unknown; photoUrl: unknown },
+  input: {
+    name: unknown;
+    photoUrl: unknown;
+    /** Aparência escolhida; null volta ao automático; sem informar, não muda. */
+    avatar?: unknown;
+    /** Foto nova enviada ("data:image/...;base64,..."); vale mais que o link. */
+    photoData?: unknown;
+    /** Tirar a foto atual (enviada ou link). */
+    removePhoto?: boolean;
+  },
 ) {
   const name = clean(input.name, 40);
   if (!name) throw new UserError("Informe o nome do jogador.");
   const other = await findPlayerByName(db, name);
   if (other && other.id !== id)
     throw new UserError(`Já existe um jogador chamado ${name}.`);
+  const avatar =
+    input.avatar === undefined
+      ? {}
+      : { avatar: input.avatar === null ? null : requireAvatar(input.avatar) };
+  const [current] = await db.select().from(players).where(eq(players.id, id));
+  if (!current) throw new UserError("Jogador não encontrado.");
+
+  // Foto: enviada > link novo > manter a enviada > link. O campo de link só
+  // cuida de links externos; ele vazio não apaga uma foto enviada.
+  const upload = parsePhotoData(input.photoData);
+  const link = cleanPhotoUrl(input.photoUrl);
+  let photoUrl: string | null;
+  if (upload) {
+    photoUrl = await storePhoto(db, id, upload);
+  } else if (input.removePhoto && !link) {
+    await db.delete(playerPhotos).where(eq(playerPhotos.playerId, id));
+    photoUrl = null;
+  } else if (link) {
+    await db.delete(playerPhotos).where(eq(playerPhotos.playerId, id));
+    photoUrl = link;
+  } else {
+    photoUrl = isUploadedPhoto(current.photoUrl) ? current.photoUrl : null;
+  }
   await db
     .update(players)
-    .set({ name, photoUrl: cleanPhotoUrl(input.photoUrl) })
+    .set({ name, photoUrl, ...avatar })
     .where(eq(players.id, id));
+}
+
+function requireAvatar(value: unknown): AvatarLook {
+  const look = parseAvatar(value);
+  if (!look) throw new UserError("Aparência do avatar inválida.");
+  return look;
 }
 
 export async function deletePlayer(db: Db, id: number) {
@@ -130,6 +226,7 @@ export async function deletePlayer(db: Db, id: number) {
     throw new UserError(
       "Este jogador já participou de alguma edição e não pode ser excluído.",
     );
+  await db.delete(playerPhotos).where(eq(playerPhotos.playerId, id));
   await db.delete(players).where(eq(players.id, id));
 }
 
@@ -168,6 +265,8 @@ export interface EditionInput {
   game: unknown;
   playedOn: unknown;
   notes?: unknown;
+  /** Falso = torneio só com os jogadores. Sem informar, usa times. */
+  useTeams?: unknown;
   config: FormatConfig;
 }
 
@@ -182,7 +281,14 @@ function parseEditionMeta(input: EditionInput) {
     throw new UserError("O número da edição precisa ser 1 ou mais.");
   if (playedOn && !/^\d{4}-\d{2}-\d{2}$/.test(playedOn))
     throw new UserError("Data inválida.");
-  return { name, game, number, playedOn, notes: clean(input.notes, 500) || null };
+  return {
+    name,
+    game,
+    number,
+    playedOn,
+    notes: clean(input.notes, 500) || null,
+    useTeams: input.useTeams === undefined ? true : Boolean(input.useTeams),
+  };
 }
 
 function parseConfig(config: FormatConfig) {
@@ -238,7 +344,7 @@ export async function createEdition(
         ...meta,
         ...config,
         status: config.format === "manual" ? "encerrada" : "inscricoes",
-        teamPool: cleanTeamList(input.teamPool ?? []),
+        teamPool: meta.useTeams ? cleanTeamList(input.teamPool ?? []) : [],
       })
       .returning();
     if (ids.size) {
@@ -267,10 +373,23 @@ export async function updateEdition(db: Db, id: number, input: EditionInput) {
   const canChangeFormat =
     edition.status === "inscricoes" && input.config.format !== "manual";
   const config = canChangeFormat ? parseConfig(input.config) : {};
-  await db
-    .update(editions)
-    .set({ ...meta, ...config })
-    .where(eq(editions.id, id));
+  // Usar times ou não também só muda antes de gerar a tabela.
+  const { useTeams, ...rest } = meta;
+  const canChangeTeams = edition.status === "inscricoes";
+  await db.transaction(async (tx) => {
+    await tx
+      .update(editions)
+      .set({
+        ...rest,
+        ...config,
+        ...(canChangeTeams ? { useTeams, ...(useTeams ? {} : { teamPool: [] }) } : {}),
+      })
+      .where(eq(editions.id, id));
+    if (canChangeTeams && !useTeams) {
+      // Sem times: quem já tinha um perde o vínculo.
+      await tx.update(entries).set({ teamId: null }).where(eq(entries.editionId, id));
+    }
+  });
 }
 
 function assertEditable(edition: Edition) {
@@ -278,6 +397,13 @@ function assertEditable(edition: Edition) {
     throw new UserError(
       "A tabela já foi gerada. Desfaça a tabela para mudar os participantes.",
     );
+}
+
+/** Tira um participante da edição (só antes de a tabela existir). */
+export async function removeEntry(db: Db, entryId: number) {
+  const entry = await getEntry(db, entryId);
+  assertEditable(await getEdition(db, entry.editionId));
+  await db.delete(entries).where(eq(entries.id, entryId));
 }
 
 export async function setParticipants(
@@ -335,6 +461,8 @@ export async function setEntryTeam(db: Db, entryId: number, teamName: unknown) {
     await db.update(entries).set({ teamId: null }).where(eq(entries.id, entryId));
     return;
   }
+  if (!(await getEdition(db, entry.editionId)).useTeams)
+    throw new UserError("Esta edição é só com os jogadores, sem times.");
   const team = await ensureTeam(db, name);
   const siblings = await db
     .select()
@@ -354,6 +482,8 @@ export interface DrawAssignment {
 /** Sorteia um time da lista para cada participante. */
 export async function drawTeams(db: Db, editionId: number): Promise<DrawAssignment[]> {
   const edition = await getEdition(db, editionId);
+  if (!edition.useTeams)
+    throw new UserError("Esta edição é só com os jogadores, sem times.");
   if (edition.status !== "inscricoes")
     throw new UserError("O sorteio só pode ser feito antes de gerar a tabela.");
   const rows = await db
@@ -391,6 +521,7 @@ export async function drawTeams(db: Db, editionId: number): Promise<DrawAssignme
 export interface GroupDrawItem {
   entryId: number;
   playerName: string;
+  avatar: AvatarLook | null;
   teamName: string | null;
   groupLabel: string | null;
 }
@@ -456,7 +587,7 @@ export async function startEdition(
     .where(eq(entries.editionId, editionId));
   const problem = validateConfig(config, current.length);
   if (problem) throw new UserError(problem);
-  if (current.some((e) => e.teamId == null))
+  if (edition.useTeams && current.some((e) => e.teamId == null))
     throw new UserError("Ainda há participantes sem time. Faça o sorteio primeiro.");
 
   let seeded: Seeded[];
@@ -497,6 +628,7 @@ export async function startEdition(
     .select({
       entryId: entries.id,
       playerName: players.name,
+      avatar: players.avatar,
       teamName: teams.name,
     })
     .from(entries)
@@ -507,6 +639,7 @@ export async function startEdition(
   return seeded.map((e) => ({
     entryId: e.id,
     playerName: byEntry.get(e.id)?.playerName ?? "",
+    avatar: byEntry.get(e.id)?.avatar ?? null,
     teamName: byEntry.get(e.id)?.teamName ?? null,
     groupLabel: e.groupLabel,
   }));
@@ -593,6 +726,80 @@ export async function regenerateMatches(db: Db, editionId: number) {
     groupLabel: e.groupLabel,
   }));
   await db.transaction((tx) => applyPlan(tx, editionId, config, seeded));
+}
+
+/**
+ * Muda quantos avançam para o mata-mata (ou seja, quantas fases ele tem) e se
+ * há disputa de 3º lugar, mesmo com a copa em andamento. Os jogos da fase de
+ * grupos (ou dos pontos corridos) e os placares deles são mantidos; o
+ * mata-mata é refeito do zero, então os placares dele são apagados.
+ */
+export async function setKnockoutPhases(
+  db: Db,
+  editionId: number,
+  input: { qualifiers: number; thirdPlace: boolean },
+) {
+  const edition = await getEdition(db, editionId);
+  if (edition.format !== "grupos" && edition.format !== "liga")
+    throw new UserError(
+      "Só edições com grupos ou pontos corridos podem mudar as fases do mata-mata.",
+    );
+  if (edition.status === "inscricoes")
+    throw new UserError(
+      "Antes de gerar a tabela, mude as fases em \"Dados e formato\".",
+    );
+  const qualifiers = Number(input.qualifiers);
+  if (!Number.isInteger(qualifiers) || qualifiers < 0)
+    throw new UserError("Quantidade de classificados inválida.");
+  const config: FormatConfig = {
+    ...configOf(edition),
+    qualifiers,
+    thirdPlace: Boolean(input.thirdPlace),
+  };
+
+  const current = await db
+    .select()
+    .from(entries)
+    .where(eq(entries.editionId, editionId));
+  const problem =
+    config.format === "grupos"
+      ? validateGroupSizes(
+          config,
+          countByGroup(
+            current.map((e) => e.groupLabel),
+            config.groupsCount,
+          ),
+        )
+      : validateConfig(config, current.length);
+  if (problem) throw new UserError(problem);
+
+  const knockout = planMatches(config, current).filter((m) => m.stage !== "grupo");
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(matches)
+      .where(
+        and(eq(matches.editionId, editionId), ne(matches.stage, "grupo")),
+      );
+    await tx
+      .update(editions)
+      .set({ qualifiers, thirdPlace: config.thirdPlace })
+      .where(eq(editions.id, editionId));
+    await tx
+      .update(entries)
+      .set({ result: null })
+      .where(eq(entries.editionId, editionId));
+    if (knockout.length) {
+      await tx
+        .insert(matches)
+        .values(knockout.map((m) => ({ ...m, editionId })));
+    }
+    // Resolve quem entra em cada vaga com a classificação atual dos grupos.
+    await tx
+      .update(editions)
+      .set({ status: "andamento" })
+      .where(eq(editions.id, editionId));
+    await syncEdition(tx, editionId);
+  });
 }
 
 export interface KnockoutSlotInput {

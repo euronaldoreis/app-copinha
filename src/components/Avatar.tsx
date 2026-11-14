@@ -2,7 +2,7 @@
 
 // Sem foto, cada jogador ganha um retrato em pixel art, sempre o mesmo para o
 // mesmo nome (ver src/lib/sprite.ts).
-import { pixelRects, spriteLook } from "@/lib/sprite";
+import { pixelRects, spriteLook, type AvatarLook } from "@/lib/sprite";
 
 // H cabelo, S pele, E olho, M boca, J camisa, C gola. Grade de 12x12.
 const BODY = [
@@ -55,8 +55,8 @@ const HEADS = [
   ],
 ];
 
-function Portrait({ name }: { name: string }) {
-  const look = spriteLook(name);
+function Portrait({ name, avatar }: { name: string; avatar?: AvatarLook | null }) {
+  const look = spriteLook(name, avatar);
   const rects = pixelRects([...HEADS[look.style], ...BODY], look.colors);
   return (
     <svg viewBox="0 0 12 12" shapeRendering="crispEdges" className="block size-full">
@@ -70,10 +70,13 @@ function Portrait({ name }: { name: string }) {
 export function Avatar({
   name,
   photoUrl,
+  avatar,
   size = 44,
 }: {
   name: string;
   photoUrl?: string | null;
+  /** Aparência escolhida do boneco; sem ela, vale a automática do nome. */
+  avatar?: AvatarLook | null;
   size?: number;
 }) {
   return (
@@ -90,7 +93,7 @@ export function Avatar({
           referrerPolicy="no-referrer"
         />
       ) : (
-        <Portrait name={name} />
+        <Portrait name={name} avatar={avatar} />
       )}
     </span>
   );

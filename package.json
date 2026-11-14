@@ -10,7 +10,8 @@
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node scripts/migrate.mjs",
-    "predev": "node scripts/migrate.mjs"
+    "predev": "node scripts/migrate.mjs",
+    "db:copy": "node scripts/copy-db.mjs"
   },
   "dependencies": {
     "@fontsource/press-start-2p": "^5.3.0",

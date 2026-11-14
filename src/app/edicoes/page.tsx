@@ -49,6 +49,7 @@ export default async function EditionsPage() {
                   <Avatar
                     name={champion.player.name}
                     photoUrl={champion.player.photoUrl}
+              avatar={champion.player.avatar}
                     size={52}
                   />
                 ) : (

@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { createPlayerAction } from "@/app/actions";
 import { ActionForm, SubmitButton } from "@/components/forms";
-import { TrophyIcon } from "@/components/icons";
-import { Empty, PageTitle, PersonRow, Section } from "@/components/ui";
+import { PhotoField } from "@/components/PhotoField";
+import { PlayersList } from "@/components/PlayersList";
+import { Empty, PageTitle, Section } from "@/components/ui";
 import { isAdmin } from "@/lib/auth";
 import { getData } from "@/lib/data";
 import { plural } from "@/lib/labels";
@@ -31,37 +32,23 @@ export default async function PlayersPage() {
           ao montar uma edição.
         </Empty>
       ) : (
-        <div className="card px-5 py-1.5">
-          {players.map((r) => (
-            <PersonRow
-              key={r.player.id}
-              href={`/jogadores/${r.player.id}`}
-              name={r.player.name}
-              photoUrl={r.player.photoUrl}
-              detail={
-                r.participations
-                  ? [
-                      plural(r.participations, "participação", "participações"),
-                      r.pct != null ? `${r.pct}% de aproveitamento` : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")
-                  : "Ainda não participou"
-              }
-              trailing={
-                r.titles > 0 ? (
-                  <span
-                    className="num flex items-center gap-1 text-name font-semibold text-accent"
-                    title={plural(r.titles, "título", "títulos")}
-                  >
-                    {r.titles}
-                    <TrophyIcon width={18} height={18} />
-                  </span>
-                ) : null
-              }
-            />
-          ))}
-        </div>
+        <PlayersList
+          players={players.map((r) => ({
+            id: r.player.id,
+            name: r.player.name,
+            photoUrl: r.player.photoUrl,
+            avatar: r.player.avatar,
+            titles: r.titles,
+            detail: r.participations
+              ? [
+                  plural(r.participations, "participação", "participações"),
+                  r.pct != null ? `${r.pct}% de aproveitamento` : "",
+                ]
+                  .filter(Boolean)
+                  .join(" · ")
+              : "Ainda não participou",
+          }))}
+        />
       )}
 
       {admin && (
@@ -74,8 +61,11 @@ export default async function PlayersPage() {
               <span className="label">Nome</span>
               <input name="name" className="field" required maxLength={40} />
             </label>
+            <div className="w-full basis-full">
+              <PhotoField currentUrl={null} />
+            </div>
             <label className="min-w-40 flex-[2]">
-              <span className="label">Link da foto (opcional)</span>
+              <span className="label">Ou um link de foto (opcional)</span>
               <input
                 name="photoUrl"
                 type="url"

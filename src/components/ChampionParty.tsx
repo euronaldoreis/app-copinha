@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { arcade } from "@/lib/labels";
 import { isMuted, setMuted, sfx, stopAudio, unlockAudio } from "@/lib/sfx";
 import { buildShareCard, shareCard } from "@/lib/shareCard";
+import type { AvatarLook } from "@/lib/sprite";
 import { PlayerSprite } from "./PlayerSprite";
 import { TrophyIcon } from "./icons";
 import {
@@ -17,6 +18,7 @@ import {
 export interface PartyPerson {
   entryId: number;
   name: string;
+  avatar: AvatarLook | null;
   team: string | null;
 }
 
@@ -85,7 +87,11 @@ function PodiumStep({
                 </div>
               )}
               <div data-sprite className="contents">
-                <PlayerSprite name={person.name} width={champion ? 48 : 36} />
+                <PlayerSprite
+                  name={person.name}
+                  avatar={person.avatar}
+                  width={champion ? 48 : 36}
+                />
               </div>
             </div>
           </Walker>

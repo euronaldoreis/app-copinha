@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import type { AvatarLook } from "@/lib/sprite";
 import {
   index,
   integer,
@@ -13,10 +14,22 @@ export const players = sqliteTable(
     id: integer("id").primaryKey({ autoIncrement: true }),
     name: text("name").notNull(),
     photoUrl: text("photo_url"),
+    /** Aparência escolhida para o avatar em pixel art; null = automática. */
+    avatar: text("avatar", { mode: "json" }).$type<AvatarLook | null>(),
     createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   },
   (t) => [uniqueIndex("players_name_idx").on(t.name)],
 );
+
+/** Foto enviada de um jogador (imagem em base64). Fora do players para não pesar nas listas. */
+export const playerPhotos = sqliteTable("player_photos", {
+  playerId: integer("player_id")
+    .primaryKey()
+    .references(() => players.id, { onDelete: "cascade" }),
+  contentType: text("content_type").notNull(),
+  data: text("data").notNull(),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
 
 export const teams = sqliteTable(
   "teams",
@@ -47,6 +60,8 @@ export const editions = sqliteTable("editions", {
     .default(false),
   /** inscricoes | andamento | encerrada */
   status: text("status").notNull().default("inscricoes"),
+  /** Falso = torneio só com os jogadores, sem times. */
+  useTeams: integer("use_teams", { mode: "boolean" }).notNull().default(true),
   /** Times disponíveis para o sorteio (JSON com os nomes). */
   teamPool: text("team_pool", { mode: "json" })
     .$type<string[]>()

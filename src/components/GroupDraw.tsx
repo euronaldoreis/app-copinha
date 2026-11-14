@@ -1,10 +1,12 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { startEditionAction } from "@/app/actions";
 import { arcade } from "@/lib/labels";
 import type { GroupDrawItem } from "@/lib/services";
+import { useConfirm } from "./ConfirmDialog";
+import { ExpandIcon } from "./icons";
 import { PlayerSprite } from "./PlayerSprite";
 import { Stadium, Walker, prefersCalm } from "./stadium";
 
@@ -15,6 +17,79 @@ const SHOW_MS = 900; // nome e grupo parados no placar antes do próximo
 const TICK_MS = 85; // troca de nome/letra nas roletas
 
 type Phase = "name" | "group" | "show";
+
+/** Largura (em pixels de layout) da cena no modo TV. A cena é ampliada para caber na tela. */
+const TV_WIDTH = 1100;
+
+/** Tela cheia do navegador: `active` acompanha também a saída pela tecla Esc. */
+function useFullscreen() {
+  // O sorteio só aparece depois de um clique, já no navegador: dá para ler direto.
+  const [active, setActive] = useState(() => document.fullscreenElement != null);
+  const [supported] = useState(() => Boolean(document.documentElement.requestFullscreen));
+
+  useEffect(() => {
+    const sync = () => setActive(document.fullscreenElement != null);
+    document.addEventListener("fullscreenchange", sync);
+    return () => document.removeEventListener("fullscreenchange", sync);
+  }, []);
+
+  const toggle = useCallback(() => {
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else void document.documentElement.requestFullscreen?.().catch(() => {});
+  }, []);
+
+  return { active, supported, toggle };
+}
+
+/** Escala que faz a cena (de largura fixa) caber inteira na tela, sem cortar. */
+function useFitScale(ref: React.RefObject<HTMLDivElement | null>, on: boolean) {
+  const [scale, setScale] = useState(1);
+  useEffect(() => {
+    const el = ref.current;
+    if (!on || !el) return;
+    const fit = () => {
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      if (!w || !h) return;
+      setScale(Math.max(0.5, Math.min(3, window.innerWidth / w, window.innerHeight / h)));
+    };
+    fit();
+    const observer = new ResizeObserver(fit);
+    observer.observe(el);
+    window.addEventListener("resize", fit);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", fit);
+    };
+  }, [ref, on]);
+  return on ? scale : 1;
+}
+
+/** Mantém a tela da TV acesa enquanto o sorteio está aberto (quando o navegador permite). */
+function useWakeLock() {
+  useEffect(() => {
+    let lock: WakeLockSentinel | null = null;
+    let closed = false;
+    const acquire = async () => {
+      try {
+        lock = (await navigator.wakeLock?.request("screen")) ?? null;
+        if (closed) void lock?.release();
+      } catch {
+        // sem suporte ou negado: segue sem
+      }
+    };
+    void acquire();
+    const again = () => {
+      if (document.visibilityState === "visible") void acquire();
+    };
+    document.addEventListener("visibilitychange", again);
+    return () => {
+      closed = true;
+      document.removeEventListener("visibilitychange", again);
+      void lock?.release();
+    };
+  }, []);
+}
 
 /** Placar eletrônico: sorteia o nome, depois a letra do grupo. */
 function Scoreboard({
@@ -115,6 +190,34 @@ function GroupDrawOverlay({
   const tunnel = useRef<HTMLDivElement>(null);
   const done = placed >= draw.length;
   const remaining = draw.length - placed;
+  const fullscreen = useFullscreen();
+  const { toggle: toggleFullscreen } = fullscreen;
+  const scene = useRef<HTMLDivElement>(null);
+  const scale = useFitScale(scene, fullscreen.active);
+  const [idle, setIdle] = useState(false);
+  useWakeLock();
+
+  // Em tela cheia, o cursor some quando o mouse fica parado; a tecla F alterna.
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    const wake = () => {
+      setIdle(false);
+      clearTimeout(timer);
+      timer = setTimeout(() => setIdle(true), 2500);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key.toLowerCase() === "f" && !e.ctrlKey && !e.metaKey && !e.altKey)
+        toggleFullscreen();
+    };
+    wake();
+    window.addEventListener("mousemove", wake);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("mousemove", wake);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [toggleFullscreen]);
 
   useEffect(() => {
     if (done) return;
@@ -154,9 +257,25 @@ function GroupDrawOverlay({
       role="dialog"
       aria-modal="true"
       aria-label="Sorteio dos grupos"
-      className="fixed inset-0 z-50 overflow-y-auto bg-canvas"
+      // Em tela cheia a cena inteira é ampliada para a TV; as mesmas peças
+      // ficam no lugar, então a animação não recomeça ao entrar ou sair.
+      className={`fixed inset-0 z-50 bg-canvas ${
+        fullscreen.active
+          ? `flex items-center justify-center overflow-hidden ${idle ? "cursor-none" : ""}`
+          : "overflow-y-auto"
+      }`}
     >
-      <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col gap-5 px-4 py-6">
+      <div
+        ref={scene}
+        style={
+          fullscreen.active
+            ? { width: TV_WIDTH, flex: "none", transform: `scale(${scale})` }
+            : undefined
+        }
+        className={`flex flex-col gap-5 px-4 py-6 ${
+          fullscreen.active ? "" : "mx-auto min-h-full w-full max-w-3xl"
+        }`}
+      >
         <Scoreboard
           draw={draw}
           labels={labels}
@@ -185,7 +304,7 @@ function GroupDrawOverlay({
                             tunnel={tunnel}
                             className="flex w-full flex-col items-center gap-0.5"
                           >
-                            <PlayerSprite name={item.playerName} />
+                            <PlayerSprite name={item.playerName} avatar={item.avatar} />
                             <span className="field-name w-full truncate text-center">
                               {item.playerName}
                             </span>
@@ -200,7 +319,7 @@ function GroupDrawOverlay({
           </div>
         </Stadium>
 
-        <div className="flex justify-center pb-4">
+        <div className="flex flex-wrap items-center justify-center gap-3 pb-4">
           {done ? (
             <button
               type="button"
@@ -222,6 +341,17 @@ function GroupDrawOverlay({
               }}
             >
               Pular animação
+            </button>
+          )}
+          {fullscreen.supported && (
+            <button
+              type="button"
+              className="btn btn-quiet"
+              onClick={fullscreen.toggle}
+              title="Tela cheia (tecla F)"
+            >
+              <ExpandIcon />
+              {fullscreen.active ? "Sair da tela cheia" : "Tela cheia"}
             </button>
           )}
         </div>
@@ -248,19 +378,23 @@ export function StartPanel({
   const [draw, setDraw] = useState<GroupDrawItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [ask, dialog] = useConfirm();
 
-  const start = () => {
+  const start = async (tv = false) => {
     const question = manualGroups
       ? "Gerar a tabela de jogos com os grupos que você montou?"
       : hasGroups
         ? "Sortear os grupos e gerar a tabela de jogos?"
         : "Sortear os confrontos e gerar a tabela de jogos?";
-    if (!window.confirm(question)) return;
+    if (!(await ask({ message: question, confirmLabel: "Gerar tabela" }))) return;
     setError(null);
+    // Tela cheia só pode ser pedida logo depois de um clique: pedimos já aqui.
+    if (tv) void document.documentElement.requestFullscreen?.().catch(() => {});
     startTransition(async () => {
       const result = await startEditionAction(editionId);
       if (result.error || !result.draw) {
         setError(result.error ?? "Não foi possível gerar a tabela.");
+        if (document.fullscreenElement) void document.exitFullscreen();
         return;
       }
       if (hasGroups && !manualGroups) setDraw(result.draw);
@@ -270,14 +404,27 @@ export function StartPanel({
 
   return (
     <>
+      {dialog}
       <button
         type="button"
         className="btn btn-primary"
-        onClick={start}
+        onClick={() => void start()}
         disabled={pending}
       >
         {pending && !draw ? "Gerando..." : "Gerar tabela e começar"}
       </button>
+      {hasGroups && !manualGroups && (
+        <button
+          type="button"
+          className="btn"
+          onClick={() => void start(true)}
+          disabled={pending}
+          title="Gera a tabela e mostra o sorteio em tela cheia, para exibir na TV"
+        >
+          <ExpandIcon />
+          Sortear na TV
+        </button>
+      )}
       {error && (
         <p role="alert" className="basis-full text-body text-danger">
           {error}
@@ -287,7 +434,10 @@ export function StartPanel({
         <GroupDrawOverlay
           draw={draw}
           closing={pending}
-          onClose={() => startTransition(() => router.refresh())}
+          onClose={() => {
+            if (document.fullscreenElement) void document.exitFullscreen();
+            startTransition(() => router.refresh());
+          }}
         />
       )}
     </>

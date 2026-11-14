@@ -3,6 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { deletePlayerAction, updatePlayerAction } from "@/app/actions";
 import { Avatar } from "@/components/Avatar";
+import { AvatarEditor } from "@/components/AvatarEditor";
+import { PhotoField } from "@/components/PhotoField";
+import { isUploadedPhoto } from "@/lib/photo";
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { Disclosure, Empty, Section, Stat } from "@/components/ui";
 import { isAdmin } from "@/lib/auth";
@@ -50,7 +53,12 @@ export default async function PlayerPage(props: PageProps<"/jogadores/[id]">) {
   return (
     <>
       <header className="pitch -mx-6 mb-8 flex items-center gap-5 px-6 py-5">
-        <Avatar name={player.name} photoUrl={player.photoUrl} size={88} />
+        <Avatar
+          name={player.name}
+          photoUrl={player.photoUrl}
+          avatar={player.avatar}
+          size={88}
+        />
         <div className="min-w-0">
           <h1 className="truncate text-title" aria-label={player.name}>
             {arcade(player.name)}
@@ -175,7 +183,7 @@ export default async function PlayerPage(props: PageProps<"/jogadores/[id]">) {
         <Section title="Administração">
           <Disclosure title="Editar jogador">
             <ActionForm
-              key={`${player.name}|${player.photoUrl}`}
+              key={`${player.name}|${player.photoUrl}|${JSON.stringify(player.avatar)}`}
               action={updatePlayerAction}
               className="flex flex-col gap-3"
             >
@@ -190,13 +198,19 @@ export default async function PlayerPage(props: PageProps<"/jogadores/[id]">) {
                   maxLength={40}
                 />
               </label>
+              <AvatarEditor
+                name={player.name}
+                photoUrl={player.photoUrl}
+                initial={player.avatar}
+              />
+              <PhotoField currentUrl={player.photoUrl} />
               <label>
-                <span className="label">Link da foto</span>
+                <span className="label">Ou um link de foto</span>
                 <input
                   name="photoUrl"
                   type="url"
                   className="field"
-                  defaultValue={player.photoUrl ?? ""}
+                  defaultValue={isUploadedPhoto(player.photoUrl) ? "" : (player.photoUrl ?? "")}
                   placeholder="https://..."
                 />
               </label>

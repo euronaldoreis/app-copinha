@@ -61,7 +61,20 @@ export async function logoutAction() {
 // --- Jogadores -------------------------------------------------------------
 
 export async function createPlayerAction(_prev: ActionState, fd: FormData) {
-  return run(() => svc.createPlayer(getDb(), fd.get("name"), fd.get("photoUrl")));
+  return run(() =>
+    svc.createPlayer(getDb(), fd.get("name"), fd.get("photoUrl"), fd.get("photoData")),
+  );
+}
+
+/** Campo "avatar" do formulário: JSON com a aparência, vazio = automático. */
+function parseAvatarField(value: FormDataEntryValue | null): unknown {
+  const text = String(value ?? "").trim();
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return "invalido"; // vira erro de "aparência inválida" no serviço
+  }
 }
 
 export async function updatePlayerAction(_prev: ActionState, fd: FormData) {
@@ -69,6 +82,9 @@ export async function updatePlayerAction(_prev: ActionState, fd: FormData) {
     svc.updatePlayer(getDb(), id(fd, "playerId"), {
       name: fd.get("name"),
       photoUrl: fd.get("photoUrl"),
+      avatar: parseAvatarField(fd.get("avatar")),
+      photoData: fd.get("photoData"),
+      removePhoto: fd.get("removePhoto") === "1",
     }),
   );
 }
@@ -86,6 +102,7 @@ export interface NewEditionPayload {
   number: number;
   game: string;
   playedOn: string;
+  useTeams: boolean;
   config: FormatConfig;
   playerIds: number[];
   newPlayerNames: string[];
@@ -111,6 +128,7 @@ export async function updateEditionAction(_prev: ActionState, fd: FormData) {
       game: fd.get("game"),
       playedOn: fd.get("playedOn"),
       notes: fd.get("notes"),
+      useTeams: fd.get("useTeams") === "on",
       config: configFrom(fd),
     }),
   );
@@ -145,6 +163,10 @@ export async function saveEntryAction(_prev: ActionState, fd: FormData) {
       await svc.setEntryResult(db, id(fd, "entryId"), fd.get("result"));
     }
   });
+}
+
+export async function removeEntryAction(_prev: ActionState, fd: FormData) {
+  return run(() => svc.removeEntry(getDb(), id(fd, "entryId")));
 }
 
 export async function drawTeamsAction(
@@ -206,6 +228,15 @@ export async function setKnockoutAction(_prev: ActionState, fd: FormData) {
     }
     return svc.setKnockoutSlots(getDb(), id(fd, "editionId"), slots);
   });
+}
+
+export async function setKnockoutPhasesAction(_prev: ActionState, fd: FormData) {
+  return run(() =>
+    svc.setKnockoutPhases(getDb(), id(fd, "editionId"), {
+      qualifiers: Number(fd.get("qualifiers")),
+      thirdPlace: fd.get("thirdPlace") === "on",
+    }),
+  );
 }
 
 export async function regenerateMatchesAction(_prev: ActionState, fd: FormData) {

@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import {
   deleteEditionAction,
   resetEditionAction,
-  saveEntryAction,
   setParticipantsAction,
   setTeamPoolAction,
   updateEditionAction,
@@ -16,10 +15,12 @@ import {
   type PartyPerson,
 } from "@/components/ChampionParty";
 import { DrawPanel } from "@/components/DrawPanel";
+import { EntryControls } from "@/components/EntryControls";
 import { FormatFields } from "@/components/FormatFields";
 import { StartPanel } from "@/components/GroupDraw";
 import { GroupsEditor } from "@/components/GroupsEditor";
 import { KnockoutEditor } from "@/components/KnockoutEditor";
+import { KnockoutPhases } from "@/components/KnockoutPhases";
 import { Tabs, type TabItem } from "@/components/Tabs";
 import { MatchRow, type MatchSide } from "@/components/MatchRow";
 import { StandingsTable } from "@/components/StandingsTable";
@@ -37,8 +38,6 @@ import { isAdmin } from "@/lib/auth";
 import { getData } from "@/lib/data";
 import {
   FORMAT_LABELS,
-  RESULT_LABELS,
-  RESULT_ORDER,
   STATUS_LABELS,
   arcade,
   formatDate,
@@ -54,7 +53,6 @@ import {
   editionView,
   listPlayers,
   type EditionView,
-  type EntryView,
 } from "@/lib/services";
 import {
   knockoutRounds,
@@ -91,6 +89,7 @@ function Podium({ view }: { view: EditionView }) {
         <Avatar
           name={champion.player.name}
           photoUrl={champion.player.photoUrl}
+              avatar={champion.player.avatar}
           size={72}
         />
         <div className="min-w-0">
@@ -116,6 +115,7 @@ function Podium({ view }: { view: EditionView }) {
               href={`/jogadores/${e.playerId}`}
               name={e.player.name}
               photoUrl={e.player.photoUrl}
+              avatar={e.player.avatar}
               detail={[resultLabel(e.result), e.team?.name]
                 .filter(Boolean)
                 .join(" · ")}
@@ -310,45 +310,6 @@ function Tournament({ view, admin }: { view: EditionView; admin: boolean }) {
   return <Tabs tabs={tabs} initial={initial} />;
 }
 
-/** Time (e colocação, no registro histórico) de um participante. */
-function EntryForm({ entry, manual }: { entry: EntryView; manual: boolean }) {
-  return (
-    <ActionForm
-      key={`${entry.teamId}:${entry.result}`}
-      action={saveEntryAction}
-      className="flex flex-wrap items-center justify-end gap-2 pb-3 sm:pb-0"
-    >
-      <input type="hidden" name="entryId" value={entry.id} />
-      <input
-        name="team"
-        list="known-teams"
-        defaultValue={entry.team?.name ?? ""}
-        placeholder="Time"
-        aria-label={`Time de ${entry.player.name}`}
-        className="field w-40"
-      />
-      {manual && (
-        <select
-          name="result"
-          defaultValue={entry.result ?? ""}
-          aria-label={`Colocação de ${entry.player.name}`}
-          className="field w-44"
-        >
-          <option value="">Só participou</option>
-          {RESULT_ORDER.filter((r) => r !== "participou" && r !== "eliminado").map(
-            (r) => (
-              <option key={r} value={r}>
-                {RESULT_LABELS[r]}
-              </option>
-            ),
-          )}
-        </select>
-      )}
-      <SubmitButton className="btn">Salvar</SubmitButton>
-    </ActionForm>
-  );
-}
-
 function Participants({
   view,
   admin,
@@ -376,16 +337,24 @@ function Participants({
       {list.map((e) => (
         <div
           key={e.id}
-          className={admin && editable ? "sm:flex sm:items-center sm:gap-3" : ""}
+          className={
+            admin && editable
+              ? view.edition.useTeams || manual
+                ? "sm:flex sm:items-center sm:gap-3"
+                : // só a lixeira: fica na mesma linha, à direita do nome
+                  "flex items-center gap-3"
+              : ""
+          }
         >
           <div className="min-w-0 flex-1">
             <PersonRow
               href={`/jogadores/${e.playerId}`}
               name={e.player.name}
               photoUrl={e.player.photoUrl}
+              avatar={e.player.avatar}
               detail={
                 [
-                  e.team?.name ?? "Sem time",
+                  view.edition.useTeams ? (e.team?.name ?? "Sem time") : "",
                   e.groupLabel ? `Grupo ${e.groupLabel}` : "",
                   manual ? resultLabel(e.result) : "",
                 ]
@@ -394,7 +363,18 @@ function Participants({
               }
             />
           </div>
-          {admin && editable && <EntryForm entry={e} manual={manual} />}
+          {admin && editable && (
+            <EntryControls
+              // recria o estado quando o time ou a colocação mudam no servidor
+              key={`${e.id}:${e.teamId}:${e.result}`}
+              entryId={e.id}
+              playerName={e.player.name}
+              team={e.team?.name ?? null}
+              result={e.result}
+              manual={manual}
+              useTeams={view.edition.useTeams}
+            />
+          )}
         </div>
       ))}
     </div>
@@ -428,7 +408,12 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
   const partyPerson = (result: string): PartyPerson | null => {
     const e = entries.find((entry) => entry.result === result);
     return e
-      ? { entryId: e.id, name: e.player.name, team: e.team?.name ?? null }
+      ? {
+          entryId: e.id,
+          name: e.player.name,
+          avatar: e.player.avatar,
+          team: e.team?.name ?? null,
+        }
       : null;
   };
 
@@ -466,11 +451,13 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
           aside={entries.length ? plural(entries.length, "inscrito", "inscritos") : ""}
         >
           <Participants view={view} admin={admin} editable />
-          <datalist id="known-teams">
-            {knownTeams.map((t) => (
-              <option key={t} value={t} />
-            ))}
-          </datalist>
+          {edition.useTeams && (
+            <datalist id="known-teams">
+              {knownTeams.map((t) => (
+                <option key={t} value={t} />
+              ))}
+            </datalist>
+          )}
         </Section>
       )}
 
@@ -478,22 +465,31 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
         <Section title="Sorteio e início">
           <div className="card flex flex-col gap-4 p-5">
             <p className="text-body text-muted">
-              {plural(edition.teamPool.length, "time", "times")} na lista do
-              sorteio para {plural(entries.length, "participante", "participantes")}.
-              {withoutTeam > 0
-                ? ` ${plural(withoutTeam, "ainda está", "ainda estão")} sem time.`
-                : entries.length > 0
-                  ? " Todos já têm time."
-                  : ""}
+              {edition.useTeams ? (
+                <>
+                  {plural(edition.teamPool.length, "time", "times")} na lista do
+                  sorteio para{" "}
+                  {plural(entries.length, "participante", "participantes")}.
+                  {withoutTeam > 0
+                    ? ` ${plural(withoutTeam, "ainda está", "ainda estão")} sem time.`
+                    : entries.length > 0
+                      ? " Todos já têm time."
+                      : ""}
+                </>
+              ) : (
+                `Torneio só com os jogadores, sem times: ${plural(entries.length, "participante", "participantes")}.`
+              )}
             </p>
             {configProblem && (
               <p className="text-body text-danger">{configProblem}</p>
             )}
             <div className="flex flex-wrap items-center gap-2">
-              <DrawPanel
-                editionId={edition.id}
-                hasTeams={entries.some((e) => e.teamId != null)}
-              />
+              {edition.useTeams && (
+                <DrawPanel
+                  editionId={edition.id}
+                  hasTeams={entries.some((e) => e.teamId != null)}
+                />
+              )}
               <StartPanel
                 editionId={edition.id}
                 hasGroups={format === "grupos"}
@@ -544,7 +540,7 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
               </Disclosure>
             )}
 
-            {setup && (
+            {setup && edition.useTeams && (
               <Disclosure title="Times do sorteio">
                 <ActionForm
                   key={edition.teamPool.join("|")}
@@ -579,6 +575,19 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
                     team: e.team?.name ?? null,
                     groupLabel: e.groupLabel,
                   }))}
+                />
+              </Disclosure>
+            )}
+
+            {(format === "grupos" || format === "liga") && !setup && (
+              <Disclosure title="Fases do mata-mata">
+                <KnockoutPhases
+                  editionId={edition.id}
+                  format={format}
+                  qualifiers={edition.qualifiers}
+                  thirdPlace={edition.thirdPlace}
+                  participants={entries.length}
+                  groupsCount={format === "grupos" ? edition.groupsCount : 1}
                 />
               </Disclosure>
             )}
@@ -643,6 +652,17 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
                     placeholder="Onde foi, quem levou a pizza, polêmicas..."
                   />
                 </label>
+                {setup && (
+                  <label className="flex items-center gap-2.5 text-body">
+                    <input
+                      type="checkbox"
+                      name="useTeams"
+                      defaultChecked={edition.useTeams}
+                      className="size-4 accent-accent"
+                    />
+                    Cada participante joga com um time
+                  </label>
+                )}
                 {setup ? (
                   <FormatFields
                     initial={configOf(edition)}

@@ -3,6 +3,7 @@ import { Jersey_10, Jersey_20, Press_Start_2P } from "next/font/google";
 import Link from "next/link";
 import { logoutAction } from "./actions";
 import { NavBar } from "@/components/NavBar";
+import { RegisterServiceWorker } from "@/components/RegisterServiceWorker";
 import { BallIcon, LockIcon, RecycleIcon } from "@/components/icons";
 import { isAdmin } from "@/lib/auth";
 import "./globals.css";
@@ -55,6 +56,7 @@ export const metadata: Metadata = {
     type: "website",
   },
   twitter: { card: "summary_large_image" },
+  appleWebApp: { capable: true, title: "Copinha", statusBarStyle: "black-translucent" },
 };
 
 export const viewport: Viewport = {
@@ -69,6 +71,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       className={`${bodyFont.variable} ${strongFont.variable} ${displayFont.variable} h-full`}
     >
       <body className="min-h-full">
+        <RegisterServiceWorker />
         {/* Barra de cima, como o placar fixo de um jogo. */}
         <div className="border-b-[3px] border-ink bg-night">
           <div className="mx-auto flex h-12 w-full max-w-3xl items-center justify-between px-6">

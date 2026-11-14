@@ -28,6 +28,7 @@ export function NewEditionForm({
   const [selected, setSelected] = useState<number[]>([]);
   const [newPlayers, setNewPlayers] = useState("");
   const [teamPool, setTeamPool] = useState("");
+  const [useTeams, setUseTeams] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
@@ -59,6 +60,7 @@ export function NewEditionForm({
         config,
         playerIds: selected,
         newPlayerNames: newNames,
+        useTeams,
         teamPool: teams,
       });
       if (state?.error) setError(state.error);
@@ -155,7 +157,22 @@ export function NewEditionForm({
           />
         </div>
 
-        {config.format !== "manual" && (
+        <label className="flex items-center gap-2.5 text-body">
+          <input
+            type="checkbox"
+            checked={useTeams}
+            onChange={(e) => setUseTeams(e.target.checked)}
+            className="size-4 accent-accent"
+          />
+          Cada participante joga com um time
+        </label>
+        {!useTeams && (
+          <p className="text-body text-muted">
+            Torneio só com os jogadores: não há sorteio nem lista de times.
+          </p>
+        )}
+
+        {useTeams && config.format !== "manual" && (
           <label>
             <span className="label">
               Times para o sorteio, um por linha

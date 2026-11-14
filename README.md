@@ -32,7 +32,15 @@ Formatos disponíveis, escolhidos por edição:
 - **Mata-mata**: chaveamento direto; se o número de participantes não for potência de 2, alguns folgam na primeira fase.
 - **Registro histórico**: para edições antigas, só participantes, times e colocações, sem jogos.
 
-Na página da edição, o admin pode montar os grupos à mão (antes de gerar a tabela ou depois, refazendo as rodadas) e gerar as rodadas de novo mantendo os grupos. Nos dois casos os placares lançados são apagados. O admin também pode escolher à mão quem joga cada confronto do mata-mata (as vagas que dependem do vencedor de outro jogo não são editáveis); quem muda de confronto perde o placar e os jogos seguintes são refeitos.
+Na página da edição, o admin pode montar os grupos à mão (antes de gerar a tabela ou depois, refazendo as rodadas) e gerar as rodadas de novo mantendo os grupos. Nos dois casos os placares lançados são apagados. O admin também pode escolher à mão quem joga cada confronto do mata-mata (as vagas que dependem do vencedor de outro jogo não são editáveis); quem muda de confronto perde o placar e os jogos seguintes são refeitos. Também dá para aumentar (ou diminuir) as fases do mata-mata com a copa em andamento (por exemplo, de semifinais para quartas): os jogos dos grupos e seus placares continuam, e o mata-mata é refeito.
+
+Dá para criar a edição só com os jogadores, sem times: desmarque "Cada participante joga com um time" ao criar (ou em "Dados e formato", antes de gerar a tabela). Sem times não há sorteio nem lista de times, e a tabela é gerada direto.
+
+Na página de cada jogador, o admin pode escolher a aparência do avatar em pixel art (pele, cabelo, corte e camisa) ou deixar o automático, sorteado a partir do nome. A lista de jogadores tem um campo de pesquisa por nome (sem diferenciar maiúsculas e acentos).
+
+Fotos dos jogadores: ao criar ou editar um jogador dá para enviar uma foto do aparelho. Ela é recortada em quadrado e reduzida no navegador e fica guardada no banco (por isso funciona na hospedagem). Também continua valendo o link de foto.
+
+Sorteio na TV: em "Sortear na TV" (ou no botão "Tela cheia", ou a tecla F, durante o sorteio) a cena aumenta para ocupar a tela toda, com a tela mantida acesa e o cursor escondido. Esc sai da tela cheia.
 
 Regras que o site aplica:
 
@@ -71,6 +79,7 @@ Os deploys de teste (Preview) continuam usando branches, o que é bom para testa
 | `npm run lint` | Verifica o código |
 | `npm run db:generate` | Gera uma migração depois de mudar `src/db/schema.ts` |
 | `npm run db:migrate` | Aplica as migrações no banco |
+| `npm run db:copy` | Copia os dados de um banco para outro (veja o topo de `scripts/copy-db.mjs`) |
 
 Onde fica cada coisa:
 

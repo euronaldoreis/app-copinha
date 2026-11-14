@@ -110,9 +110,11 @@ export function Walker({
     if (!el || !door || !walk || prefersCalm()) return;
     const me = el.getBoundingClientRect();
     const from = door.getBoundingClientRect();
-    const dx = from.left + from.width / 2 - (me.left + me.width / 2);
-    const hidden = from.top + 6 - me.top; // escondido atrás do muro
-    const onPitch = from.top - me.height - 6 - me.top; // recém-saído do túnel
+    // Cena ampliada (modo TV): a medida na tela é maior que a do layout.
+    const k = el.offsetWidth && me.width ? el.offsetWidth / me.width : 1;
+    const dx = (from.left + from.width / 2 - (me.left + me.width / 2)) * k;
+    const hidden = (from.top + 6 * (1 / k) - me.top) * k; // escondido atrás do muro
+    const onPitch = (from.top - me.height - 6 * (1 / k) - me.top) * k; // recém-saído do túnel
     const climb = hidden - onPitch;
     let keyframes: Keyframe[];
     let duration = WALK_MS;

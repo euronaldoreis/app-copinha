@@ -1,0 +1,1 @@
+ALTER TABLE `editions` ADD `use_teams` integer DEFAULT true NOT NULL;
