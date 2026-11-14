@@ -2,9 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import { arcade } from "@/lib/labels";
+import { isMuted, setMuted, sfx, stopAudio, unlockAudio } from "@/lib/sfx";
+import { buildShareCard, shareCard } from "@/lib/shareCard";
 import { PlayerSprite } from "./PlayerSprite";
 import { TrophyIcon } from "./icons";
-import { Stadium, Walker, prefersCalm, type TunnelRef } from "./stadium";
+import {
+  FRONT_WALK_MS,
+  Stadium,
+  Walker,
+  prefersCalm,
+  type TunnelRef,
+} from "./stadium";
 
 export interface PartyPerson {
   entryId: number;
@@ -20,10 +28,10 @@ type Stage = "intro" | "third" | "vice" | "drumroll" | "champion" | "party";
 // Quanto tempo cada etapa da cerimônia fica na tela ("party" é a última e fica).
 const STAGE_MS: Record<Stage, number> = {
   intro: 1600, // dá tempo do caminhão chegar antes de alguém descer
-  third: 2000,
-  vice: 2000,
+  third: 2500,
+  vice: 2500,
   drumroll: 1800,
-  champion: 1900,
+  champion: 2500,
   party: 0,
 };
 
@@ -55,25 +63,30 @@ function PodiumStep({
 }) {
   const champion = place === 1;
   return (
-    <div className="flex w-[31%] max-w-36 flex-col items-center">
+    <div data-place={place} className="flex w-[31%] max-w-36 flex-col items-center">
       {/* Espaço reservado para o jogador (e a taça), para nada pular de lugar. */}
       <div
         className="flex items-end justify-center"
         style={{ height: champion ? 100 : 52 }}
       >
         {present && (
-          <Walker walk={walk} tunnel={tunnel}>
+          <Walker walk={walk} tunnel={tunnel} path="front">
             <div
               className={`flex flex-col items-center ${celebrating ? "jumping" : ""}`}
             >
               {champion && (
-                <TrophyIcon
-                  width={30}
-                  height={30}
-                  className={`text-accent ${celebrating ? "animate-reveal" : "invisible"}`}
-                />
+                // Na festa, a taça sobe do peito até acima da cabeça.
+                <div data-trophy className="contents">
+                  <TrophyIcon
+                    width={30}
+                    height={30}
+                    className={`text-accent ${celebrating ? "trophy-lift" : "invisible"}`}
+                  />
+                </div>
               )}
-              <PlayerSprite name={person.name} width={champion ? 48 : 36} />
+              <div data-sprite className="contents">
+                <PlayerSprite name={person.name} width={champion ? 48 : 36} />
+              </div>
             </div>
           </Walker>
         )}
@@ -110,6 +123,11 @@ function PartyOverlay({
   ];
   const [step, setStep] = useState(0);
   const [skipped, setSkipped] = useState(false);
+  const [muted, setMutedState] = useState(isMuted);
+  // Imagem do pódio, montada assim que a festa começa (o compartilhamento do
+  // celular só abre se a imagem já estiver pronta na hora do toque).
+  const [card, setCard] = useState<File | null>(null);
+  const root = useRef<HTMLDivElement>(null);
   const tunnel = useRef<HTMLDivElement>(null);
   const stage = stages[step];
   const reached = (s: Stage) => stages.indexOf(s) !== -1 && step >= stages.indexOf(s);
@@ -121,6 +139,47 @@ function PartyOverlay({
     const next = setTimeout(() => setStep((s) => s + 1), ms);
     return () => clearTimeout(next);
   }, [stage, party]);
+
+  // Trilha sonora de cada etapa.
+  useEffect(() => {
+    const arrive = skipped || prefersCalm() ? 0 : FRONT_WALK_MS / 1000;
+    if (stage === "intro") sfx.truck();
+    else if (stage === "third") sfx.podium(3, arrive);
+    else if (stage === "vice") sfx.podium(2, arrive);
+    else if (stage === "drumroll") sfx.drumroll(STAGE_MS.drumroll / 1000);
+    else if (stage === "champion") sfx.champion();
+    else sfx.fanfare();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stage]);
+  useEffect(() => stopAudio, []);
+
+  useEffect(() => {
+    if (!party) return;
+    if (!prefersCalm()) navigator.vibrate?.([90, 50, 90, 50, 220]);
+    let alive = true;
+    const svg = (selector: string) =>
+      root.current?.querySelector<SVGSVGElement>(`${selector} svg`) ?? null;
+    const person = (p: PartyPerson | null, place: number) =>
+      p && {
+        name: p.name,
+        team: p.team,
+        sprite: svg(`[data-place="${place}"] [data-sprite]`),
+      };
+    buildShareCard({
+      editionName,
+      champion: person(champion, 1)!,
+      vice: person(vice, 2),
+      third: person(third, 3),
+      trophy: svg("[data-trophy]"),
+    })
+      .then((file) => {
+        if (alive) setCard(file);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [party, editionName, champion, vice, third]);
 
   // O que o placar anuncia em cada etapa.
   const board: Record<Stage, { tag: string; name: string; sub: string }> = {
@@ -139,8 +198,11 @@ function PartyOverlay({
       role="dialog"
       aria-modal="true"
       aria-label="Festa do campeão"
+      ref={root}
       className="fixed inset-0 z-50 overflow-y-auto bg-canvas"
     >
+      {/* Clarão na hora em que a festa começa. */}
+      {party && <div className="party-flash" aria-hidden="true" />}
       <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col gap-5 px-4 py-6">
         <div className="scoreboard" aria-live="polite">
           <div className="flex items-center justify-between gap-3 font-pixel text-[8px] uppercase text-accent">
@@ -167,7 +229,7 @@ function PartyOverlay({
         </div>
 
         <Stadium tunnel={tunnel} entrance="truck" party={party}>
-          <div className="turf relative z-10 flex min-h-[230px] items-end justify-center gap-2 px-3 pb-4 pt-6">
+          <div className="turf relative z-10 flex min-h-[230px] items-end justify-center gap-2 px-3 pb-11 pt-6">
             {vice && (
               <PodiumStep
                 person={vice}
@@ -213,16 +275,30 @@ function PartyOverlay({
           )}
         </Stadium>
 
-        <div className="flex justify-center pb-4">
+        <div className="flex flex-wrap items-center justify-center gap-3 pb-4">
           {party ? (
-            <button type="button" className="btn btn-primary" onClick={onClose} autoFocus>
-              Fechar
-            </button>
+            <>
+              {card && (
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={() =>
+                    shareCard(card, `${champion.name} é o campeão da ${editionName}!`)
+                  }
+                >
+                  Compartilhar
+                </button>
+              )}
+              <button type="button" className="btn btn-primary" onClick={onClose} autoFocus>
+                Fechar
+              </button>
+            </>
           ) : (
             <button
               type="button"
               className="btn btn-quiet"
               onClick={() => {
+                unlockAudio();
                 setSkipped(true);
                 setStep(stages.length - 1);
               }}
@@ -230,6 +306,18 @@ function PartyOverlay({
               Pular
             </button>
           )}
+          <button
+            type="button"
+            className="btn btn-quiet"
+            aria-pressed={!muted}
+            onClick={() => {
+              unlockAudio();
+              setMuted(!muted);
+              setMutedState(!muted);
+            }}
+          >
+            {muted ? "Som desligado" : "Som ligado"}
+          </button>
         </div>
       </div>
     </div>
@@ -287,7 +375,11 @@ export function PartyButton() {
     <button
       type="button"
       className="btn btn-quiet"
-      onClick={() => window.dispatchEvent(new Event(REPLAY_EVENT))}
+      onClick={() => {
+        // O toque libera o som no navegador antes de a festa abrir.
+        unlockAudio();
+        window.dispatchEvent(new Event(REPLAY_EVENT));
+      }}
     >
       <TrophyIcon width={18} height={18} />
       Rever a festa
