@@ -147,6 +147,10 @@ export async function saveEntryAction(_prev: ActionState, fd: FormData) {
   });
 }
 
+export async function removeEntryAction(_prev: ActionState, fd: FormData) {
+  return run(() => svc.removeEntry(getDb(), id(fd, "entryId")));
+}
+
 export async function drawTeamsAction(
   editionId: number,
 ): Promise<{ error?: string; draw?: svc.DrawAssignment[] }> {
@@ -206,6 +210,15 @@ export async function setKnockoutAction(_prev: ActionState, fd: FormData) {
     }
     return svc.setKnockoutSlots(getDb(), id(fd, "editionId"), slots);
   });
+}
+
+export async function setKnockoutPhasesAction(_prev: ActionState, fd: FormData) {
+  return run(() =>
+    svc.setKnockoutPhases(getDb(), id(fd, "editionId"), {
+      qualifiers: Number(fd.get("qualifiers")),
+      thirdPlace: fd.get("thirdPlace") === "on",
+    }),
+  );
 }
 
 export async function regenerateMatchesAction(_prev: ActionState, fd: FormData) {

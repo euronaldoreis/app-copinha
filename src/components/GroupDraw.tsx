@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { startEditionAction } from "@/app/actions";
 import { arcade } from "@/lib/labels";
 import type { GroupDrawItem } from "@/lib/services";
+import { useConfirm } from "./ConfirmDialog";
 import { PlayerSprite } from "./PlayerSprite";
 import { Stadium, Walker, prefersCalm } from "./stadium";
 
@@ -248,14 +249,15 @@ export function StartPanel({
   const [draw, setDraw] = useState<GroupDrawItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [ask, dialog] = useConfirm();
 
-  const start = () => {
+  const start = async () => {
     const question = manualGroups
       ? "Gerar a tabela de jogos com os grupos que você montou?"
       : hasGroups
         ? "Sortear os grupos e gerar a tabela de jogos?"
         : "Sortear os confrontos e gerar a tabela de jogos?";
-    if (!window.confirm(question)) return;
+    if (!(await ask({ message: question, confirmLabel: "Gerar tabela" }))) return;
     setError(null);
     startTransition(async () => {
       const result = await startEditionAction(editionId);
@@ -270,6 +272,7 @@ export function StartPanel({
 
   return (
     <>
+      {dialog}
       <button
         type="button"
         className="btn btn-primary"

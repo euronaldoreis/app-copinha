@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import {
   deleteEditionAction,
   resetEditionAction,
-  saveEntryAction,
   setParticipantsAction,
   setTeamPoolAction,
   updateEditionAction,
@@ -16,10 +15,12 @@ import {
   type PartyPerson,
 } from "@/components/ChampionParty";
 import { DrawPanel } from "@/components/DrawPanel";
+import { EntryControls } from "@/components/EntryControls";
 import { FormatFields } from "@/components/FormatFields";
 import { StartPanel } from "@/components/GroupDraw";
 import { GroupsEditor } from "@/components/GroupsEditor";
 import { KnockoutEditor } from "@/components/KnockoutEditor";
+import { KnockoutPhases } from "@/components/KnockoutPhases";
 import { Tabs, type TabItem } from "@/components/Tabs";
 import { MatchRow, type MatchSide } from "@/components/MatchRow";
 import { StandingsTable } from "@/components/StandingsTable";
@@ -37,8 +38,6 @@ import { isAdmin } from "@/lib/auth";
 import { getData } from "@/lib/data";
 import {
   FORMAT_LABELS,
-  RESULT_LABELS,
-  RESULT_ORDER,
   STATUS_LABELS,
   arcade,
   formatDate,
@@ -54,7 +53,6 @@ import {
   editionView,
   listPlayers,
   type EditionView,
-  type EntryView,
 } from "@/lib/services";
 import {
   knockoutRounds,
@@ -310,45 +308,6 @@ function Tournament({ view, admin }: { view: EditionView; admin: boolean }) {
   return <Tabs tabs={tabs} initial={initial} />;
 }
 
-/** Time (e colocação, no registro histórico) de um participante. */
-function EntryForm({ entry, manual }: { entry: EntryView; manual: boolean }) {
-  return (
-    <ActionForm
-      key={`${entry.teamId}:${entry.result}`}
-      action={saveEntryAction}
-      className="flex flex-wrap items-center justify-end gap-2 pb-3 sm:pb-0"
-    >
-      <input type="hidden" name="entryId" value={entry.id} />
-      <input
-        name="team"
-        list="known-teams"
-        defaultValue={entry.team?.name ?? ""}
-        placeholder="Time"
-        aria-label={`Time de ${entry.player.name}`}
-        className="field w-40"
-      />
-      {manual && (
-        <select
-          name="result"
-          defaultValue={entry.result ?? ""}
-          aria-label={`Colocação de ${entry.player.name}`}
-          className="field w-44"
-        >
-          <option value="">Só participou</option>
-          {RESULT_ORDER.filter((r) => r !== "participou" && r !== "eliminado").map(
-            (r) => (
-              <option key={r} value={r}>
-                {RESULT_LABELS[r]}
-              </option>
-            ),
-          )}
-        </select>
-      )}
-      <SubmitButton className="btn">Salvar</SubmitButton>
-    </ActionForm>
-  );
-}
-
 function Participants({
   view,
   admin,
@@ -394,7 +353,17 @@ function Participants({
               }
             />
           </div>
-          {admin && editable && <EntryForm entry={e} manual={manual} />}
+          {admin && editable && (
+            <EntryControls
+              // recria o estado quando o time ou a colocação mudam no servidor
+              key={`${e.id}:${e.teamId}:${e.result}`}
+              entryId={e.id}
+              playerName={e.player.name}
+              team={e.team?.name ?? null}
+              result={e.result}
+              manual={manual}
+            />
+          )}
         </div>
       ))}
     </div>
@@ -579,6 +548,19 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
                     team: e.team?.name ?? null,
                     groupLabel: e.groupLabel,
                   }))}
+                />
+              </Disclosure>
+            )}
+
+            {(format === "grupos" || format === "liga") && !setup && (
+              <Disclosure title="Fases do mata-mata">
+                <KnockoutPhases
+                  editionId={edition.id}
+                  format={format}
+                  qualifiers={edition.qualifiers}
+                  thirdPlace={edition.thirdPlace}
+                  participants={entries.length}
+                  groupsCount={format === "grupos" ? edition.groupsCount : 1}
                 />
               </Disclosure>
             )}

@@ -1,7 +1,7 @@
 // Operações de leitura e escrita no banco. Não dependem do Next.js, então
 // podem ser exercitadas direto nos testes.
 import { randomInt } from "node:crypto";
-import { eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import type { Db } from "@/db";
 import {
   editions,
@@ -278,6 +278,13 @@ function assertEditable(edition: Edition) {
     throw new UserError(
       "A tabela já foi gerada. Desfaça a tabela para mudar os participantes.",
     );
+}
+
+/** Tira um participante da edição (só antes de a tabela existir). */
+export async function removeEntry(db: Db, entryId: number) {
+  const entry = await getEntry(db, entryId);
+  assertEditable(await getEdition(db, entry.editionId));
+  await db.delete(entries).where(eq(entries.id, entryId));
 }
 
 export async function setParticipants(
@@ -593,6 +600,80 @@ export async function regenerateMatches(db: Db, editionId: number) {
     groupLabel: e.groupLabel,
   }));
   await db.transaction((tx) => applyPlan(tx, editionId, config, seeded));
+}
+
+/**
+ * Muda quantos avançam para o mata-mata (ou seja, quantas fases ele tem) e se
+ * há disputa de 3º lugar, mesmo com a copa em andamento. Os jogos da fase de
+ * grupos (ou dos pontos corridos) e os placares deles são mantidos; o
+ * mata-mata é refeito do zero, então os placares dele são apagados.
+ */
+export async function setKnockoutPhases(
+  db: Db,
+  editionId: number,
+  input: { qualifiers: number; thirdPlace: boolean },
+) {
+  const edition = await getEdition(db, editionId);
+  if (edition.format !== "grupos" && edition.format !== "liga")
+    throw new UserError(
+      "Só edições com grupos ou pontos corridos podem mudar as fases do mata-mata.",
+    );
+  if (edition.status === "inscricoes")
+    throw new UserError(
+      "Antes de gerar a tabela, mude as fases em \"Dados e formato\".",
+    );
+  const qualifiers = Number(input.qualifiers);
+  if (!Number.isInteger(qualifiers) || qualifiers < 0)
+    throw new UserError("Quantidade de classificados inválida.");
+  const config: FormatConfig = {
+    ...configOf(edition),
+    qualifiers,
+    thirdPlace: Boolean(input.thirdPlace),
+  };
+
+  const current = await db
+    .select()
+    .from(entries)
+    .where(eq(entries.editionId, editionId));
+  const problem =
+    config.format === "grupos"
+      ? validateGroupSizes(
+          config,
+          countByGroup(
+            current.map((e) => e.groupLabel),
+            config.groupsCount,
+          ),
+        )
+      : validateConfig(config, current.length);
+  if (problem) throw new UserError(problem);
+
+  const knockout = planMatches(config, current).filter((m) => m.stage !== "grupo");
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(matches)
+      .where(
+        and(eq(matches.editionId, editionId), ne(matches.stage, "grupo")),
+      );
+    await tx
+      .update(editions)
+      .set({ qualifiers, thirdPlace: config.thirdPlace })
+      .where(eq(editions.id, editionId));
+    await tx
+      .update(entries)
+      .set({ result: null })
+      .where(eq(entries.editionId, editionId));
+    if (knockout.length) {
+      await tx
+        .insert(matches)
+        .values(knockout.map((m) => ({ ...m, editionId })));
+    }
+    // Resolve quem entra em cada vaga com a classificação atual dos grupos.
+    await tx
+      .update(editions)
+      .set({ status: "andamento" })
+      .where(eq(editions.id, editionId));
+    await syncEdition(tx, editionId);
+  });
 }
 
 export interface KnockoutSlotInput {

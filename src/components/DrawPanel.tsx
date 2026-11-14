@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { drawTeamsAction } from "@/app/actions";
 import { arcade } from "@/lib/labels";
+import { useConfirm } from "./ConfirmDialog";
 import type { DrawAssignment } from "@/lib/services";
 import { ShuffleIcon } from "./icons";
 
@@ -22,11 +23,16 @@ export function DrawPanel({
   const [revealed, setRevealed] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [ask, dialog] = useConfirm();
 
-  const start = () => {
+  const start = async () => {
     if (
       hasTeams &&
-      !window.confirm("Sortear de novo? Os times atuais serão trocados.")
+      !(await ask({
+        message: "Sortear de novo? Os times atuais serão trocados.",
+        confirmLabel: "Sortear de novo",
+        danger: true,
+      }))
     )
       return;
     setError(null);
@@ -47,6 +53,7 @@ export function DrawPanel({
 
   return (
     <>
+      {dialog}
       <button type="button" className="btn" onClick={start} disabled={pending}>
         <ShuffleIcon width={18} height={18} />
         {pending ? "Sorteando..." : hasTeams ? "Sortear de novo" : "Sortear times"}

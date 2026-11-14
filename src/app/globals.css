@@ -247,10 +247,22 @@ fieldset label:has(input[type="radio"]:checked) {
     opacity: 0.5;
     cursor: default;
   }
+  /* Botão só com ícone: quadrado. */
+  .btn-icon {
+    width: 44px;
+    min-width: 44px;
+    padding: 0;
+  }
   .btn-primary {
     background: var(--color-accent);
     color: var(--color-night);
     border-color: #fff3a8 #a87400 #a87400 #fff3a8;
+  }
+  /* Confirmar uma ação que apaga: vermelho cheio. */
+  .btn-alert {
+    background: #c2332a;
+    color: #fff;
+    border-color: #ff9a90 #6e1710 #6e1710 #ff9a90;
   }
   .btn-quiet,
   .btn-danger {
@@ -594,6 +606,24 @@ fieldset label:has(input[type="radio"]:checked) {
   100% {
     visibility: visible;
   }
+}
+
+/* Aviso de confirmação (src/components/ConfirmDialog.tsx) */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgb(4 5 26 / 0.82);
+}
+.modal-window {
+  width: 100%;
+  max-width: 440px;
+  padding: 24px;
+  animation: reveal 0.25s steps(3, jump-end) both;
 }
 
 /* Entrada em quadros, sem suavização, como sprite aparecendo na tela. */

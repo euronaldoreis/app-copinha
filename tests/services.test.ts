@@ -9,6 +9,8 @@ import { entries, matches } from "@/db/schema";
 import {
   UserError,
   regenerateMatches,
+  removeEntry,
+  setKnockoutPhases,
   setEntryGroups,
   setKnockoutSlots,
   createEdition,
@@ -527,5 +529,167 @@ describe("confrontos do mata-mata editados à mão", () => {
       playerIds: playerIds.slice(0, 4),
     });
     await expect(setKnockoutSlots(db, draft.id, [])).rejects.toBeInstanceOf(UserError);
+  });
+});
+
+describe("remover participante", () => {
+  it("tira da edição em inscrições e recusa depois de gerar a tabela", async () => {
+    const edition = await createEdition(db, {
+      ...baseEdition,
+      name: "Copinha com desistência",
+      number: 40,
+      playerIds: playerIds.slice(0, 5),
+      teamPool: TEAMS,
+    });
+    const v = await view(edition.id);
+    expect(v.entries).toHaveLength(5);
+    await removeEntry(db, v.entries[0].id);
+    const after = await view(edition.id);
+    expect(after.entries).toHaveLength(4);
+    expect(after.entries.some((e) => e.id === v.entries[0].id)).toBe(false);
+    // o jogador continua cadastrado e pode voltar para a edição
+    expect((await loadAll(db)).players.some((p) => p.id === v.entries[0].playerId)).toBe(true);
+
+    await expect(removeEntry(db, 999999)).rejects.toBeInstanceOf(UserError);
+    await drawTeams(db, edition.id);
+    await startEdition(db, edition.id);
+    await expect(removeEntry(db, after.entries[0].id)).rejects.toThrow("tabela já foi gerada");
+    expect((await view(edition.id)).entries).toHaveLength(4);
+  });
+
+  it("em edição de registro histórico pode remover a qualquer momento", async () => {
+    const old = await createEdition(db, {
+      ...baseEdition,
+      name: "Copinha antiga",
+      number: 41,
+      config: { ...baseEdition.config, format: "manual" },
+      playerIds: playerIds.slice(0, 3),
+    });
+    const v = await view(old.id);
+    await removeEntry(db, v.entries[2].id);
+    expect((await view(old.id)).entries).toHaveLength(2);
+  });
+});
+
+describe("mais fases no mata-mata com a copa em andamento", () => {
+  let editionId = 0;
+
+  const playGroups = async () => {
+    for (const m of (await view(editionId)).matches.filter((x) => x.stage === "grupo")) {
+      if (m.homeScore == null)
+        await saveMatchResult(db, m.id, { homeScore: 2, awayScore: 1 });
+    }
+  };
+
+  it("passa de semifinais para quartas mantendo os jogos dos grupos", async () => {
+    const edition = await createEdition(db, {
+      ...baseEdition,
+      name: "Copa que cresceu",
+      number: 50,
+      playerIds,
+      teamPool: TEAMS,
+    });
+    editionId = edition.id;
+    await drawTeams(db, editionId);
+    await startEdition(db, editionId);
+    await playGroups();
+
+    let v = await view(editionId);
+    const semi = v.matches.find((m) => m.stage === "mata" && m.round === 1)!;
+    expect(v.matches.filter((m) => m.stage === "mata" && m.round === 1)).toHaveLength(2);
+    expect(semi.homeEntryId).not.toBeNull(); // grupos acabaram: semis definidas
+    await saveMatchResult(db, semi.id, { homeScore: 1, awayScore: 0 });
+
+    await setKnockoutPhases(db, editionId, { qualifiers: 8, thirdPlace: true });
+    v = await view(editionId);
+    expect(v.edition.qualifiers).toBe(8);
+    expect(v.edition.status).toBe("andamento");
+    // grupos intactos, com placar
+    const groupGames = v.matches.filter((m) => m.stage === "grupo");
+    expect(groupGames).toHaveLength(12);
+    expect(groupGames.every((m) => m.homeScore != null)).toBe(true);
+    // mata-mata novo: 4 quartas, 2 semis, final e 3º lugar, tudo sem placar
+    const ko = v.matches.filter((m) => m.stage !== "grupo");
+    expect(ko.filter((m) => m.stage === "mata" && m.round === 1)).toHaveLength(4);
+    expect(ko.filter((m) => m.stage === "mata" && m.round === 2)).toHaveLength(2);
+    expect(ko).toHaveLength(8);
+    expect(ko.every((m) => m.homeScore == null)).toBe(true);
+    // as quartas já saem preenchidas com a classificação dos grupos
+    expect(
+      ko.filter((m) => m.round === 1).every((m) => m.homeEntryId && m.awayEntryId),
+    ).toBe(true);
+
+    await playEverything(editionId);
+    v = await view(editionId);
+    expect(v.edition.status).toBe("encerrada");
+    expect(v.entries.filter((e) => e.result === "quartas")).toHaveLength(4);
+    expect(v.entries.filter((e) => e.result === "campeao")).toHaveLength(1);
+  });
+
+  it("também dá para diminuir as fases e tirar o 3º lugar", async () => {
+    await setKnockoutPhases(db, editionId, { qualifiers: 2, thirdPlace: false });
+    const v = await view(editionId);
+    const ko = v.matches.filter((m) => m.stage !== "grupo");
+    expect(ko).toHaveLength(1);
+    expect(v.edition.status).toBe("andamento");
+    expect(v.entries.every((e) => e.result == null)).toBe(true);
+  });
+
+  it("recusa quantidades que não cabem e formatos sem grupos", async () => {
+    const before = JSON.stringify((await view(editionId)).matches);
+    // 16 classificados com 8 participantes
+    await expect(
+      setKnockoutPhases(db, editionId, { qualifiers: 16, thirdPlace: false }),
+    ).rejects.toBeInstanceOf(UserError);
+    await expect(
+      setKnockoutPhases(db, editionId, { qualifiers: 3, thirdPlace: false }),
+    ).rejects.toBeInstanceOf(UserError);
+    expect(JSON.stringify((await view(editionId)).matches)).toBe(before);
+
+    const draft = await createEdition(db, {
+      ...baseEdition,
+      name: "Ainda em inscrições",
+      number: 51,
+      playerIds: playerIds.slice(0, 4),
+    });
+    await expect(
+      setKnockoutPhases(db, draft.id, { qualifiers: 2, thirdPlace: false }),
+    ).rejects.toThrow("Dados e formato");
+    const plain = await createEdition(db, {
+      ...baseEdition,
+      name: "Mata-mata puro",
+      number: 52,
+      config: { ...baseEdition.config, format: "mata" },
+      playerIds: playerIds.slice(0, 4),
+      teamPool: TEAMS,
+    });
+    await drawTeams(db, plain.id);
+    await startEdition(db, plain.id);
+    await expect(
+      setKnockoutPhases(db, plain.id, { qualifiers: 8, thirdPlace: false }),
+    ).rejects.toBeInstanceOf(UserError);
+  });
+
+  it("pontos corridos: passa de campeão por pontos para final e semifinais", async () => {
+    const liga = await createEdition(db, {
+      ...baseEdition,
+      name: "Liga que ganhou final",
+      number: 53,
+      config: { ...baseEdition.config, format: "liga", groupsCount: 1, qualifiers: 0 },
+      playerIds: playerIds.slice(0, 4),
+      teamPool: TEAMS,
+    });
+    await drawTeams(db, liga.id);
+    await startEdition(db, liga.id);
+    for (const m of (await view(liga.id)).matches) {
+      await saveMatchResult(db, m.id, { homeScore: 1, awayScore: 0 });
+    }
+    expect((await view(liga.id)).edition.status).toBe("encerrada");
+
+    await setKnockoutPhases(db, liga.id, { qualifiers: 4, thirdPlace: false });
+    const v = await view(liga.id);
+    expect(v.edition.status).toBe("andamento"); // agora falta o mata-mata
+    expect(v.matches.filter((m) => m.stage === "mata")).toHaveLength(3);
+    expect(v.matches.filter((m) => m.stage === "grupo").every((m) => m.homeScore != null)).toBe(true);
   });
 });
