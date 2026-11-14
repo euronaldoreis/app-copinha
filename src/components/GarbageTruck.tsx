@@ -92,6 +92,10 @@ export function GarbageTruck({ width = 183 }: { width?: number }) {
       <rect x={52} y={8} width={2} height={2} fill={YELLOW} />
       <rect x={54} y={10} width={2} height={2} fill={ORANGE} />
 
+      {/* giroflex no teto da cabine */}
+      <rect x={6} y={6} width={5} height={1} fill={OUTLINE} />
+      <rect x={7} y={4} width={3} height={2} fill="#f08a1c" className="blink" />
+
       {/* cabine amarela */}
       <rect x={1} y={7} width={14} height={14} fill={OUTLINE} />
       <rect x={2} y={8} width={12} height={12} fill={YELLOW} />
