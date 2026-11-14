@@ -14,6 +14,8 @@ import { GarbageTruck, TRUCK_GRID, TRUCK_HATCH } from "./GarbageTruck";
 
 /** Duração da caminhada do túnel até o lugar no gramado. */
 export const WALK_MS = 1500;
+/** Duração da caminhada pela beira do gramado (caminho "front"), mais longa. */
+export const FRONT_WALK_MS = 1900;
 
 export const prefersCalm = () =>
   window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -83,12 +85,19 @@ export function Stadium({
 export function Walker({
   walk,
   tunnel,
+  path = "direct",
   className,
   children,
 }: {
   /** Falso para aparecer já no lugar (animação pulada). */
   walk: boolean;
   tunnel: TunnelRef;
+  /**
+   * "direct": sai do túnel e vai em linha reta até o lugar. "front": anda pela
+   * beira do gramado até ficar de frente para o lugar e só então sobe, sem
+   * cruzar o que estiver no caminho (os degraus do pódio).
+   */
+  path?: "direct" | "front";
   className?: string;
   children: ReactNode;
 }) {
@@ -107,19 +116,36 @@ export function Walker({
     const hidden = (from.top + 6 * (1 / k) - me.top) * k; // escondido atrás do muro
     const onPitch = (from.top - me.height - 6 * (1 / k) - me.top) * k; // recém-saído do túnel
     const climb = hidden - onPitch;
-    const cross = Math.hypot(dx, onPitch);
-    el.classList.add("walking");
-    const animation = el.animate(
-      [
+    let keyframes: Keyframe[];
+    let duration = WALK_MS;
+    if (path === "front") {
+      // Três trechos: sai do túnel, anda de lado pela beira e sobe no lugar.
+      const side = Math.abs(dx);
+      const up = Math.abs(onPitch);
+      const total = climb + side + up;
+      keyframes = [
+        { transform: `translate(${dx}px, ${hidden}px)` },
+        { transform: `translate(${dx}px, ${onPitch}px)`, offset: climb / total },
+        { transform: `translate(0px, ${onPitch}px)`, offset: (climb + side) / total },
+        { transform: "none" },
+      ];
+      duration = FRONT_WALK_MS;
+    } else {
+      const cross = Math.hypot(dx, onPitch);
+      keyframes = [
         { transform: `translate(${dx}px, ${hidden}px)` },
         {
           transform: `translate(${dx}px, ${onPitch}px)`,
           offset: climb / (climb + cross),
         },
         { transform: "none" },
-      ],
-      { duration: WALK_MS, easing: "steps(20, end)" },
-    );
+      ];
+    }
+    el.classList.add("walking");
+    const animation = el.animate(keyframes, {
+      duration,
+      easing: "steps(24, end)",
+    });
     animation.onfinish = () => el.classList.remove("walking");
     return () => {
       animation.cancel();

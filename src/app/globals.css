@@ -562,6 +562,42 @@ fieldset label:has(input[type="radio"]:checked) {
   }
 }
 
+/* A taça sobe do peito até acima da cabeça, e fica. */
+.trophy-lift {
+  animation: trophy-lift 0.6s steps(6, jump-end) both;
+}
+@keyframes trophy-lift {
+  0% {
+    opacity: 0;
+    transform: translateY(40px) scale(0.6);
+  }
+  30% {
+    opacity: 1;
+    transform: translateY(40px);
+  }
+  100% {
+    transform: none;
+  }
+}
+
+/* Clarão de um instante quando o campeão levanta a taça. */
+.party-flash {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  background: var(--color-ink);
+  animation: party-flash 0.5s steps(5, jump-end) both;
+}
+@keyframes party-flash {
+  0% {
+    opacity: 0.85;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
 /* Papel picado caindo por cima do estádio inteiro. */
 .confetti-layer {
   position: absolute;
@@ -660,7 +696,11 @@ fieldset label:has(input[type="radio"]:checked) {
   .truck-idle {
     animation: none;
   }
-  .confetti-layer {
+  .trophy-lift {
+    animation: none;
+  }
+  .confetti-layer,
+  .party-flash {
     display: none;
   }
 }
