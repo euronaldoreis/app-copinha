@@ -503,15 +503,6 @@ fieldset label:has(input[type="radio"]:checked) {
     transform: translateX(-160%);
   }
 }
-/* No fim da festa, ele vai embora para a esquerda, de frente. */
-.truck-leave {
-  animation: truck-out 1.4s steps(18, jump-end) both;
-}
-@keyframes truck-out {
-  to {
-    transform: translateX(-160%);
-  }
-}
 .truck-idle {
   position: relative;
   animation: truck-idle 0.3s steps(1, jump-end) infinite;
@@ -638,10 +629,6 @@ fieldset label:has(input[type="radio"]:checked) {
   .truck-drive,
   .truck-idle {
     animation: none;
-  }
-  .truck-leave {
-    animation: none;
-    transform: translateX(-160%);
   }
   .confetti-layer {
     display: none;

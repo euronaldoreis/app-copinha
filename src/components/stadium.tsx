@@ -5,7 +5,6 @@
 // jogador que entra andando. A entrada pode ser o túnel ou o caminhão de lixo
 // parado na beira do campo. O visual fica em globals.css.
 import {
-  useEffect,
   useLayoutEffect,
   useRef,
   type ReactNode,
@@ -31,15 +30,12 @@ export function Stadium({
   tunnel,
   entrance = "tunnel",
   party = false,
-  truckLeaving = false,
   children,
 }: {
   tunnel: TunnelRef;
   entrance?: "tunnel" | "truck";
   /** Torcida em festa: pula mais rápido. */
   party?: boolean;
-  /** Só com entrance="truck": o caminhão vai embora. */
-  truckLeaving?: boolean;
   children: ReactNode;
 }) {
   return (
@@ -55,7 +51,7 @@ export function Stadium({
           está escondido atrás dela. */}
       {entrance === "truck" ? (
         <div className="street">
-          <div className={truckLeaving ? "truck-leave" : "truck-drive"}>
+          <div className="truck-drive">
             <div className="truck-idle">
               <GarbageTruck />
               {/* Boca do compactor: é dali que os jogadores pulam para fora. */}
@@ -86,15 +82,12 @@ export function Stadium({
  */
 export function Walker({
   walk,
-  leave = false,
   tunnel,
   className,
   children,
 }: {
   /** Falso para aparecer já no lugar (animação pulada). */
   walk: boolean;
-  /** Verdadeiro para voltar andando até a entrada e sumir atrás do muro. */
-  leave?: boolean;
   tunnel: TunnelRef;
   className?: string;
   children: ReactNode;
@@ -132,42 +125,6 @@ export function Walker({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  // Saída: o caminho da entrada ao contrário, até sumir atrás do muro.
-  useEffect(() => {
-    if (!leave) return;
-    const el = ref.current;
-    const door = tunnel.current;
-    if (!el || !door) return;
-    if (prefersCalm()) {
-      el.style.visibility = "hidden";
-      return;
-    }
-    const me = el.getBoundingClientRect();
-    const to = door.getBoundingClientRect();
-    const dx = to.left + to.width / 2 - (me.left + me.width / 2);
-    const hidden = to.top + 6 - me.top;
-    const onPitch = to.top - me.height - 6 - me.top;
-    const climb = hidden - onPitch;
-    const cross = Math.hypot(dx, onPitch);
-    el.classList.add("walking");
-    const animation = el.animate(
-      [
-        { transform: "none" },
-        {
-          transform: `translate(${dx}px, ${onPitch}px)`,
-          offset: cross / (climb + cross),
-        },
-        { transform: `translate(${dx}px, ${hidden}px)` },
-      ],
-      { duration: WALK_MS, easing: "steps(20, end)", fill: "forwards" },
-    );
-    animation.onfinish = () => el.classList.remove("walking");
-    return () => {
-      animation.cancel();
-      el.classList.remove("walking");
-    };
-  }, [leave, tunnel]);
 
   return (
     <div ref={ref} className={className}>
