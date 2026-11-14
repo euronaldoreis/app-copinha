@@ -31,6 +31,8 @@ export interface PlayerStats extends Record_ {
   gd: number;
   /** Aproveitamento em % dos pontos disputados, ou null sem jogos. */
   pct: number | null;
+  /** Pontos ganhos em campo: vitória vale 3 e empate 1. */
+  points: number;
   bestResult: string | null;
 }
 
@@ -87,6 +89,7 @@ export function computeRanking(data: AllData): PlayerStats[] {
         top4: 0,
         gd: 0,
         pct: null,
+        points: 0,
         bestResult: null,
         ...emptyRecord(),
       },
@@ -121,6 +124,7 @@ export function computeRanking(data: AllData): PlayerStats[] {
   for (const s of stats.values()) {
     s.gd = s.gf - s.ga;
     s.pct = pct(s);
+    s.points = s.wins * 3 + s.draws;
   }
 
   return [...stats.values()].sort(
@@ -131,6 +135,26 @@ export function computeRanking(data: AllData): PlayerStats[] {
       b.top4 - a.top4 ||
       b.participations - a.participations ||
       (b.pct ?? -1) - (a.pct ?? -1) ||
+      a.player.name.localeCompare(b.player.name, "pt-BR"),
+  );
+}
+
+/**
+ * Ordem do ranking de jogos: mais pontos primeiro. Quem jogou mais tem mais
+ * chance de somar pontos, então um aproveitamento de 100% em 1 jogo não passa
+ * quem ganhou 7 de 10. Empate em pontos: melhor aproveitamento, depois saldo
+ * de gols, gols marcados, mais jogos e nome.
+ */
+export function sortByGames<T extends Pick<PlayerStats, "points" | "pct" | "gd" | "gf" | "played"> & { player: { name: string } }>(
+  rows: T[],
+): T[] {
+  return [...rows].sort(
+    (a, b) =>
+      b.points - a.points ||
+      (b.pct ?? 0) - (a.pct ?? 0) ||
+      b.gd - a.gd ||
+      b.gf - a.gf ||
+      b.played - a.played ||
       a.player.name.localeCompare(b.player.name, "pt-BR"),
   );
 }
