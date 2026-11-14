@@ -12,6 +12,7 @@ import {
   removeEntry,
   setKnockoutPhases,
   updateEdition,
+  updatePlayer,
   setEntryGroups,
   setKnockoutSlots,
   createEdition,
@@ -758,5 +759,33 @@ describe("torneio só com os jogadores, sem times", () => {
     expect(v.entries.every((e) => e.team == null)).toBe(true);
     await startEdition(db, edition.id);
     expect((await view(edition.id)).edition.status).toBe("andamento");
+  });
+});
+
+describe("avatar do jogador", () => {
+  it("guarda a aparência escolhida, valida e volta ao automático", async () => {
+    const player = await createPlayer(db, "Jogador de Avatar");
+    const look = { skin: 2, hair: 1, style: 3, shirt: 5 };
+
+    await updatePlayer(db, player.id, { name: player.name, photoUrl: "", avatar: look });
+    let saved = (await loadAll(db)).players.find((p) => p.id === player.id)!;
+    expect(saved.avatar).toEqual(look);
+
+    // sem informar o avatar, ele não muda
+    await updatePlayer(db, player.id, { name: "Jogador de Avatar 2", photoUrl: "" });
+    saved = (await loadAll(db)).players.find((p) => p.id === player.id)!;
+    expect(saved.name).toBe("Jogador de Avatar 2");
+    expect(saved.avatar).toEqual(look);
+
+    // valores fora das listas são recusados e nada muda
+    for (const bad of [{ ...look, skin: 9 }, { ...look, style: -1 }, { skin: 1 }, "texto", 7]) {
+      await expect(
+        updatePlayer(db, player.id, { name: saved.name, photoUrl: "", avatar: bad }),
+      ).rejects.toBeInstanceOf(UserError);
+    }
+    expect((await loadAll(db)).players.find((p) => p.id === player.id)!.avatar).toEqual(look);
+
+    await updatePlayer(db, player.id, { name: saved.name, photoUrl: "", avatar: null });
+    expect((await loadAll(db)).players.find((p) => p.id === player.id)!.avatar).toBeNull();
   });
 });

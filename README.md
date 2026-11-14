@@ -36,6 +36,8 @@ Na página da edição, o admin pode montar os grupos à mão (antes de gerar a 
 
 Dá para criar a edição só com os jogadores, sem times: desmarque "Cada participante joga com um time" ao criar (ou em "Dados e formato", antes de gerar a tabela). Sem times não há sorteio nem lista de times, e a tabela é gerada direto.
 
+Na página de cada jogador, o admin pode escolher a aparência do avatar em pixel art (pele, cabelo, corte e camisa) ou deixar o automático, sorteado a partir do nome. A lista de jogadores tem um campo de pesquisa por nome (sem diferenciar maiúsculas e acentos).
+
 Regras que o site aplica:
 
 - Desempate nos grupos: pontos, vitórias, saldo, gols pró, confronto direto e, por último, a ordem do sorteio.

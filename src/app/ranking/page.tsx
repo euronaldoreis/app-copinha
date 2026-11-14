@@ -9,6 +9,7 @@ import {
   computeRanking,
   computeRecords,
   computeTeamRanking,
+  sortByGames,
   type MatchRecord,
   type PlayerStats,
 } from "@/lib/stats";
@@ -42,7 +43,8 @@ const TITLE_COLUMNS: Column[] = [
 const signed = (n: number) => (n > 0 ? `+${n}` : n);
 
 const GAME_COLUMNS: Column[] = [
-  { head: "%", title: "Aproveitamento", value: (r) => `${r.pct}%`, strong: true },
+  { head: "Pts", title: "Pontos (vitória 3, empate 1)", value: (r) => r.points, strong: true },
+  { head: "%", title: "Aproveitamento", value: (r) => `${r.pct}%` },
   { head: "J", title: "Jogos", value: (r) => r.played },
   { head: "V", title: "Vitórias", value: (r) => r.wins, wide: true },
   { head: "E", title: "Empates", value: (r) => r.draws, wide: true },
@@ -93,7 +95,12 @@ function RankTable({
                 >
                   {/* No celular o retrato sai para o nome caber inteiro. */}
                   <span className="hidden sm:block">
-                    <Avatar name={r.player.name} photoUrl={r.player.photoUrl} size={40} />
+                    <Avatar
+                      name={r.player.name}
+                      photoUrl={r.player.photoUrl}
+                      avatar={r.player.avatar}
+                      size={40}
+                    />
                   </span>
                   <span className="min-w-0">
                     <span className="block truncate text-name font-semibold">
@@ -194,12 +201,7 @@ export default async function RankingPage(props: PageProps<"/ranking">) {
       </>
     );
   } else if (tab === "jogos") {
-    const rows = ranking
-      .filter((r) => r.played > 0)
-      .sort(
-        (a, b) =>
-          (b.pct ?? 0) - (a.pct ?? 0) || b.played - a.played || b.gd - a.gd,
-      );
+    const rows = sortByGames(ranking.filter((r) => r.played > 0));
     content = rows.length ? (
       <>
         <RankTable
@@ -209,7 +211,7 @@ export default async function RankingPage(props: PageProps<"/ranking">) {
         />
         <Legend
           columns={GAME_COLUMNS}
-          note="Jogo decidido nos pênaltis conta como empate"
+          note="Ordenado por pontos, depois aproveitamento. Jogo decidido nos pênaltis conta como empate"
         />
       </>
     ) : (

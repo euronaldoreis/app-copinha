@@ -16,6 +16,7 @@ import {
   type Team,
 } from "@/db/schema";
 import { RESULT_ORDER } from "./labels";
+import { parseAvatar, type AvatarLook } from "./sprite";
 import type { AllData } from "./stats";
 import {
   GROUP_LABELS,
@@ -107,17 +108,32 @@ export async function createPlayer(db: Db, rawName: unknown, photo?: unknown) {
 export async function updatePlayer(
   db: Db,
   id: number,
-  input: { name: unknown; photoUrl: unknown },
+  input: {
+    name: unknown;
+    photoUrl: unknown;
+    /** Aparência escolhida; null volta ao automático; sem informar, não muda. */
+    avatar?: unknown;
+  },
 ) {
   const name = clean(input.name, 40);
   if (!name) throw new UserError("Informe o nome do jogador.");
   const other = await findPlayerByName(db, name);
   if (other && other.id !== id)
     throw new UserError(`Já existe um jogador chamado ${name}.`);
+  const avatar =
+    input.avatar === undefined
+      ? {}
+      : { avatar: input.avatar === null ? null : requireAvatar(input.avatar) };
   await db
     .update(players)
-    .set({ name, photoUrl: cleanPhotoUrl(input.photoUrl) })
+    .set({ name, photoUrl: cleanPhotoUrl(input.photoUrl), ...avatar })
     .where(eq(players.id, id));
+}
+
+function requireAvatar(value: unknown): AvatarLook {
+  const look = parseAvatar(value);
+  if (!look) throw new UserError("Aparência do avatar inválida.");
+  return look;
 }
 
 export async function deletePlayer(db: Db, id: number) {
@@ -424,6 +440,7 @@ export async function drawTeams(db: Db, editionId: number): Promise<DrawAssignme
 export interface GroupDrawItem {
   entryId: number;
   playerName: string;
+  avatar: AvatarLook | null;
   teamName: string | null;
   groupLabel: string | null;
 }
@@ -530,6 +547,7 @@ export async function startEdition(
     .select({
       entryId: entries.id,
       playerName: players.name,
+      avatar: players.avatar,
       teamName: teams.name,
     })
     .from(entries)
@@ -540,6 +558,7 @@ export async function startEdition(
   return seeded.map((e) => ({
     entryId: e.id,
     playerName: byEntry.get(e.id)?.playerName ?? "",
+    avatar: byEntry.get(e.id)?.avatar ?? null,
     teamName: byEntry.get(e.id)?.teamName ?? null,
     groupLabel: e.groupLabel,
   }));

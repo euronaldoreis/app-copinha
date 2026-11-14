@@ -64,11 +64,23 @@ export async function createPlayerAction(_prev: ActionState, fd: FormData) {
   return run(() => svc.createPlayer(getDb(), fd.get("name"), fd.get("photoUrl")));
 }
 
+/** Campo "avatar" do formulário: JSON com a aparência, vazio = automático. */
+function parseAvatarField(value: FormDataEntryValue | null): unknown {
+  const text = String(value ?? "").trim();
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return "invalido"; // vira erro de "aparência inválida" no serviço
+  }
+}
+
 export async function updatePlayerAction(_prev: ActionState, fd: FormData) {
   return run(() =>
     svc.updatePlayer(getDb(), id(fd, "playerId"), {
       name: fd.get("name"),
       photoUrl: fd.get("photoUrl"),
+      avatar: parseAvatarField(fd.get("avatar")),
     }),
   );
 }

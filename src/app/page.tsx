@@ -117,6 +117,7 @@ export default async function HomePage() {
                 <Avatar
                   name={entry.player.name}
                   photoUrl={entry.player.photoUrl}
+              avatar={entry.player.avatar}
                   size={64}
                 />
                 <span className="w-full">
@@ -150,6 +151,7 @@ export default async function HomePage() {
                 href={`/jogadores/${r.player.id}`}
                 name={r.player.name}
                 photoUrl={r.player.photoUrl}
+              avatar={r.player.avatar}
                 detail={[
                   r.finals ? plural(r.finals, "final", "finais") : "",
                   plural(r.participations, "participação", "participações"),

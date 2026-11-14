@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { arcade } from "@/lib/labels";
+import type { AvatarLook } from "@/lib/sprite";
 import { Avatar } from "./Avatar";
 import { ChevronIcon, RecycleIcon } from "./icons";
 
@@ -62,6 +63,7 @@ export function PersonRow({
   href,
   name,
   photoUrl,
+  avatar,
   detail,
   trailing,
   size = 44,
@@ -69,13 +71,14 @@ export function PersonRow({
   href?: string;
   name: string;
   photoUrl?: string | null;
+  avatar?: AvatarLook | null;
   detail?: ReactNode;
   trailing?: ReactNode;
   size?: number;
 }) {
   const body = (
     <>
-      <Avatar name={name} photoUrl={photoUrl} size={size} />
+      <Avatar name={name} photoUrl={photoUrl} avatar={avatar} size={size} />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-name font-semibold">{name}</span>
         {detail && (

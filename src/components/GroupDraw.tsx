@@ -186,7 +186,7 @@ function GroupDrawOverlay({
                             tunnel={tunnel}
                             className="flex w-full flex-col items-center gap-0.5"
                           >
-                            <PlayerSprite name={item.playerName} />
+                            <PlayerSprite name={item.playerName} avatar={item.avatar} />
                             <span className="field-name w-full truncate text-center">
                               {item.playerName}
                             </span>

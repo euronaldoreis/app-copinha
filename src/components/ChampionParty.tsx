@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { arcade } from "@/lib/labels";
+import type { AvatarLook } from "@/lib/sprite";
 import { PlayerSprite } from "./PlayerSprite";
 import { TrophyIcon } from "./icons";
 import { Stadium, Walker, prefersCalm, type TunnelRef } from "./stadium";
@@ -9,6 +10,7 @@ import { Stadium, Walker, prefersCalm, type TunnelRef } from "./stadium";
 export interface PartyPerson {
   entryId: number;
   name: string;
+  avatar: AvatarLook | null;
   team: string | null;
 }
 
@@ -73,7 +75,11 @@ function PodiumStep({
                   className={`text-accent ${celebrating ? "animate-reveal" : "invisible"}`}
                 />
               )}
-              <PlayerSprite name={person.name} width={champion ? 48 : 36} />
+              <PlayerSprite
+                name={person.name}
+                avatar={person.avatar}
+                width={champion ? 48 : 36}
+              />
             </div>
           </Walker>
         )}

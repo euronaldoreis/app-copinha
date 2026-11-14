@@ -29,6 +29,13 @@
       "when": 1794633345792,
       "tag": "0003_sem_times",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1794636961402,
+      "tag": "0004_avatar",
+      "breakpoints": true
     }
   ]
 }

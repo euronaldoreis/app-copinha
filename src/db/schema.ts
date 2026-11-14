@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import type { AvatarLook } from "@/lib/sprite";
 import {
   index,
   integer,
@@ -13,6 +14,8 @@ export const players = sqliteTable(
     id: integer("id").primaryKey({ autoIncrement: true }),
     name: text("name").notNull(),
     photoUrl: text("photo_url"),
+    /** Aparência escolhida para o avatar em pixel art; null = automática. */
+    avatar: text("avatar", { mode: "json" }).$type<AvatarLook | null>(),
     createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   },
   (t) => [uniqueIndex("players_name_idx").on(t.name)],

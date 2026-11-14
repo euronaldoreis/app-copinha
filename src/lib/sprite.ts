@@ -1,10 +1,10 @@
 // Aparência dos bonecos em pixel art. Sai das letras do nome, então o mesmo
 // jogador tem sempre a mesma cara no retrato e no boneco que entra em campo.
 
-const SKIN = ["#f6c9a0", "#e2a877", "#b97a4e", "#8a5632"];
-const HAIR = ["#1d1a1a", "#4a2c17", "#8c5a2b", "#d8a531", "#b9b9c4"];
+export const SKIN = ["#f6c9a0", "#e2a877", "#b97a4e", "#8a5632"];
+export const HAIR = ["#1d1a1a", "#4a2c17", "#8c5a2b", "#d8a531", "#b9b9c4"];
 /** [camisa, gola e calção]. Nenhuma verde: sumiria no gramado do sorteio. */
-const SHIRT = [
+export const SHIRT = [
   ["#e23b2e", "#ffffff"],
   ["#2f6fe0", "#ffffff"],
   ["#ffd42a", "#1a2670"],
@@ -33,6 +33,51 @@ function nameHash(text: string) {
   return h >>> 0;
 }
 
+/**
+ * Escolhas de aparência de um jogador: índice de cada traço nas listas acima
+ * (pele, cor do cabelo, corte e camisa).
+ */
+export interface AvatarLook {
+  skin: number;
+  hair: number;
+  style: number;
+  shirt: number;
+}
+
+const inRange = (n: unknown, size: number) =>
+  typeof n === "number" && Number.isInteger(n) && n >= 0 && n < size;
+
+/** Aceita só uma aparência completa e dentro dos limites; senão, null. */
+export function parseAvatar(value: unknown): AvatarLook | null {
+  if (value == null || typeof value !== "object") return null;
+  const v = value as Record<string, unknown>;
+  if (
+    inRange(v.skin, SKIN.length) &&
+    inRange(v.hair, HAIR.length) &&
+    inRange(v.style, HAIR_STYLES) &&
+    inRange(v.shirt, SHIRT.length)
+  ) {
+    return {
+      skin: v.skin as number,
+      hair: v.hair as number,
+      style: v.style as number,
+      shirt: v.shirt as number,
+    };
+  }
+  return null;
+}
+
+/** Aparência automática, sorteada a partir do nome (a de quem não escolheu). */
+export function autoLook(name: string): AvatarLook {
+  const h = nameHash(name);
+  return {
+    skin: h % SKIN.length,
+    hair: (h >>> 8) % HAIR.length,
+    style: (h >>> 24) % HAIR_STYLES,
+    shirt: (h >>> 16) % SHIRT.length,
+  };
+}
+
 export interface SpriteLook {
   /** Cor de cada letra dos desenhos: H cabelo, S pele, E olho, M boca, J camisa, C gola, P calção, K meião, B chuteira. */
   colors: Record<string, string>;
@@ -40,14 +85,18 @@ export interface SpriteLook {
   style: number;
 }
 
-export function spriteLook(name: string): SpriteLook {
-  const h = nameHash(name);
+/** Desenho do jogador: o que ele escolheu ou, sem escolha, o automático do nome. */
+export function spriteLook(
+  name: string,
+  custom?: AvatarLook | null,
+): SpriteLook {
   // Cada traço usa um pedaço diferente do número, para não andarem juntos.
-  const [shirt, trim] = SHIRT[(h >>> 16) % SHIRT.length];
+  const look = parseAvatar(custom) ?? autoLook(name);
+  const [shirt, trim] = SHIRT[look.shirt];
   return {
     colors: {
-      H: HAIR[(h >>> 8) % HAIR.length],
-      S: SKIN[h % SKIN.length],
+      H: HAIR[look.hair],
+      S: SKIN[look.skin],
       E: "#111122",
       M: "#7a2f2f",
       J: shirt,
@@ -56,7 +105,7 @@ export function spriteLook(name: string): SpriteLook {
       K: shirt,
       B: "#111122",
     },
-    style: (h >>> 24) % HAIR_STYLES,
+    style: look.style,
   };
 }
 

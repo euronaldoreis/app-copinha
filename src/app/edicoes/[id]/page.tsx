@@ -89,6 +89,7 @@ function Podium({ view }: { view: EditionView }) {
         <Avatar
           name={champion.player.name}
           photoUrl={champion.player.photoUrl}
+              avatar={champion.player.avatar}
           size={72}
         />
         <div className="min-w-0">
@@ -114,6 +115,7 @@ function Podium({ view }: { view: EditionView }) {
               href={`/jogadores/${e.playerId}`}
               name={e.player.name}
               photoUrl={e.player.photoUrl}
+              avatar={e.player.avatar}
               detail={[resultLabel(e.result), e.team?.name]
                 .filter(Boolean)
                 .join(" · ")}
@@ -349,6 +351,7 @@ function Participants({
               href={`/jogadores/${e.playerId}`}
               name={e.player.name}
               photoUrl={e.player.photoUrl}
+              avatar={e.player.avatar}
               detail={
                 [
                   view.edition.useTeams ? (e.team?.name ?? "Sem time") : "",
@@ -405,7 +408,12 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
   const partyPerson = (result: string): PartyPerson | null => {
     const e = entries.find((entry) => entry.result === result);
     return e
-      ? { entryId: e.id, name: e.player.name, team: e.team?.name ?? null }
+      ? {
+          entryId: e.id,
+          name: e.player.name,
+          avatar: e.player.avatar,
+          team: e.team?.name ?? null,
+        }
       : null;
   };
 

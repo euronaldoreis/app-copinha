@@ -1,7 +1,7 @@
 // Jogador de corpo inteiro em pixel art (12x16), com as mesmas cores do
 // retrato. As pernas têm dois quadros: parado e passo aberto. Dentro de um
 // elemento com a classe "walking" eles se alternam (ver globals.css).
-import { pixelRects, spriteLook } from "@/lib/sprite";
+import { pixelRects, spriteLook, type AvatarLook } from "@/lib/sprite";
 
 // Cabeça (linhas 0 a 5), um desenho por corte de cabelo.
 const HEADS = [
@@ -69,12 +69,14 @@ const LEGS_STRIDE = [
 
 export function PlayerSprite({
   name,
+  avatar,
   width = 30,
 }: {
   name: string;
+  avatar?: AvatarLook | null;
   width?: number;
 }) {
-  const look = spriteLook(name);
+  const look = spriteLook(name, avatar);
   const draw = (rows: string[], offsetY: number) =>
     pixelRects(rows, look.colors, offsetY).map((r) => (
       <rect key={`${r.x}-${r.y}`} x={r.x} y={r.y} width={r.w} height={1} fill={r.fill} />
