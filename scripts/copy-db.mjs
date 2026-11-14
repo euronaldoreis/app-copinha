@@ -19,7 +19,7 @@ const dryRun = process.argv.includes("--dry-run");
 const replace = process.argv.includes("--replace");
 
 // Ordem que respeita as chaves estrangeiras (pais antes dos filhos).
-const TABLES = ["players", "teams", "editions", "entries", "matches"];
+const TABLES = ["players", "player_photos", "teams", "editions", "entries", "matches"];
 
 const sourceUrl = process.env.SOURCE_DATABASE_URL || "file:./data/copinha.db";
 const targetUrl = process.env.TARGET_DATABASE_URL;
@@ -55,7 +55,13 @@ if (!dryRun) await migrate(drizzle(target), { migrationsFolder: "./drizzle" });
 // 2) lê tudo da origem
 const data = {};
 for (const table of TABLES) {
-  data[table] = (await source.execute(`select * from ${table}`)).rows.map((row) => ({ ...row }));
+  try {
+    data[table] = (await source.execute(`select * from ${table}`)).rows.map((row) => ({ ...row }));
+  } catch (error) {
+    // Banco de origem mais antigo, sem essa tabela: não há nada a copiar dela.
+    if (!/no such table/i.test(String(error?.message ?? error))) throw error;
+    data[table] = [];
+  }
 }
 
 // 3) confere o destino

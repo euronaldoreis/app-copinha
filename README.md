@@ -38,6 +38,10 @@ Dá para criar a edição só com os jogadores, sem times: desmarque "Cada parti
 
 Na página de cada jogador, o admin pode escolher a aparência do avatar em pixel art (pele, cabelo, corte e camisa) ou deixar o automático, sorteado a partir do nome. A lista de jogadores tem um campo de pesquisa por nome (sem diferenciar maiúsculas e acentos).
 
+Fotos dos jogadores: ao criar ou editar um jogador dá para enviar uma foto do aparelho. Ela é recortada em quadrado e reduzida no navegador e fica guardada no banco (por isso funciona na hospedagem). Também continua valendo o link de foto.
+
+Sorteio na TV: em "Sortear na TV" (ou no botão "Tela cheia", ou a tecla F, durante o sorteio) a cena aumenta para ocupar a tela toda, com a tela mantida acesa e o cursor escondido. Esc sai da tela cheia.
+
 Regras que o site aplica:
 
 - Desempate nos grupos: pontos, vitórias, saldo, gols pró, confronto direto e, por último, a ordem do sorteio.

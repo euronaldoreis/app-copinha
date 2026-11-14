@@ -21,6 +21,16 @@ export const players = sqliteTable(
   (t) => [uniqueIndex("players_name_idx").on(t.name)],
 );
 
+/** Foto enviada de um jogador (imagem em base64). Fora do players para não pesar nas listas. */
+export const playerPhotos = sqliteTable("player_photos", {
+  playerId: integer("player_id")
+    .primaryKey()
+    .references(() => players.id, { onDelete: "cascade" }),
+  contentType: text("content_type").notNull(),
+  data: text("data").notNull(),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const teams = sqliteTable(
   "teams",
   {

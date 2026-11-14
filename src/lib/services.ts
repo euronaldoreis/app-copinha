@@ -7,6 +7,7 @@ import {
   editions,
   entries,
   matches,
+  playerPhotos,
   players,
   teams,
   type Edition,
@@ -16,6 +17,7 @@ import {
   type Team,
 } from "@/db/schema";
 import { RESULT_ORDER } from "./labels";
+import { PHOTO_MAX_BYTES, isUploadedPhoto, photoPath } from "./photo";
 import { parseAvatar, type AvatarLook } from "./sprite";
 import type { AllData } from "./stats";
 import {
@@ -93,16 +95,71 @@ function cleanPhotoUrl(value: unknown) {
   return url;
 }
 
-export async function createPlayer(db: Db, rawName: unknown, photo?: unknown) {
+interface PhotoData {
+  contentType: string;
+  base64: string;
+}
+
+/** Valida a foto enviada ("data:image/jpeg;base64,..."); devolve null se não veio nada. */
+function parsePhotoData(value: unknown): PhotoData | null {
+  const text = String(value ?? "").trim();
+  if (!text) return null;
+  const m = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(text);
+  if (!m) throw new UserError("Foto inválida. Use uma imagem JPG, PNG ou WebP.");
+  const bytes = Buffer.from(m[2], "base64");
+  if (bytes.length > PHOTO_MAX_BYTES)
+    throw new UserError("A foto ficou grande demais. Tente uma imagem menor.");
+  // Confere o conteúdo, e não só o que o envio diz ser.
+  const starts = (...b: number[]) => b.every((v, i) => bytes[i] === v);
+  const isJpeg = starts(0xff, 0xd8, 0xff);
+  const isPng = starts(0x89, 0x50, 0x4e, 0x47);
+  const isWebp =
+    starts(0x52, 0x49, 0x46, 0x46) && bytes.subarray(8, 12).toString("ascii") === "WEBP";
+  if (!isJpeg && !isPng && !isWebp)
+    throw new UserError("Foto inválida. Use uma imagem JPG, PNG ou WebP.");
+  return { contentType: m[1], base64: m[2] };
+}
+
+async function storePhoto(db: Db, playerId: number, photo: PhotoData) {
+  const updatedAt = new Date().toISOString();
+  await db
+    .insert(playerPhotos)
+    .values({ playerId, contentType: photo.contentType, data: photo.base64, updatedAt })
+    .onConflictDoUpdate({
+      target: playerPhotos.playerId,
+      set: { contentType: photo.contentType, data: photo.base64, updatedAt },
+    });
+  return photoPath(playerId);
+}
+
+/** Foto enviada de um jogador, ou null. */
+export async function getPlayerPhoto(db: Db, playerId: number) {
+  const [row] = await db
+    .select()
+    .from(playerPhotos)
+    .where(eq(playerPhotos.playerId, playerId));
+  return row ? { contentType: row.contentType, data: row.data } : null;
+}
+
+export async function createPlayer(
+  db: Db,
+  rawName: unknown,
+  photo?: unknown,
+  /** Foto enviada, como "data:image/...;base64,...". Vale mais que o link. */
+  photoData?: unknown,
+) {
   const name = clean(rawName, 40);
   if (!name) throw new UserError("Informe o nome do jogador.");
   if (await findPlayerByName(db, name))
     throw new UserError(`Já existe um jogador chamado ${name}.`);
-  const [row] = await db
-    .insert(players)
-    .values({ name, photoUrl: cleanPhotoUrl(photo) })
-    .returning();
-  return row;
+  // Valida tudo antes de gravar, para uma foto ruim não deixar o jogador pela metade.
+  const upload = parsePhotoData(photoData);
+  const link = upload ? null : cleanPhotoUrl(photo);
+  const [row] = await db.insert(players).values({ name, photoUrl: link }).returning();
+  if (!upload) return row;
+  const photoUrl = await storePhoto(db, row.id, upload);
+  await db.update(players).set({ photoUrl }).where(eq(players.id, row.id));
+  return { ...row, photoUrl };
 }
 
 export async function updatePlayer(
@@ -113,6 +170,10 @@ export async function updatePlayer(
     photoUrl: unknown;
     /** Aparência escolhida; null volta ao automático; sem informar, não muda. */
     avatar?: unknown;
+    /** Foto nova enviada ("data:image/...;base64,..."); vale mais que o link. */
+    photoData?: unknown;
+    /** Tirar a foto atual (enviada ou link). */
+    removePhoto?: boolean;
   },
 ) {
   const name = clean(input.name, 40);
@@ -124,9 +185,28 @@ export async function updatePlayer(
     input.avatar === undefined
       ? {}
       : { avatar: input.avatar === null ? null : requireAvatar(input.avatar) };
+  const [current] = await db.select().from(players).where(eq(players.id, id));
+  if (!current) throw new UserError("Jogador não encontrado.");
+
+  // Foto: enviada > link novo > manter a enviada > link. O campo de link só
+  // cuida de links externos; ele vazio não apaga uma foto enviada.
+  const upload = parsePhotoData(input.photoData);
+  const link = cleanPhotoUrl(input.photoUrl);
+  let photoUrl: string | null;
+  if (upload) {
+    photoUrl = await storePhoto(db, id, upload);
+  } else if (input.removePhoto && !link) {
+    await db.delete(playerPhotos).where(eq(playerPhotos.playerId, id));
+    photoUrl = null;
+  } else if (link) {
+    await db.delete(playerPhotos).where(eq(playerPhotos.playerId, id));
+    photoUrl = link;
+  } else {
+    photoUrl = isUploadedPhoto(current.photoUrl) ? current.photoUrl : null;
+  }
   await db
     .update(players)
-    .set({ name, photoUrl: cleanPhotoUrl(input.photoUrl), ...avatar })
+    .set({ name, photoUrl, ...avatar })
     .where(eq(players.id, id));
 }
 
@@ -146,6 +226,7 @@ export async function deletePlayer(db: Db, id: number) {
     throw new UserError(
       "Este jogador já participou de alguma edição e não pode ser excluído.",
     );
+  await db.delete(playerPhotos).where(eq(playerPhotos.playerId, id));
   await db.delete(players).where(eq(players.id, id));
 }
 

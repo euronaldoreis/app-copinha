@@ -248,6 +248,22 @@ export const CheckIcon = pixelIcon([
   "............",
 ]);
 
+/** Quatro cantos: tela cheia. */
+export const ExpandIcon = pixelIcon([
+  "............",
+  ".####..####.",
+  ".#........#.",
+  ".#........#.",
+  ".#........#.",
+  "............",
+  "............",
+  ".#........#.",
+  ".#........#.",
+  ".#........#.",
+  ".####..####.",
+  "............",
+]);
+
 /** Lixeira: remover. */
 export const TrashIcon = pixelIcon([
   "....####....",

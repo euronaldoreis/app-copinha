@@ -10,6 +10,7 @@ import {
   UserError,
   regenerateMatches,
   removeEntry,
+  getPlayerPhoto,
   setKnockoutPhases,
   updateEdition,
   updatePlayer,
@@ -787,5 +788,61 @@ describe("avatar do jogador", () => {
 
     await updatePlayer(db, player.id, { name: saved.name, photoUrl: "", avatar: null });
     expect((await loadAll(db)).players.find((p) => p.id === player.id)!.avatar).toBeNull();
+  });
+});
+
+describe("foto enviada do jogador", () => {
+  // PNG de 1x1 pixel
+  const PNG =
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
+  const find = async (id: number) => (await loadAll(db)).players.find((p) => p.id === id)!;
+
+  it("guarda a foto no cadastro e aponta o jogador para ela", async () => {
+    const player = await createPlayer(db, "Jogador com Foto", "", PNG);
+    expect(player.photoUrl).toMatch(/^\/foto\/\d+\?v=\d+$/);
+    const photo = await getPlayerPhoto(db, player.id);
+    expect(photo?.contentType).toBe("image/png");
+    expect(Buffer.from(photo!.data, "base64").subarray(1, 4).toString()).toBe("PNG");
+  });
+
+  it("link vazio não apaga a foto; remover e link novo apagam", async () => {
+    const player = await createPlayer(db, "Jogador Foto 2", "", PNG);
+    // salvar o formulário sem mexer na foto
+    await updatePlayer(db, player.id, { name: player.name, photoUrl: "" });
+    expect((await find(player.id)).photoUrl).toBe(player.photoUrl);
+    expect(await getPlayerPhoto(db, player.id)).not.toBeNull();
+
+    // trocar por outra foto
+    await updatePlayer(db, player.id, { name: player.name, photoUrl: "", photoData: PNG });
+    expect((await find(player.id)).photoUrl).toMatch(/^\/foto\//);
+
+    // remover
+    await updatePlayer(db, player.id, { name: player.name, photoUrl: "", removePhoto: true });
+    expect((await find(player.id)).photoUrl).toBeNull();
+    expect(await getPlayerPhoto(db, player.id)).toBeNull();
+
+    // link externo no lugar de uma foto enviada
+    await updatePlayer(db, player.id, { name: player.name, photoUrl: "", photoData: PNG });
+    await updatePlayer(db, player.id, {
+      name: player.name,
+      photoUrl: "https://exemplo.com/a.jpg",
+    });
+    expect((await find(player.id)).photoUrl).toBe("https://exemplo.com/a.jpg");
+    expect(await getPlayerPhoto(db, player.id)).toBeNull();
+  });
+
+  it("recusa arquivos que não são imagem e fotos grandes, sem criar o jogador", async () => {
+    const fake = "data:image/png;base64," + Buffer.from("isto não é uma imagem").toString("base64");
+    await expect(createPlayer(db, "Jogador Falso", "", fake)).rejects.toBeInstanceOf(UserError);
+    await expect(createPlayer(db, "Jogador Falso", "", "texto qualquer")).rejects.toBeInstanceOf(UserError);
+    const big = "data:image/jpeg;base64," + Buffer.concat([Buffer.from([0xff, 0xd8, 0xff]), Buffer.alloc(400_000)]).toString("base64");
+    await expect(createPlayer(db, "Jogador Falso", "", big)).rejects.toThrow("grande demais");
+    expect((await loadAll(db)).players.some((p) => p.name === "Jogador Falso")).toBe(false);
+  });
+
+  it("excluir o jogador leva a foto junto", async () => {
+    const player = await createPlayer(db, "Jogador Temporário", "", PNG);
+    await deletePlayer(db, player.id);
+    expect(await getPlayerPhoto(db, player.id)).toBeNull();
   });
 });

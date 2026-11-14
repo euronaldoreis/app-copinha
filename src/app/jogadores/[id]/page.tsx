@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import { deletePlayerAction, updatePlayerAction } from "@/app/actions";
 import { Avatar } from "@/components/Avatar";
 import { AvatarEditor } from "@/components/AvatarEditor";
+import { PhotoField } from "@/components/PhotoField";
+import { isUploadedPhoto } from "@/lib/photo";
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { Disclosure, Empty, Section, Stat } from "@/components/ui";
 import { isAdmin } from "@/lib/auth";
@@ -201,13 +203,14 @@ export default async function PlayerPage(props: PageProps<"/jogadores/[id]">) {
                 photoUrl={player.photoUrl}
                 initial={player.avatar}
               />
+              <PhotoField currentUrl={player.photoUrl} />
               <label>
-                <span className="label">Link da foto</span>
+                <span className="label">Ou um link de foto</span>
                 <input
                   name="photoUrl"
                   type="url"
                   className="field"
-                  defaultValue={player.photoUrl ?? ""}
+                  defaultValue={isUploadedPhoto(player.photoUrl) ? "" : (player.photoUrl ?? "")}
                   placeholder="https://..."
                 />
               </label>

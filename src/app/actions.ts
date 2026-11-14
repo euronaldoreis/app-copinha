@@ -61,7 +61,9 @@ export async function logoutAction() {
 // --- Jogadores -------------------------------------------------------------
 
 export async function createPlayerAction(_prev: ActionState, fd: FormData) {
-  return run(() => svc.createPlayer(getDb(), fd.get("name"), fd.get("photoUrl")));
+  return run(() =>
+    svc.createPlayer(getDb(), fd.get("name"), fd.get("photoUrl"), fd.get("photoData")),
+  );
 }
 
 /** Campo "avatar" do formulário: JSON com a aparência, vazio = automático. */
@@ -81,6 +83,8 @@ export async function updatePlayerAction(_prev: ActionState, fd: FormData) {
       name: fd.get("name"),
       photoUrl: fd.get("photoUrl"),
       avatar: parseAvatarField(fd.get("avatar")),
+      photoData: fd.get("photoData"),
+      removePhoto: fd.get("removePhoto") === "1",
     }),
   );
 }

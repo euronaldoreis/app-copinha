@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { createPlayerAction } from "@/app/actions";
 import { ActionForm, SubmitButton } from "@/components/forms";
+import { PhotoField } from "@/components/PhotoField";
 import { PlayersList } from "@/components/PlayersList";
 import { Empty, PageTitle, Section } from "@/components/ui";
 import { isAdmin } from "@/lib/auth";
@@ -60,8 +61,11 @@ export default async function PlayersPage() {
               <span className="label">Nome</span>
               <input name="name" className="field" required maxLength={40} />
             </label>
+            <div className="w-full basis-full">
+              <PhotoField currentUrl={null} />
+            </div>
             <label className="min-w-40 flex-[2]">
-              <span className="label">Link da foto (opcional)</span>
+              <span className="label">Ou um link de foto (opcional)</span>
               <input
                 name="photoUrl"
                 type="url"
