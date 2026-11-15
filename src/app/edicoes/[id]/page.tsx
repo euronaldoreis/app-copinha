@@ -21,6 +21,7 @@ import { StartPanel } from "@/components/GroupDraw";
 import { GroupsEditor } from "@/components/GroupsEditor";
 import { KnockoutEditor } from "@/components/KnockoutEditor";
 import { KnockoutPhases } from "@/components/KnockoutPhases";
+import { PageItems, Paged, PagedNav } from "@/components/Paged";
 import { Tabs, type TabItem } from "@/components/Tabs";
 import { MatchRow, type MatchSide } from "@/components/MatchRow";
 import { StandingsTable } from "@/components/StandingsTable";
@@ -264,6 +265,32 @@ function Tournament({ view, admin }: { view: EditionView; admin: boolean }) {
   }
 
   if (rounds.length > 0) {
+    // Uma rodada por vez. Abre na primeira que ainda tem jogo sem placar.
+    const pending = rounds.findIndex((round) =>
+      groupMatches.some((m) => m.round === round && m.homeScore == null),
+    );
+    const paged = rounds.length > 1;
+    const roundBlocks = rounds.map((round) => {
+      const ms = groupMatches
+        .filter((m) => m.round === round)
+        .sort(
+          (a, b) =>
+            (a.groupLabel ?? "").localeCompare(b.groupLabel ?? "") ||
+            a.slot - b.slot,
+        );
+      return (
+        <div key={round}>
+          {/* Com paginação, o número da rodada já está nas setas. */}
+          {!paged && <SubHeading>Rodada {round}</SubHeading>}
+          <MatchList
+            matches={ms}
+            view={view}
+            admin={admin}
+            totalRounds={totalRounds}
+          />
+        </div>
+      );
+    });
     tabs.push({
       id: "jogos",
       label: edition.format === "grupos" ? "Jogos dos grupos" : "Jogos",
@@ -274,26 +301,19 @@ function Tournament({ view, admin }: { view: EditionView; admin: boolean }) {
               {pairingNote(edition.pairing, edition.crossGames)}
             </p>
           )}
-          {rounds.map((round) => {
-            const ms = groupMatches
-              .filter((m) => m.round === round)
-              .sort(
-                (a, b) =>
-                  (a.groupLabel ?? "").localeCompare(b.groupLabel ?? "") ||
-                  a.slot - b.slot,
-              );
-            return (
-              <div key={round} className="mt-5 first:mt-0">
-                <SubHeading>Rodada {round}</SubHeading>
-                <MatchList
-                  matches={ms}
-                  view={view}
-                  admin={admin}
-                  totalRounds={totalRounds}
-                />
-              </div>
-            );
-          })}
+          {paged ? (
+            <Paged
+              total={rounds.length}
+              pageSize={1}
+              param="rodada"
+              initialPage={pending < 0 ? 1 : pending + 1}
+            >
+              <PagedNav label="Rodada" className="mb-4" />
+              <PageItems>{roundBlocks}</PageItems>
+            </Paged>
+          ) : (
+            roundBlocks
+          )}
         </>
       ),
     });

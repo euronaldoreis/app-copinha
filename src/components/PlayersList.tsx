@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { plural } from "@/lib/labels";
 import type { AvatarLook } from "@/lib/sprite";
+import { PageNav, usePage } from "./Paged";
 import { TrophyIcon } from "./icons";
 import { PersonRow } from "./ui";
 
@@ -23,7 +24,10 @@ const normalize = (text: string) =>
     .toLocaleLowerCase("pt-BR")
     .trim();
 
-/** Lista de jogadores com campo de pesquisa por nome. */
+/** Jogadores por página. */
+const PAGE_SIZE = 12;
+
+/** Lista de jogadores com campo de pesquisa por nome e paginação. */
 export function PlayersList({ players }: { players: PlayerItem[] }) {
   const [query, setQuery] = useState("");
   const words = normalize(query).split(/\s+/).filter(Boolean);
@@ -34,6 +38,11 @@ export function PlayersList({ players }: { players: PlayerItem[] }) {
         return words.every((w) => name.includes(w));
       })
     : players;
+  // A pesquisa encolhe a lista; a paginação conta só o que sobrou.
+  const { page, pages, start, end, setPage, anchor } = usePage({
+    total: shown.length,
+    pageSize: PAGE_SIZE,
+  });
 
   return (
     <>
@@ -43,7 +52,10 @@ export function PlayersList({ players }: { players: PlayerItem[] }) {
           <input
             type="search"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              if (page !== 1) setPage(1);
+            }}
             placeholder="Pesquisar jogador"
             autoComplete="off"
             className="field"
@@ -59,28 +71,31 @@ export function PlayersList({ players }: { players: PlayerItem[] }) {
       </div>
 
       {shown.length > 0 && (
-        <div className="card px-5 py-1.5">
-          {shown.map((p) => (
-            <PersonRow
-              key={p.id}
-              href={`/jogadores/${p.id}`}
-              name={p.name}
-              photoUrl={p.photoUrl}
-              avatar={p.avatar}
-              detail={p.detail}
-              trailing={
-                p.titles > 0 ? (
-                  <span
-                    className="num flex items-center gap-1 text-name font-semibold text-accent"
-                    title={plural(p.titles, "título", "títulos")}
-                  >
-                    {p.titles}
-                    <TrophyIcon width={18} height={18} />
-                  </span>
-                ) : null
-              }
-            />
-          ))}
+        <div ref={anchor} className="scroll-mt-20">
+          <div className="card px-5 py-1.5">
+            {shown.slice(start, end).map((p) => (
+              <PersonRow
+                key={p.id}
+                href={`/jogadores/${p.id}`}
+                name={p.name}
+                photoUrl={p.photoUrl}
+                avatar={p.avatar}
+                detail={p.detail}
+                trailing={
+                  p.titles > 0 ? (
+                    <span
+                      className="num flex items-center gap-1 text-name font-semibold text-accent"
+                      title={plural(p.titles, "título", "títulos")}
+                    >
+                      {p.titles}
+                      <TrophyIcon width={18} height={18} />
+                    </span>
+                  ) : null
+                }
+              />
+            ))}
+          </div>
+          <PageNav page={page} pages={pages} onChange={setPage} />
         </div>
       )}
     </>
