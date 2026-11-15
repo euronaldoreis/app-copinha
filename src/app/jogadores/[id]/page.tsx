@@ -13,6 +13,8 @@ import { isAdmin } from "@/lib/auth";
 import { getData } from "@/lib/data";
 import { formatDate, plural, resultLabel } from "@/lib/labels";
 import { sortEditions } from "@/lib/services";
+import { AttributeRadar } from "@/components/AttributeRadar";
+import { ATTRIBUTES, computeAttributes } from "@/lib/attributes";
 import { computeHeadToHead, computeRanking, pct } from "@/lib/stats";
 
 async function load(params: Promise<{ id: string }>) {
@@ -38,7 +40,12 @@ export default async function PlayerPage(props: PageProps<"/jogadores/[id]">) {
   ]);
   if (!player) notFound();
 
-  const stats = computeRanking(data).find((r) => r.player.id === player.id)!;
+  const ranking = computeRanking(data);
+  const stats = ranking.find((r) => r.player.id === player.id)!;
+  const attributes = computeAttributes(
+    stats,
+    Math.max(...ranking.map((r) => r.played)),
+  );
   const teamById = new Map(data.teams.map((t) => [t.id, t]));
   const campaigns = sortEditions(
     data.editions.filter((e) => e.status !== "inscricoes"),
@@ -90,6 +97,22 @@ export default async function PlayerPage(props: PageProps<"/jogadores/[id]">) {
           {stats.losses}D · {plural(stats.gf, "gol marcado", "gols marcados")} ·{" "}
           {plural(stats.ga, "sofrido", "sofridos")}
         </p>
+      )}
+
+      {attributes && (
+        <Section title="Atributos">
+          <div className="card px-4 py-5">
+            <AttributeRadar values={attributes} />
+            <dl className="mt-4 grid grid-cols-1 gap-x-6 gap-y-1 text-body text-muted sm:grid-cols-2">
+              {ATTRIBUTES.map((a) => (
+                <div key={a.key} className="flex gap-2">
+                  <dt className="text-ink">{a.name}:</dt>
+                  <dd>{a.hint}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        </Section>
       )}
 
       <Section title="Campanhas">
