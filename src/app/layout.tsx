@@ -4,6 +4,7 @@ import Link from "next/link";
 import { logoutAction } from "./actions";
 import { NavBar } from "@/components/NavBar";
 import { RegisterServiceWorker } from "@/components/RegisterServiceWorker";
+import { Splash } from "@/components/Splash";
 import { BallIcon, LockIcon, RecycleIcon } from "@/components/icons";
 import { isAdmin } from "@/lib/auth";
 import "./globals.css";
@@ -71,6 +72,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       className={`${bodyFont.variable} ${strongFont.variable} ${displayFont.variable} h-full`}
     >
       <body className="min-h-full">
+        <Splash />
         <RegisterServiceWorker />
         {/* Barra de cima, como o placar fixo de um jogo. */}
         <div className="border-b-[3px] border-ink bg-night">
