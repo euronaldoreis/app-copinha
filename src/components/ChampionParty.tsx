@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { arcade } from "@/lib/labels";
 import { isMuted, setMuted, sfx, stopAudio, unlockAudio } from "@/lib/sfx";
 import { buildShareCard, shareCard } from "@/lib/shareCard";
 import type { AvatarLook } from "@/lib/sprite";
+import { Arcade } from "./Arcade";
 import { PlayerSprite } from "./PlayerSprite";
 import { TrophyIcon } from "./icons";
 import {
@@ -212,8 +212,12 @@ function PartyOverlay({
       <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col gap-5 px-4 py-6">
         <div className="scoreboard" aria-live="polite">
           <div className="flex items-center justify-between gap-3 font-pixel text-[8px] uppercase text-accent">
-            <span>{arcade("Premiação")}</span>
-            <span className="truncate">{arcade(editionName)}</span>
+            <span>
+              <Arcade>Premiação</Arcade>
+            </span>
+            <span className="truncate">
+              <Arcade>{editionName}</Arcade>
+            </span>
           </div>
           <div className="flex min-h-[104px] flex-col items-center justify-center gap-2 text-center">
             <p
@@ -222,13 +226,13 @@ function PartyOverlay({
                 stage === "drumroll" || big ? "blink" : ""
               }`}
             >
-              {arcade(tag)}
+              <Arcade>{tag}</Arcade>
             </p>
             <p
               key={stage === "party" ? "champion" : stage}
               className={`animate-reveal w-full truncate text-title ${big ? "text-accent" : ""}`}
             >
-              {arcade(name)}
+              <Arcade>{name}</Arcade>
             </p>
             <p className="min-h-[23px] text-body text-muted">{sub}</p>
           </div>

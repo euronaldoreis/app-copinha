@@ -8,6 +8,7 @@ import {
   setTeamPoolAction,
   updateEditionAction,
 } from "@/app/actions";
+import { Arcade } from "@/components/Arcade";
 import { Avatar } from "@/components/Avatar";
 import {
   ChampionParty,
@@ -39,7 +40,6 @@ import { getData } from "@/lib/data";
 import {
   FORMAT_LABELS,
   STATUS_LABELS,
-  arcade,
   formatDate,
   pairingNote,
   plural,
@@ -102,7 +102,7 @@ function Podium({ view }: { view: EditionView }) {
             className="block truncate text-title"
             aria-label={champion.player.name}
           >
-            {arcade(champion.player.name)}
+            <Arcade>{champion.player.name}</Arcade>
           </Link>
           <p className="truncate text-body text-muted">{champion.team?.name}</p>
         </div>

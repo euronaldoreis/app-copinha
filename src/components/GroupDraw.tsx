@@ -3,8 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { startEditionAction } from "@/app/actions";
-import { arcade } from "@/lib/labels";
 import type { GroupDrawItem } from "@/lib/services";
+import { Arcade } from "./Arcade";
 import { useConfirm } from "./ConfirmDialog";
 import { ExpandIcon } from "./icons";
 import { PlayerSprite } from "./PlayerSprite";
@@ -142,7 +142,7 @@ function Scoreboard({
               }`}
               aria-hidden={phase === "name"}
             >
-              {arcade(shown?.playerName ?? "")}
+              <Arcade>{shown?.playerName ?? ""}</Arcade>
             </p>
             <p className="mt-1 truncate text-body text-muted">
               {phase === "name" ? "Sorteando..." : (current?.teamName ?? "")}

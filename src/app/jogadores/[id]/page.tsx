@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { deletePlayerAction, updatePlayerAction } from "@/app/actions";
+import { Arcade } from "@/components/Arcade";
 import { Avatar } from "@/components/Avatar";
 import { AvatarEditor } from "@/components/AvatarEditor";
 import { PhotoField } from "@/components/PhotoField";
@@ -10,7 +11,7 @@ import { ActionForm, SubmitButton } from "@/components/forms";
 import { Disclosure, Empty, Section, Stat } from "@/components/ui";
 import { isAdmin } from "@/lib/auth";
 import { getData } from "@/lib/data";
-import { arcade, formatDate, plural, resultLabel } from "@/lib/labels";
+import { formatDate, plural, resultLabel } from "@/lib/labels";
 import { sortEditions } from "@/lib/services";
 import { computeHeadToHead, computeRanking, pct } from "@/lib/stats";
 
@@ -61,7 +62,7 @@ export default async function PlayerPage(props: PageProps<"/jogadores/[id]">) {
         />
         <div className="min-w-0">
           <h1 className="truncate text-title" aria-label={player.name}>
-            {arcade(player.name)}
+            <Arcade>{player.name}</Arcade>
           </h1>
           <p className="mt-1.5 text-body text-muted">
             {stats.participations

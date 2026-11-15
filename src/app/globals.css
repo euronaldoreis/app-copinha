@@ -8,7 +8,8 @@
   encorpada, no lugar do negrito e nos botões (--font-strong). As Jersey só
   ficam nítidas em 20px, então todo o texto usa esse tamanho e a hierarquia vem
   da fonte e da cor. A 8x8 desenha mal maiúsculas acentuadas: o que vai nela
-  passa antes por arcade() (src/lib/labels.ts), que tira os acentos.
+  passa pelo componente <Arcade> (src/components/Arcade.tsx), que põe a letra
+  sem acento e desenha o acento em pixels por cima (classes .acc e .acc-mark).
 */
 @theme inline {
   --font-sans: var(--font-body), ui-monospace, monospace;
@@ -106,6 +107,31 @@ body::after {
   text-transform: uppercase;
   text-shadow: 3px 3px 0 var(--color-night);
   overflow-wrap: anywhere;
+  --acc-shadow: 3px 3px 0 var(--color-night);
+}
+
+/* Acento desenhado em pixels sobre uma letra da fonte de 8x8 (ver <Arcade>).
+   A célula da letra tem 8 pixels de 0.125em; o acento ocupa uma grade de 7x2
+   logo acima dela, com um pixel de folga. */
+.acc {
+  position: relative;
+}
+.acc-mark {
+  position: absolute;
+  left: 0;
+  top: -0.375em;
+  width: 0.875em;
+  height: 0.25em;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  /* Mesma sombra dura do texto em volta, quando ele tem. */
+  filter: drop-shadow(var(--acc-shadow, 0 0 0 transparent));
+}
+/* Texto cortado com reticências esconde o que passa da linha: abre espaço em
+   cima para o acento não ser cortado junto. */
+.truncate:has(.acc) {
+  margin-top: -0.4em;
+  padding-top: 0.4em;
 }
 
 /* Tabelas: cabeçalho de placar e linhas zebradas. */
@@ -177,6 +203,7 @@ fieldset label:has(input[type="radio"]:checked) {
     text-transform: uppercase;
     color: var(--color-accent);
     text-shadow: 2px 2px 0 var(--color-night);
+    --acc-shadow: 2px 2px 0 var(--color-night);
   }
   .heading::before {
     content: "";
