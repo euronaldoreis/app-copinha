@@ -109,7 +109,7 @@ export default async function EditionsPage() {
           href="/edicoes/nova"
           aria-label="Nova edição"
           title="Nova edição"
-          className="btn btn-primary fixed bottom-24 right-5 z-40 size-14 p-0 sm:right-[max(1.25rem,calc(50%-24rem+1.5rem))]"
+          className="btn btn-primary fixed bottom-[calc(6rem+env(safe-area-inset-bottom))] right-5 z-40 size-14 p-0 sm:right-[max(1.25rem,calc(50%-24rem+1.5rem))]"
         >
           <PlusIcon width={24} height={24} />
         </Link>

@@ -18,7 +18,7 @@ export function NavBar() {
   return (
     <nav
       aria-label="Principal"
-      className="fixed inset-x-0 bottom-0 z-40 border-t-[3px] border-ink bg-night"
+      className="fixed inset-x-0 bottom-0 z-40 border-t-[3px] border-ink bg-night pb-[env(safe-area-inset-bottom)]"
     >
       <div className="mx-auto grid w-full max-w-3xl grid-cols-4">
         {ITEMS.map(({ href, label, icon: Icon }) => {
