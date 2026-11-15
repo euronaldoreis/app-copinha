@@ -1,10 +1,11 @@
 import Link from "next/link";
+import { Arcade } from "@/components/Arcade";
 import { Avatar } from "@/components/Avatar";
 import { ChevronIcon, TrophyIcon } from "@/components/icons";
 import { Empty, PageTitle, PersonRow, Section } from "@/components/ui";
 import { isAdmin } from "@/lib/auth";
 import { getData } from "@/lib/data";
-import { STATUS_LABELS, arcade, plural } from "@/lib/labels";
+import { STATUS_LABELS, plural } from "@/lib/labels";
 import { allEditionViews, type EditionView } from "@/lib/services";
 import { computeRanking } from "@/lib/stats";
 
@@ -25,7 +26,9 @@ function LiveEdition({ view }: { view: EditionView }) {
         <span className="blink size-2 bg-accent" />
         {STATUS_LABELS[edition.status]}
       </p>
-      <p className="mt-1 text-title">{arcade(edition.name)}</p>
+      <p className="mt-1 text-title">
+        <Arcade>{edition.name}</Arcade>
+      </p>
       <p className="mt-1 text-body text-muted">
         {[
           edition.game,

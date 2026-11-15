@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { arcade } from "@/lib/labels";
+import { Arcade } from "./Arcade";
 import { CalendarIcon, ChartIcon, HomeIcon, PeopleIcon } from "./icons";
 
 const ITEMS = [
@@ -34,7 +34,7 @@ export function NavBar() {
               }`}
             >
               <Icon width={22} height={22} />
-              {arcade(label)}
+              <Arcade>{label}</Arcade>
             </Link>
           );
         })}

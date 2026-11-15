@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { drawTeamsAction } from "@/app/actions";
-import { arcade } from "@/lib/labels";
+import { Arcade } from "./Arcade";
 import { useConfirm } from "./ConfirmDialog";
 import type { DrawAssignment } from "@/lib/services";
 import { ShuffleIcon } from "./icons";
@@ -75,13 +75,15 @@ export function DrawPanel({
             {step + 1} de {draw.length}
           </p>
           <div className="flex min-h-40 flex-col items-center gap-4 text-center">
-            <p className="text-title">{arcade(current.playerName)}</p>
+            <p className="text-title">
+              <Arcade>{current.playerName}</Arcade>
+            </p>
             {revealed ? (
               <p
                 key={current.entryId}
                 className="animate-reveal text-title text-accent"
               >
-                {arcade(current.teamName)}
+                <Arcade>{current.teamName}</Arcade>
               </p>
             ) : (
               <p className="blink font-pixel text-[10px] uppercase text-accent">

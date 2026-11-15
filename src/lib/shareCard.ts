@@ -1,6 +1,8 @@
 // Imagem do pódio para compartilhar (WhatsApp etc.), desenhada num <canvas>
 // com os mesmos bonecos e a taça que estão na tela da festa.
 
+import { ACCENT_PIXELS, ACCENT_RISE, splitArcade } from "./arcade";
+
 export interface CardPerson {
   name: string;
   team: string | null;
@@ -45,6 +47,37 @@ function svgImage(svg: SVGSVGElement, color?: string): Promise<HTMLImageElement 
     img.onload = () => resolve(img);
     img.onerror = () => resolve(null);
     img.src = url;
+  });
+}
+
+/**
+ * Texto na fonte de 8x8, em maiúsculas e centrado em (cx, y). Como no site, a
+ * letra vai sem acento e o acento é desenhado em pixels por cima.
+ */
+function fillArcade(
+  g: CanvasRenderingContext2D,
+  text: string,
+  family: string,
+  size: number,
+  maxWidth: number,
+  cx: number,
+  y: number,
+) {
+  const chars = splitArcade(text.toUpperCase());
+  const base = chars.map((c) => c.base).join("");
+  fitText(g, base, family, size, maxWidth);
+  g.fillText(base, cx, y);
+  // A fonte tem largura fixa: cada letra ocupa uma célula de 8 pixels.
+  const width = g.measureText(base).width;
+  const cell = width / chars.length;
+  const px = cell / 8;
+  const top = y - g.measureText("E").actualBoundingBoxAscent;
+  chars.forEach((c, i) => {
+    if (!c.accent) return;
+    const left = cx - width / 2 + i * cell;
+    for (const [x, row, w] of ACCENT_PIXELS[c.accent]) {
+      g.fillRect(left + x * px, top + (row - ACCENT_RISE) * px, w * px, px);
+    }
   });
 }
 
@@ -113,13 +146,10 @@ export async function buildShareCard(data: CardData): Promise<File | null> {
   g.textAlign = "center";
   g.textBaseline = "middle";
   g.fillStyle = INK;
-  fitText(g, data.editionName.toUpperCase(), pixel, 30, W - 220);
-  g.fillText(data.editionName.toUpperCase(), W / 2, 140);
+  fillArcade(g, data.editionName, pixel, 30, W - 220, W / 2, 140);
   g.fillStyle = ACCENT;
-  fitText(g, "CAMPEÃO!", pixel, 34, W - 220);
-  g.fillText("CAMPEÃO!", W / 2, 262);
-  fitText(g, data.champion.name.toUpperCase(), pixel, 64, W - 220);
-  g.fillText(data.champion.name.toUpperCase(), W / 2, 342);
+  fillArcade(g, "Campeão!", pixel, 34, W - 220, W / 2, 262);
+  fillArcade(g, data.champion.name, pixel, 64, W - 220, W / 2, 342);
   if (data.champion.team) {
     g.fillStyle = MUTED;
     fitText(g, data.champion.team, body, 44, W - 220);

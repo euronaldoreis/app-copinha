@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { arcade } from "@/lib/labels";
 import type { AvatarLook } from "@/lib/sprite";
+import { Arcade } from "./Arcade";
 import { Avatar } from "./Avatar";
 import { ChevronIcon, RecycleIcon } from "./icons";
 
@@ -29,7 +29,9 @@ export function PageTitle({
             className="h-[27px] w-[29px] shrink-0 text-ink drop-shadow-[3px_3px_0_#04051a] sm:h-[37px] sm:w-[40px]"
           />
         )}
-        <span className="min-w-0">{arcade(title)}</span>
+        <span className="min-w-0">
+          <Arcade>{title}</Arcade>
+        </span>
       </h1>
       {subtitle && <p className="mt-2 text-body text-muted">{subtitle}</p>}
     </header>
@@ -49,7 +51,7 @@ export function Section({
     <section className="mt-10">
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
         <h2 className="heading" aria-label={title}>
-          {arcade(title)}
+          <Arcade>{title}</Arcade>
         </h2>
         {aside && <div className="text-body text-muted">{aside}</div>}
       </div>

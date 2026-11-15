@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { Arcade } from "./Arcade";
 
 export interface ConfirmOptions {
   /** O que vai acontecer. Aparece no corpo do aviso. */
@@ -62,7 +63,9 @@ function Modal({ pending, close }: { pending: Pending; close: (ok: boolean) => v
         className="card modal-window"
       >
         <h2 id="modal-title" className="heading">
-          {pending.title ?? (pending.danger ? "Tem certeza?" : "Confirmar")}
+          <Arcade>
+            {pending.title ?? (pending.danger ? "Tem certeza?" : "Confirmar")}
+          </Arcade>
         </h2>
         <p id="modal-message" className="mt-4 text-body">
           {pending.message}
