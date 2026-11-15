@@ -48,8 +48,16 @@ export async function loginAction(
   _prev: ActionState,
   fd: FormData,
 ): Promise<ActionState> {
-  const ok = await login(String(fd.get("password") ?? ""));
-  if (!ok) return { error: "Senha incorreta." };
+  const result = await login(String(fd.get("password") ?? ""));
+  if (!result.ok) {
+    if (result.blocked) {
+      const minutes = Math.max(1, Math.ceil(result.retryAfterMs / 60_000));
+      return {
+        error: `Muitas tentativas. Tente de novo em ${minutes} ${minutes === 1 ? "minuto" : "minutos"}.`,
+      };
+    }
+    return { error: "Senha incorreta." };
+  }
   redirect("/");
 }
 

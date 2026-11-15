@@ -31,6 +31,14 @@ export const playerPhotos = sqliteTable("player_photos", {
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
 
+/** Tentativas de login por origem (IP), para limitar tentativa e erro na senha. */
+export const loginAttempts = sqliteTable("login_attempts", {
+  key: text("key").primaryKey(),
+  failures: integer("failures").notNull().default(0),
+  /** Início da janela de contagem, em ms desde 1970. */
+  windowStart: integer("window_start").notNull(),
+});
+
 export const teams = sqliteTable(
   "teams",
   {

@@ -43,6 +43,13 @@
       "when": 1794638155114,
       "tag": "0005_fotos",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1794723275360,
+      "tag": "0006_login_limite",
+      "breakpoints": true
     }
   ]
 }
