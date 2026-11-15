@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Avatar } from "@/components/Avatar";
-import { PageItems, Paged, PagedNav } from "@/components/Paged";
 import { Empty, PageTitle } from "@/components/ui";
 import { getData } from "@/lib/data";
 import { plural, resultLabel } from "@/lib/labels";
@@ -23,9 +22,6 @@ const TABS = [
   { id: "times", label: "Times" },
   { id: "recordes", label: "Recordes" },
 ];
-
-/** Linhas por página nas tabelas e na lista de times. */
-const PAGE_SIZE = 10;
 
 interface Column {
   head: string;
@@ -69,71 +65,66 @@ function RankTable({
 }) {
   const hide = (c: Column) => (c.wide ? "hidden sm:table-cell" : "");
   return (
-    <Paged total={rows.length} pageSize={PAGE_SIZE}>
-      <div className="card px-5 pb-2 pt-4">
-        <table className="w-full text-body">
-          <thead className="text-muted">
-            <tr>
-              <th className="w-12 pb-2 text-left font-normal">
-                <span className="sr-only">Posição</span>
+    <div className="card px-5 pb-2 pt-4">
+      <table className="w-full text-body">
+        <thead className="text-muted">
+          <tr>
+            <th className="w-12 pb-2 text-left font-normal">
+              <span className="sr-only">Posição</span>
+            </th>
+            <th className="pb-2 text-left font-normal">Jogador</th>
+            {columns.map((c) => (
+              <th
+                key={c.head}
+                title={c.title}
+                className={`px-1.5 pb-2 text-right font-normal ${hide(c)}`}
+              >
+                {c.head}
               </th>
-              <th className="pb-2 text-left font-normal">Jogador</th>
-              {columns.map((c) => (
-                <th
-                  key={c.head}
-                  title={c.title}
-                  className={`px-1.5 pb-2 text-right font-normal ${hide(c)}`}
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r, i) => (
+            <tr key={r.player.id} className="h-[68px]">
+              <td className="num pl-4 pr-3 text-muted">{i + 1}</td>
+              <td className="w-full max-w-0">
+                <Link
+                  href={`/jogadores/${r.player.id}`}
+                  className="flex items-center gap-3"
                 >
-                  {c.head}
-                </th>
+                  {/* No celular o retrato sai para o nome caber inteiro. */}
+                  <span className="hidden sm:block">
+                    <Avatar
+                      name={r.player.name}
+                      photoUrl={r.player.photoUrl}
+                      avatar={r.player.avatar}
+                      size={40}
+                    />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block truncate text-name font-semibold">
+                      {r.player.name}
+                    </span>
+                    <span className="block truncate text-muted">{detail(r)}</span>
+                  </span>
+                </Link>
+              </td>
+              {columns.map((c) => (
+                <td
+                  key={c.head}
+                  className={`num px-1.5 text-right ${hide(c)} ${
+                    c.strong ? "text-name font-semibold" : ""
+                  }`}
+                >
+                  {c.value(r)}
+                </td>
               ))}
             </tr>
-          </thead>
-          <tbody>
-            <PageItems>
-              {rows.map((r, i) => (
-                <tr key={r.player.id} className="h-[68px]">
-                  <td className="num pl-4 pr-3 text-muted">{i + 1}</td>
-                  <td className="w-full max-w-0">
-                    <Link
-                      href={`/jogadores/${r.player.id}`}
-                      className="flex items-center gap-3"
-                    >
-                      {/* No celular o retrato sai para o nome caber inteiro. */}
-                      <span className="hidden sm:block">
-                        <Avatar
-                          name={r.player.name}
-                          photoUrl={r.player.photoUrl}
-                          avatar={r.player.avatar}
-                          size={40}
-                        />
-                      </span>
-                      <span className="min-w-0">
-                        <span className="block truncate text-name font-semibold">
-                          {r.player.name}
-                        </span>
-                        <span className="block truncate text-muted">{detail(r)}</span>
-                      </span>
-                    </Link>
-                  </td>
-                  {columns.map((c) => (
-                    <td
-                      key={c.head}
-                      className={`num px-1.5 text-right ${hide(c)} ${
-                        c.strong ? "text-name font-semibold" : ""
-                      }`}
-                    >
-                      {c.value(r)}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </PageItems>
-          </tbody>
-        </table>
-      </div>
-      <PagedNav />
-    </Paged>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -229,35 +220,30 @@ export default async function RankingPage(props: PageProps<"/ranking">) {
   } else if (tab === "times") {
     const teams = computeTeamRanking(data);
     content = teams.length ? (
-      <Paged total={teams.length} pageSize={PAGE_SIZE}>
-        <div className="card px-5 py-1.5">
-          <PageItems>
-            {teams.map((t) => (
-              <div key={t.team.id} className="flex min-h-[68px] items-center gap-3.5">
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-name font-semibold">
-                    {t.team.name}
-                  </span>
-                  <span className="block truncate text-body text-muted">
-                    {[
-                      `Sorteado ${plural(t.uses, "vez", "vezes")}`,
-                      t.champions.length ? `campeão com ${t.champions.join(", ")}` : "",
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </span>
-                </span>
-                {t.titles > 0 && (
-                  <span className="num text-name font-semibold text-accent">
-                    {plural(t.titles, "título", "títulos")}
-                  </span>
-                )}
-              </div>
-            ))}
-          </PageItems>
-        </div>
-        <PagedNav />
-      </Paged>
+      <div className="card px-5 py-1.5">
+        {teams.map((t) => (
+          <div key={t.team.id} className="flex min-h-[68px] items-center gap-3.5">
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-name font-semibold">
+                {t.team.name}
+              </span>
+              <span className="block truncate text-body text-muted">
+                {[
+                  `Sorteado ${plural(t.uses, "vez", "vezes")}`,
+                  t.champions.length ? `campeão com ${t.champions.join(", ")}` : "",
+                ]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </span>
+            </span>
+            {t.titles > 0 && (
+              <span className="num text-name font-semibold text-accent">
+                {plural(t.titles, "título", "títulos")}
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
     ) : (
       <Empty>Nenhum time sorteado ainda.</Empty>
     );

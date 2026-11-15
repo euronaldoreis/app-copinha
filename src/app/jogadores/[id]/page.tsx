@@ -4,7 +4,6 @@ import { notFound } from "next/navigation";
 import { deletePlayerAction, updatePlayerAction } from "@/app/actions";
 import { Avatar } from "@/components/Avatar";
 import { AvatarEditor } from "@/components/AvatarEditor";
-import { PageItems, Paged, PagedNav } from "@/components/Paged";
 import { PhotoField } from "@/components/PhotoField";
 import { isUploadedPhoto } from "@/lib/photo";
 import { ActionForm, SubmitButton } from "@/components/forms";
@@ -96,97 +95,87 @@ export default async function PlayerPage(props: PageProps<"/jogadores/[id]">) {
         {campaigns.length === 0 ? (
           <Empty>Nenhuma campanha registrada.</Empty>
         ) : (
-          <Paged total={campaigns.length} pageSize={6} param="campanhas">
-            <div className="card px-5 py-1.5">
-              <PageItems>
-                {campaigns.map(({ edition, entry }) => {
-                  const team = entry.teamId != null ? teamById.get(entry.teamId) : null;
-                  const result =
-                    resultLabel(entry.result) ||
-                    (edition.status === "andamento" ? "Em andamento" : "Participou");
-                  return (
-                    <Link
-                      key={edition.id}
-                      href={`/edicoes/${edition.id}`}
-                      className="flex min-h-[68px] items-center gap-3.5"
-                    >
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-name font-semibold">
-                          {edition.name}
-                        </span>
-                        <span className="block truncate text-body text-muted">
-                          {[team?.name, edition.game, formatDate(edition.playedOn)]
-                            .filter(Boolean)
-                            .join(" · ")}
-                        </span>
-                      </span>
-                      <span
-                        className={`shrink-0 text-body ${
-                          entry.result === "campeao"
-                            ? "font-semibold text-accent"
-                            : "text-muted"
-                        }`}
-                      >
-                        {result}
-                      </span>
-                    </Link>
-                  );
-                })}
-              </PageItems>
-            </div>
-            <PagedNav />
-          </Paged>
+          <div className="card px-5 py-1.5">
+            {campaigns.map(({ edition, entry }) => {
+              const team = entry.teamId != null ? teamById.get(entry.teamId) : null;
+              const result =
+                resultLabel(entry.result) ||
+                (edition.status === "andamento" ? "Em andamento" : "Participou");
+              return (
+                <Link
+                  key={edition.id}
+                  href={`/edicoes/${edition.id}`}
+                  className="flex min-h-[68px] items-center gap-3.5"
+                >
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-name font-semibold">
+                      {edition.name}
+                    </span>
+                    <span className="block truncate text-body text-muted">
+                      {[team?.name, edition.game, formatDate(edition.playedOn)]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  </span>
+                  <span
+                    className={`shrink-0 text-body ${
+                      entry.result === "campeao"
+                        ? "font-semibold text-accent"
+                        : "text-muted"
+                    }`}
+                  >
+                    {result}
+                  </span>
+                </Link>
+              );
+            })}
+          </div>
         )}
       </Section>
 
       {rivals.length > 0 && (
         <Section title="Retrospecto contra cada um">
-          <Paged total={rivals.length} pageSize={10} param="rivais">
-            <div className="card px-5 pb-2 pt-4">
-              <table className="w-full text-body">
-                <thead className="text-muted">
-                  <tr>
-                    <th className="pb-2 text-left font-normal">Rival</th>
-                    <th className="px-1.5 pb-2 text-right font-normal" title="Jogos">J</th>
-                    <th className="px-1.5 pb-2 text-right font-normal" title="Vitórias">V</th>
-                    <th className="px-1.5 pb-2 text-right font-normal" title="Empates">E</th>
-                    <th className="px-1.5 pb-2 text-right font-normal" title="Derrotas">D</th>
-                    <th className="hidden px-1.5 pb-2 text-right font-normal sm:table-cell" title="Gols">
-                      Gols
-                    </th>
-                    <th className="px-1.5 pb-2 text-right font-normal" title="Aproveitamento">%</th>
+          <div className="card px-5 pb-2 pt-4">
+            <table className="w-full text-body">
+              <thead className="text-muted">
+                <tr>
+                  <th className="pb-2 text-left font-normal">Rival</th>
+                  <th className="px-1.5 pb-2 text-right font-normal" title="Jogos">J</th>
+                  <th className="px-1.5 pb-2 text-right font-normal" title="Vitórias">V</th>
+                  <th className="px-1.5 pb-2 text-right font-normal" title="Empates">E</th>
+                  <th className="px-1.5 pb-2 text-right font-normal" title="Derrotas">D</th>
+                  <th className="hidden px-1.5 pb-2 text-right font-normal sm:table-cell" title="Gols">
+                    Gols
+                  </th>
+                  <th className="px-1.5 pb-2 text-right font-normal" title="Aproveitamento">%</th>
+                </tr>
+              </thead>
+              <tbody>
+                {rivals.map((r) => (
+                  <tr key={r.opponent.id} className="h-[52px]">
+                    <td className="w-full max-w-0">
+                      <Link
+                        href={`/jogadores/${r.opponent.id}`}
+                        className="block truncate text-name font-semibold"
+                      >
+                        {r.opponent.name}
+                      </Link>
+                    </td>
+                    <td className="num px-1.5 text-right">{r.played}</td>
+                    <td className="num px-1.5 text-right">{r.wins}</td>
+                    <td className="num px-1.5 text-right">{r.draws}</td>
+                    <td className="num px-1.5 text-right">{r.losses}</td>
+                    <td className="num hidden whitespace-nowrap px-1.5 text-right sm:table-cell">
+                      {r.gf}–{r.ga}
+                    </td>
+                    <td className="num px-1.5 text-right text-name font-semibold">
+                      {pct(r)}%
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  <PageItems>
-                    {rivals.map((r) => (
-                      <tr key={r.opponent.id} className="h-[52px]">
-                        <td className="w-full max-w-0">
-                          <Link
-                            href={`/jogadores/${r.opponent.id}`}
-                            className="block truncate text-name font-semibold"
-                          >
-                            {r.opponent.name}
-                          </Link>
-                        </td>
-                        <td className="num px-1.5 text-right">{r.played}</td>
-                        <td className="num px-1.5 text-right">{r.wins}</td>
-                        <td className="num px-1.5 text-right">{r.draws}</td>
-                        <td className="num px-1.5 text-right">{r.losses}</td>
-                        <td className="num hidden whitespace-nowrap px-1.5 text-right sm:table-cell">
-                          {r.gf}–{r.ga}
-                        </td>
-                        <td className="num px-1.5 text-right text-name font-semibold">
-                          {pct(r)}%
-                        </td>
-                      </tr>
-                    ))}
-                  </PageItems>
-                </tbody>
-              </table>
-            </div>
-            <PagedNav />
-          </Paged>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </Section>
       )}
 
