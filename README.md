@@ -42,6 +42,12 @@ Fotos dos jogadores: ao criar ou editar um jogador dá para enviar uma foto do a
 
 Sorteio na TV: em "Sortear na TV" (ou no botão "Tela cheia", ou a tecla F, durante o sorteio) a cena aumenta para ocupar a tela toda, com a tela mantida acesa e o cursor escondido. Esc sai da tela cheia.
 
+Ranking: mostra o pódio dos três primeiros do filtro escolhido (mais títulos, finais, participações, vitórias, gols ou pontuação geral) e, abaixo, a tabela de todos. A pontuação geral soma 3 pontos por vitória e 1 por empate. Há ainda as visões de Times e de Recordes.
+
+Configurações da edição: o botão "Configurações" (só para o admin) na página de uma edição abre a tela com participantes, times do sorteio, grupos e rodadas, fases e confrontos do mata-mata, dados, desfazer tabela e excluir.
+
+Imagens, ícones, fontes, cores e desenhos do app (e como trocar cada um): veja [ASSETS.md](ASSETS.md).
+
 Regras que o site aplica:
 
 - Desempate nos grupos: pontos, vitórias, saldo, gols pró, confronto direto e, por último, a ordem do sorteio.

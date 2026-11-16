@@ -801,6 +801,36 @@ fieldset label:has(input[type="radio"]:checked) {
   animation: reveal 0.25s steps(3, jump-end) both;
 }
 
+/* Degraus do pódio do ranking (src/components/RankPodium.tsx) */
+.rank-step {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  border: 3px solid;
+  border-bottom: 0;
+  border-radius: 10px 10px 0 0;
+  background: linear-gradient(#2f66d6, #1f4bb3);
+  box-shadow: 0 0 0 2px var(--color-night);
+  color: #fff;
+  font-family: var(--font-pixel);
+  font-size: 28px;
+  text-shadow:
+    -1.5px 0 var(--color-night), 1.5px 0 var(--color-night),
+    0 -1.5px var(--color-night), 0 1.5px var(--color-night),
+    0 3px var(--color-night);
+}
+/* A borda de cada colocação: dourada, prateada e bronze. */
+.rank-gold {
+  border-color: #f5c542;
+}
+.rank-silver {
+  border-color: #dbe7ff;
+}
+.rank-bronze {
+  border-color: #f5a05a;
+}
+
 /* Entrada em quadros, sem suavização, como sprite aparecendo na tela. */
 @keyframes reveal {
   0% {

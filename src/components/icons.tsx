@@ -171,3 +171,28 @@ export const TrashIcon = icon(
     <path d="M10 11v6M14 11v6" />
   </>,
 );
+
+/** Coroa: o primeiro colocado. */
+export const CrownIcon = icon(
+  <>
+    <path d="M3 18 2 7l5.5 4.5L12 4l4.5 7.5L22 7l-1 11Z" />
+    <path d="M3 21h18" />
+  </>,
+);
+
+/** Medalha com fita: segundo e terceiro lugares. */
+export const MedalIcon = icon(
+  <>
+    <path d="m8 3 4 7 4-7" />
+    <circle cx="12" cy="15.5" r="5.5" />
+  </>,
+);
+
+/** Engrenagem: configurações. */
+export const SettingsIcon = icon(
+  <>
+    <circle cx="12" cy="12" r="3" />
+    <path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1" />
+    <circle cx="12" cy="12" r="6.5" />
+  </>,
+);

@@ -725,11 +725,23 @@ export function resolveKnockout(entries: EntryLike[], matches: MatchLike[]) {
 
 /**
  * Uma vaga do mata-mata pode ser escolhida à mão quando vem direto de um
- * participante ou da classificação dos grupos. As que dependem do vencedor ou
- * do perdedor de outro jogo (W: e L:) são sempre resultado de partida.
+ * participante ou da classificação dos grupos. As que vêm do vencedor de outro
+ * jogo (W:) também podem, até a semifinal; a final e o 3º lugar seguem sempre
+ * o resultado das semifinais (W: da final e L:).
  */
-export function isEditableSlot(source: string | null) {
-  return source == null || source.startsWith("G:") || source.startsWith("B:");
+export function isEditableSlot(
+  source: string | null,
+  round?: number,
+  totalRounds?: number,
+) {
+  if (source == null || source.startsWith("G:") || source.startsWith("B:"))
+    return true;
+  return (
+    source.startsWith("W:") &&
+    round != null &&
+    totalRounds != null &&
+    round < totalRounds
+  );
 }
 
 export function knockoutRounds(matches: { stage: string; round: number }[]) {

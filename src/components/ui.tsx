@@ -10,14 +10,18 @@ export function PageTitle({
   title,
   subtitle,
   recycle = false,
+  action,
 }: {
   title: string;
   subtitle?: ReactNode;
   /** Mostra o símbolo de reciclagem ao lado do título (página inicial). */
   recycle?: boolean;
+  /** Botão no canto direito da faixa (por exemplo, um ícone de configurações). */
+  action?: ReactNode;
 }) {
   return (
-    <header className="pitch -mx-4 mb-7 px-4 py-5">
+    <header className="pitch -mx-4 mb-7 flex items-start justify-between gap-4 px-4 py-5">
+      <div className="min-w-0 flex-1">
       <h1
         className={recycle ? "flex items-center gap-3 text-title" : "text-title"}
         aria-label={title}
@@ -34,6 +38,8 @@ export function PageTitle({
         </span>
       </h1>
       {subtitle && <p className="mt-2 text-body text-muted">{subtitle}</p>}
+      </div>
+      {action && <div className="shrink-0">{action}</div>}
     </header>
   );
 }

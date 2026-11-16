@@ -1,13 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  deleteEditionAction,
-  resetEditionAction,
-  setParticipantsAction,
-  setTeamPoolAction,
-  updateEditionAction,
-} from "@/app/actions";
 import { Arcade } from "@/components/Arcade";
 import { Avatar } from "@/components/Avatar";
 import {
@@ -17,23 +10,17 @@ import {
 } from "@/components/ChampionParty";
 import { DrawPanel } from "@/components/DrawPanel";
 import { EntryControls } from "@/components/EntryControls";
-import { FormatFields } from "@/components/FormatFields";
 import { StartPanel } from "@/components/GroupDraw";
-import { GroupsEditor } from "@/components/GroupsEditor";
-import { KnockoutEditor } from "@/components/KnockoutEditor";
-import { KnockoutPhases } from "@/components/KnockoutPhases";
 import { Tabs, type TabItem } from "@/components/Tabs";
 import { MatchRow, type MatchSide } from "@/components/MatchRow";
 import { StandingsTable } from "@/components/StandingsTable";
-import { ActionForm, SubmitButton } from "@/components/forms";
-import { TrophyIcon } from "@/components/icons";
 import {
-  Disclosure,
-  Empty,
-  PageTitle,
-  PersonRow,
-  Section,
-} from "@/components/ui";
+  PeopleIcon,
+  SettingsIcon,
+  SwordsIcon,
+  TrophyIcon,
+} from "@/components/icons";
+import { Empty, PageTitle, PersonRow, Section } from "@/components/ui";
 import type { Match } from "@/db/schema";
 import { isAdmin } from "@/lib/auth";
 import { getData } from "@/lib/data";
@@ -48,19 +35,13 @@ import {
   roundLabel,
   sourceLabel,
 } from "@/lib/labels";
-import {
-  configOf,
-  editionView,
-  listPlayers,
-  type EditionView,
-} from "@/lib/services";
+import { configOf, editionView, type EditionView } from "@/lib/services";
 import {
   knockoutRounds,
   standingsByGroup,
   validateConfig,
   type Format,
 } from "@/lib/tournament";
-import { getDb } from "@/db";
 
 async function load(params: Promise<{ id: string }>) {
   const { id } = await params;
@@ -89,7 +70,7 @@ function Podium({ view }: { view: EditionView }) {
         <Avatar
           name={champion.player.name}
           photoUrl={champion.player.photoUrl}
-              avatar={champion.player.avatar}
+          avatar={champion.player.avatar}
           size={72}
         />
         <div className="min-w-0">
@@ -145,7 +126,11 @@ function MatchList({
   const side = (entryId: number | null): MatchSide | null => {
     const e = entryId != null ? entryById.get(entryId) : null;
     return e
-      ? { playerId: e.playerId, name: e.player.name, team: e.team?.name ?? null }
+      ? {
+          playerId: e.playerId,
+          name: e.player.name,
+          team: e.team?.name ?? null,
+        }
       : null;
   };
   return (
@@ -157,8 +142,16 @@ function MatchList({
           knockout={m.stage !== "grupo"}
           home={side(m.homeEntryId)}
           away={side(m.awayEntryId)}
-          homePlaceholder={sourceLabel(m.homeSource, view.edition.format, totalRounds)}
-          awayPlaceholder={sourceLabel(m.awaySource, view.edition.format, totalRounds)}
+          homePlaceholder={sourceLabel(
+            m.homeSource,
+            view.edition.format,
+            totalRounds,
+          )}
+          awayPlaceholder={sourceLabel(
+            m.awaySource,
+            view.edition.format,
+            totalRounds,
+          )}
           homeScore={m.homeScore}
           awayScore={m.awayScore}
           homePens={m.homePens}
@@ -182,7 +175,9 @@ function Tournament({ view, admin }: { view: EditionView; admin: boolean }) {
   const tables = groupMatches.length ? standingsByGroup(entries, matches) : [];
   const entryById = new Map(entries.map((e) => [e.id, e]));
 
-  const full = tables.length ? Math.floor(edition.qualifiers / tables.length) : 0;
+  const full = tables.length
+    ? Math.floor(edition.qualifiers / tables.length)
+    : 0;
   const extra = tables.length ? edition.qualifiers % tables.length : 0;
   const ordinal = ["", "primeiro", "segundo", "terceiro", "quarto", "quinto"];
   let rule = "";
@@ -205,13 +200,17 @@ function Tournament({ view, admin }: { view: EditionView; admin: boolean }) {
   for (let r = 1; r <= totalRounds; r++) {
     if (r === totalRounds) {
       const third = knockout.filter((m) => m.stage === "terceiro");
-      if (third.length) stages.push({ label: "Disputa de 3º lugar", matches: third });
+      if (third.length)
+        stages.push({ label: "Disputa de 3º lugar", matches: third });
     }
     const ms = knockout.filter((m) => m.stage === "mata" && m.round === r);
-    if (ms.length) stages.push({ label: roundLabel(r, totalRounds), matches: ms });
+    if (ms.length)
+      stages.push({ label: roundLabel(r, totalRounds), matches: ms });
   }
 
-  const rounds = [...new Set(groupMatches.map((m) => m.round))].sort((a, b) => a - b);
+  const rounds = [...new Set(groupMatches.map((m) => m.round))].sort(
+    (a, b) => a - b,
+  );
 
   const tabs: TabItem[] = [];
 
@@ -219,6 +218,7 @@ function Tournament({ view, admin }: { view: EditionView; admin: boolean }) {
     tabs.push({
       id: "grupos",
       label: edition.format === "liga" ? "Classificação" : "Grupos",
+      icon: <PeopleIcon width={18} height={18} />,
       content: (
         <>
           <p className="mb-4 text-body text-muted">{rule}</p>
@@ -226,7 +226,9 @@ function Tournament({ view, admin }: { view: EditionView; admin: boolean }) {
             {tables.map((t) => (
               <div key={t.label} className="card px-5 pb-2 pt-4">
                 {tables.length > 1 && (
-                  <h3 className="mb-2 text-name font-semibold">Grupo {t.label}</h3>
+                  <h3 className="mb-2 text-name font-semibold">
+                    Grupo {t.label}
+                  </h3>
                 )}
                 <StandingsTable
                   rows={t.rows}
@@ -245,6 +247,7 @@ function Tournament({ view, admin }: { view: EditionView; admin: boolean }) {
     tabs.push({
       id: "mata",
       label: "Mata-mata",
+      icon: <TrophyIcon width={18} height={18} />,
       content: (
         <>
           {stages.map((s) => (
@@ -266,7 +269,8 @@ function Tournament({ view, admin }: { view: EditionView; admin: boolean }) {
   if (rounds.length > 0) {
     tabs.push({
       id: "jogos",
-      label: edition.format === "grupos" ? "Jogos dos grupos" : "Jogos",
+      label: "Jogos",
+      icon: <SwordsIcon width={22} height={22} />,
       content: (
         <>
           {edition.format === "grupos" && edition.pairing !== "interno" && (
@@ -298,6 +302,10 @@ function Tournament({ view, admin }: { view: EditionView; admin: boolean }) {
       ),
     });
   }
+
+  // Ordem das abas: jogos, grupos (ou classificação) e mata-mata.
+  const tabOrder = ["jogos", "grupos", "mata"];
+  tabs.sort((a, b) => tabOrder.indexOf(a.id) - tabOrder.indexOf(b.id));
 
   // Abre direto no mata-mata quando a fase de grupos já acabou.
   const groupsDone =
@@ -352,15 +360,13 @@ function Participants({
               name={e.player.name}
               photoUrl={e.player.photoUrl}
               avatar={e.player.avatar}
-              detail={
-                [
-                  view.edition.useTeams ? (e.team?.name ?? "Sem time") : "",
-                  e.groupLabel ? `Grupo ${e.groupLabel}` : "",
-                  manual ? resultLabel(e.result) : "",
-                ]
-                  .filter(Boolean)
-                  .join(" · ")
-              }
+              detail={[
+                view.edition.useTeams ? (e.team?.name ?? "Sem time") : "",
+                e.groupLabel ? `Grupo ${e.groupLabel}` : "",
+                manual ? resultLabel(e.result) : "",
+              ]
+                .filter(Boolean)
+                .join(" · ")}
             />
           </div>
           {admin && editable && (
@@ -400,7 +406,9 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
     formatDate(edition.playedOn),
     FORMAT_LABELS[format],
     manual ? "" : STATUS_LABELS[edition.status],
-    matches.length ? `${played} de ${plural(matches.length, "jogo", "jogos")}` : "",
+    matches.length
+      ? `${played} de ${plural(matches.length, "jogo", "jogos")}`
+      : "",
   ]
     .filter(Boolean)
     .join(" · ");
@@ -417,17 +425,32 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
       : null;
   };
 
-  const allPlayers = admin ? await listPlayers(getDb()) : [];
-  const inEdition = new Set(entries.map((e) => e.playerId));
   const withoutTeam = entries.filter((e) => e.teamId == null).length;
-  const configProblem = setup ? validateConfig(configOf(edition), entries.length) : null;
+  const configProblem = setup
+    ? validateConfig(configOf(edition), entries.length)
+    : null;
   const knownTeams = [
     ...new Set([...edition.teamPool, ...data.teams.map((t) => t.name)]),
   ].sort((a, b) => a.localeCompare(b, "pt-BR"));
 
   return (
     <>
-      <PageTitle title={edition.name} subtitle={subtitle} />
+      <PageTitle
+        title={edition.name}
+        subtitle={subtitle}
+        action={
+          admin && (
+            <Link
+              href={`/edicoes/${edition.id}/configuracoes`}
+              className="btn btn-icon"
+              title="Configurações"
+              aria-label="Configurações da edição"
+            >
+              <SettingsIcon width={22} height={22} />
+            </Link>
+          )
+        }
+      />
       {edition.notes && (
         <p className="-mt-4 mb-8 text-body text-muted">{edition.notes}</p>
       )}
@@ -448,7 +471,11 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
       {(manual || setup) && (
         <Section
           title="Participantes"
-          aside={entries.length ? plural(entries.length, "inscrito", "inscritos") : ""}
+          aside={
+            entries.length
+              ? plural(entries.length, "inscrito", "inscritos")
+              : ""
+          }
         >
           <Participants view={view} admin={admin} editable />
           {edition.useTeams && (
@@ -495,210 +522,6 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
                 hasGroups={format === "grupos"}
                 manualGroups={entries.some((e) => e.groupLabel != null)}
               />
-            </div>
-          </div>
-        </Section>
-      )}
-
-      {admin && (
-        <Section title="Administração">
-          <div className="grid grid-cols-1 gap-3">
-            {(manual || setup) && (
-              <Disclosure title="Participantes">
-                <ActionForm
-                  key={entries.map((e) => e.playerId).join(",")}
-                  action={setParticipantsAction}
-                  className="flex flex-col gap-3"
-                >
-                  <input type="hidden" name="editionId" value={edition.id} />
-                  <div className="-mx-1 flex flex-wrap gap-1">
-                    {allPlayers.map((p) => (
-                      <label
-                        key={p.id}
-                        className="chip cursor-pointer has-checked:bg-wash has-checked:font-semibold has-checked:text-ink"
-                      >
-                        <input
-                          type="checkbox"
-                          name="playerId"
-                          value={p.id}
-                          defaultChecked={inEdition.has(p.id)}
-                          className="sr-only"
-                        />
-                        {p.name}
-                      </label>
-                    ))}
-                  </div>
-                  <input
-                    name="newPlayers"
-                    className="field"
-                    placeholder="Gente nova? Nomes separados por vírgula"
-                  />
-                  <div>
-                    <SubmitButton className="btn">Salvar participantes</SubmitButton>
-                  </div>
-                </ActionForm>
-              </Disclosure>
-            )}
-
-            {setup && edition.useTeams && (
-              <Disclosure title="Times do sorteio">
-                <ActionForm
-                  key={edition.teamPool.join("|")}
-                  action={setTeamPoolAction}
-                  className="flex flex-col gap-3"
-                >
-                  <input type="hidden" name="editionId" value={edition.id} />
-                  <textarea
-                    name="teamPool"
-                    rows={8}
-                    className="field"
-                    aria-label="Times do sorteio, um por linha"
-                    placeholder={"Um time por linha"}
-                    defaultValue={edition.teamPool.join("\n")}
-                  />
-                  <div>
-                    <SubmitButton className="btn">Salvar times</SubmitButton>
-                  </div>
-                </ActionForm>
-              </Disclosure>
-            )}
-
-            {format === "grupos" && entries.length > 0 && (
-              <Disclosure title="Grupos e rodadas">
-                <GroupsEditor
-                  editionId={edition.id}
-                  groupsCount={edition.groupsCount}
-                  started={!setup}
-                  entries={entries.map((e) => ({
-                    id: e.id,
-                    name: e.player.name,
-                    team: e.team?.name ?? null,
-                    groupLabel: e.groupLabel,
-                  }))}
-                />
-              </Disclosure>
-            )}
-
-            {(format === "grupos" || format === "liga") && !setup && (
-              <Disclosure title="Fases do mata-mata">
-                <KnockoutPhases
-                  editionId={edition.id}
-                  format={format}
-                  qualifiers={edition.qualifiers}
-                  thirdPlace={edition.thirdPlace}
-                  participants={entries.length}
-                  groupsCount={format === "grupos" ? edition.groupsCount : 1}
-                />
-              </Disclosure>
-            )}
-
-            {!manual && !setup && knockoutRounds(matches) > 0 && (
-              <Disclosure title="Confrontos do mata-mata">
-                <KnockoutEditor
-                  editionId={edition.id}
-                  totalRounds={knockoutRounds(matches)}
-                  matches={matches.filter((m) => m.stage === "mata")}
-                  entries={entries.map((e) => ({
-                    id: e.id,
-                    name: e.player.name,
-                    team: e.team?.name ?? null,
-                  }))}
-                />
-              </Disclosure>
-            )}
-
-            <Disclosure title={setup ? "Dados e formato" : "Dados da edição"}>
-              <ActionForm action={updateEditionAction} className="flex flex-col gap-4">
-                <input type="hidden" name="editionId" value={edition.id} />
-                <div className="grid gap-3 sm:grid-cols-[1fr_120px]">
-                  <label>
-                    <span className="label">Nome</span>
-                    <input name="name" className="field" defaultValue={edition.name} required />
-                  </label>
-                  <label>
-                    <span className="label">Número</span>
-                    <input
-                      name="number"
-                      type="number"
-                      min={1}
-                      className="field num"
-                      defaultValue={edition.number}
-                      required
-                    />
-                  </label>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <label>
-                    <span className="label">Jogo</span>
-                    <input name="game" className="field" defaultValue={edition.game} required />
-                  </label>
-                  <label>
-                    <span className="label">Data</span>
-                    <input
-                      name="playedOn"
-                      type="date"
-                      className="field"
-                      defaultValue={edition.playedOn ?? ""}
-                    />
-                  </label>
-                </div>
-                <label>
-                  <span className="label">Observações</span>
-                  <textarea
-                    name="notes"
-                    rows={2}
-                    className="field"
-                    defaultValue={edition.notes ?? ""}
-                    placeholder="Onde foi, quem levou a pizza, polêmicas..."
-                  />
-                </label>
-                {setup && (
-                  <label className="flex items-center gap-2.5 text-body">
-                    <input
-                      type="checkbox"
-                      name="useTeams"
-                      defaultChecked={edition.useTeams}
-                      className="size-4 accent-accent"
-                    />
-                    Cada participante joga com um time
-                  </label>
-                )}
-                {setup ? (
-                  <FormatFields
-                    initial={configOf(edition)}
-                    participants={entries.length}
-                    allowManual={false}
-                  />
-                ) : (
-                  <input type="hidden" name="format" value="manual" />
-                )}
-                <div>
-                  <SubmitButton className="btn">Salvar dados</SubmitButton>
-                </div>
-              </ActionForm>
-            </Disclosure>
-
-            <div className="flex flex-wrap gap-1 pt-1">
-              {!manual && !setup && (
-                <ActionForm action={resetEditionAction}>
-                  <input type="hidden" name="editionId" value={edition.id} />
-                  <SubmitButton
-                    className="btn btn-danger"
-                    confirm="Desfazer a tabela? Todos os jogos e placares desta edição serão apagados."
-                  >
-                    Desfazer tabela
-                  </SubmitButton>
-                </ActionForm>
-              )}
-              <ActionForm action={deleteEditionAction}>
-                <input type="hidden" name="editionId" value={edition.id} />
-                <SubmitButton
-                  className="btn btn-danger"
-                  confirm={`Excluir ${edition.name}? Isso apaga a edição inteira do histórico.`}
-                >
-                  Excluir edição
-                </SubmitButton>
-              </ActionForm>
             </div>
           </div>
         </Section>

@@ -30,14 +30,16 @@ export function KnockoutEditor({
   );
   const editable = matches
     .filter(
-      (m) => isEditableSlot(m.homeSource) || isEditableSlot(m.awaySource),
+      (m) =>
+        isEditableSlot(m.homeSource, m.round, totalRounds) ||
+        isEditableSlot(m.awaySource, m.round, totalRounds),
     )
     .sort((a, b) => a.round - b.round || a.slot - b.slot);
 
   if (editable.length === 0) {
     return (
       <p className="text-body text-muted">
-        Todos os confrontos já dependem do resultado de outros jogos.
+        Os confrontos restantes dependem do resultado das semifinais.
       </p>
     );
   }
@@ -45,10 +47,10 @@ export function KnockoutEditor({
   const select = (match: Match, side: "home" | "away") => {
     const source = side === "home" ? match.homeSource : match.awaySource;
     const current = side === "home" ? match.homeEntryId : match.awayEntryId;
-    if (!isEditableSlot(source)) {
+    if (!isEditableSlot(source, match.round, totalRounds)) {
       return (
         <span className="field flex items-center text-faint">
-          Vencedor de outro jogo
+          Decidido pelo jogo anterior
         </span>
       );
     }
@@ -81,7 +83,7 @@ export function KnockoutEditor({
       <p className="text-body text-muted">
         Escolha quem joga cada confronto. Quem mudar de confronto perde o placar
         e os jogos seguintes são refeitos. Vagas editadas deixam de seguir a
-        classificação dos grupos. Para trocar dois participantes de lugar,
+        classificação dos grupos e o vencedor do jogo anterior (inclusive nas semifinais). Para trocar dois participantes de lugar,
         mude os dois lados antes de salvar.
       </p>
       {editable.map((m) => (

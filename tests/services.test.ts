@@ -523,6 +523,37 @@ describe("confrontos do mata-mata editados à mão", () => {
     expect(v.entries.filter((e) => e.result === "campeao")).toHaveLength(1);
   });
 
+  it("permite escolher quem joga a semifinal que vem das quartas, mas não a final", async () => {
+    const edition = await createEdition(db, {
+      ...baseEdition,
+      name: "Semis manuais",
+      number: 31,
+      config: { ...baseEdition.config, format: "mata" },
+      playerIds: playerIds.slice(0, 8),
+      teamPool: TEAMS,
+    });
+    await drawTeams(db, edition.id);
+    await startEdition(db, edition.id);
+    const v = await view(edition.id);
+    const mata = v.matches.filter((m) => m.stage === "mata");
+    const semi = mata.find((m) => m.round === 2 && m.slot === 0)!;
+    const final = mata.find((m) => m.round === 3)!;
+    const who = v.entries[0].id;
+
+    await setKnockoutSlots(db, edition.id, [
+      { matchId: semi.id, side: "home", entryId: who },
+    ]);
+    const after = (await view(edition.id)).matches.find((m) => m.id === semi.id)!;
+    expect(after.homeEntryId).toBe(who);
+    expect(after.homeSource).toBeNull();
+
+    await expect(
+      setKnockoutSlots(db, edition.id, [
+        { matchId: final.id, side: "home", entryId: who },
+      ]),
+    ).rejects.toThrow("outro jogo");
+  });
+
   it("não edita antes de a tabela existir", async () => {
     const draft = await createEdition(db, {
       ...baseEdition,
