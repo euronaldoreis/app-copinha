@@ -23,6 +23,7 @@ import type { AllData } from "./stats";
 import {
   GROUP_LABELS,
   isEditableSlot,
+  knockoutRounds,
   assignGroups,
   computeResults,
   normalizeConfig,
@@ -842,7 +843,13 @@ export async function setKnockoutSlots(
       if (!entryIds.has(slot.entryId))
         throw new UserError("Participante não encontrado nesta edição.");
       const home = slot.side === "home";
-      if (!isEditableSlot(home ? match.homeSource : match.awaySource))
+      if (
+        !isEditableSlot(
+          home ? match.homeSource : match.awaySource,
+          match.round,
+          knockoutRounds(matchRows),
+        )
+      )
         throw new UserError(
           "Essa vaga é decidida pelo resultado de outro jogo e não pode ser editada.",
         );
