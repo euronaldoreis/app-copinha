@@ -689,6 +689,35 @@ fieldset label:has(input[type="radio"]:checked) {
   animation: reveal 0.25s steps(3, jump-end) both;
 }
 
+/* Degraus do pódio do ranking (src/components/RankPodium.tsx) */
+.rank-step {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  border: 3px solid var(--color-night);
+  box-shadow:
+    inset 3px 3px 0 rgb(255 255 255 / 0.28),
+    inset -3px -3px 0 rgb(0 0 0 / 0.28);
+  color: #fff;
+  font-family: var(--font-pixel);
+  font-size: 20px;
+  text-shadow: 3px 3px 0 var(--color-night);
+}
+/* Cada colocação tem o seu material: madeira dourada, aço e madeira de bronze. */
+.rank-gold {
+  background-color: #c98d1e;
+  background-image: repeating-linear-gradient(90deg, rgb(0 0 0 / 0.12) 0 8px, transparent 8px 20px);
+}
+.rank-silver {
+  background-color: #77839f;
+  background-image: repeating-linear-gradient(0deg, rgb(0 0 0 / 0.14) 0 3px, transparent 3px 8px);
+}
+.rank-bronze {
+  background-color: #a4673a;
+  background-image: repeating-linear-gradient(90deg, rgb(0 0 0 / 0.14) 0 6px, transparent 6px 16px);
+}
+
 /* Entrada em quadros, sem suavização, como sprite aparecendo na tela. */
 @keyframes reveal {
   0% {

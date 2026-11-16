@@ -2,28 +2,31 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Avatar } from "@/components/Avatar";
+import { RankPodium } from "@/components/RankPodium";
 import { Empty, PageTitle } from "@/components/ui";
 import { getData } from "@/lib/data";
 import { plural, resultLabel } from "@/lib/labels";
+import { RANK_FILTERS, eligible, rankFilter, sortByFilter } from "@/lib/ranking";
 import {
   computeRanking,
   computeRecords,
   computeTeamRanking,
-  sortByGames,
   type MatchRecord,
   type PlayerStats,
 } from "@/lib/stats";
 
 export const metadata: Metadata = { title: "Ranking" };
 
+// Os seis filtros do ranking de jogadores, depois as duas visões à parte.
 const TABS = [
-  { id: "titulos", label: "Títulos" },
-  { id: "jogos", label: "Jogos" },
+  ...RANK_FILTERS.map((f) => ({ id: String(f.id), label: f.label })),
   { id: "times", label: "Times" },
   { id: "recordes", label: "Recordes" },
 ];
 
 interface Column {
+  /** Filtro que esta coluna mede (ela fica em destaque quando ele está ativo). */
+  key?: string;
   head: string;
   title: string;
   value: (r: PlayerStats) => ReactNode;
@@ -33,23 +36,23 @@ interface Column {
 }
 
 const TITLE_COLUMNS: Column[] = [
-  { head: "Tit.", title: "Títulos", value: (r) => r.titles, strong: true },
-  { head: "Fin.", title: "Finais disputadas", value: (r) => r.finals },
+  { key: "titulos", head: "Tit.", title: "Títulos", value: (r) => r.titles },
+  { key: "finais", head: "Fin.", title: "Finais disputadas", value: (r) => r.finals },
   { head: "Pod.", title: "Pódios (1º, 2º ou 3º)", value: (r) => r.podiums, wide: true },
   { head: "Semi", title: "Vezes entre os 4 melhores", value: (r) => r.top4, wide: true },
-  { head: "Part.", title: "Participações", value: (r) => r.participations },
+  { key: "participacoes", head: "Part.", title: "Participações", value: (r) => r.participations },
 ];
 
 const signed = (n: number) => (n > 0 ? `+${n}` : n);
 
 const GAME_COLUMNS: Column[] = [
-  { head: "Pts", title: "Pontos (vitória 3, empate 1)", value: (r) => r.points, strong: true },
+  { key: "pontos", head: "Pts", title: "Pontos (vitória 3, empate 1)", value: (r) => r.points },
   { head: "%", title: "Aproveitamento", value: (r) => `${r.pct}%` },
   { head: "J", title: "Jogos", value: (r) => r.played },
-  { head: "V", title: "Vitórias", value: (r) => r.wins, wide: true },
+  { key: "vitorias", head: "V", title: "Vitórias", value: (r) => r.wins },
   { head: "E", title: "Empates", value: (r) => r.draws, wide: true },
   { head: "D", title: "Derrotas", value: (r) => r.losses, wide: true },
-  { head: "GP", title: "Gols pró", value: (r) => r.gf, wide: true },
+  { key: "gols", head: "GP", title: "Gols pró", value: (r) => r.gf },
   { head: "GC", title: "Gols contra", value: (r) => r.ga, wide: true },
   { head: "SG", title: "Saldo de gols", value: (r) => signed(r.gd) },
 ];
@@ -180,38 +183,61 @@ function matchDetail(m: MatchRecord) {
 
 export default async function RankingPage(props: PageProps<"/ranking">) {
   const { aba } = await props.searchParams;
-  const tab = TABS.find((t) => t.id === aba)?.id ?? "titulos";
+  // "jogos" era o nome antigo da aba de pontos: links salvos continuam valendo.
+  const wanted = aba === "jogos" ? "pontos" : aba;
+  const tab = TABS.find((t) => t.id === wanted)?.id ?? "titulos";
   const data = await getData();
   const ranking = computeRanking(data).filter((r) => r.participations > 0);
+  const filter = rankFilter(tab);
 
+  let podium: ReactNode = null;
   let content: ReactNode;
   if (ranking.length === 0) {
     content = <Empty>O ranking aparece quando a primeira edição começar.</Empty>;
-  } else if (tab === "titulos") {
-    content = (
-      <>
-        <RankTable
-          rows={ranking}
-          columns={TITLE_COLUMNS}
-          detail={(r) =>
-            r.bestResult ? resultLabel(r.bestResult) : "Estreante"
-          }
-        />
-        <Legend columns={TITLE_COLUMNS} />
-      </>
-    );
-  } else if (tab === "jogos") {
-    const rows = sortByGames(ranking.filter((r) => r.played > 0));
+  } else if (filter) {
+    const rows = sortByFilter(filter.id, eligible(filter, ranking));
+    // Pódio: os três primeiros que realmente têm o que o filtro mede.
+    const top = rows
+      .filter((r) => filter.value(r) > 0)
+      .slice(0, 3)
+      .map((r) => ({
+        playerId: r.player.id,
+        name: r.player.name,
+        photoUrl: r.player.photoUrl,
+        avatar: r.player.avatar,
+        value: filter.describe(filter.value(r)),
+      }));
+    if (top.length > 0) podium = <RankPodium top={top} />;
+
+    const gameFilter = filter.needsGames;
+    const columns = (gameFilter ? GAME_COLUMNS : TITLE_COLUMNS).map((c) => ({
+      ...c,
+      // A coluna do filtro escolhido sempre aparece (inclusive no celular) e em destaque.
+      strong: c.key === filter.id,
+      wide: c.key === filter.id ? false : c.wide,
+    }));
     content = rows.length ? (
       <>
         <RankTable
           rows={rows}
-          columns={GAME_COLUMNS}
-          detail={(r) => `${r.wins}V ${r.draws}E ${r.losses}D`}
+          columns={columns}
+          detail={(r) =>
+            gameFilter
+              ? `${r.wins}V ${r.draws}E ${r.losses}D`
+              : r.bestResult
+                ? resultLabel(r.bestResult)
+                : "Estreante"
+          }
         />
         <Legend
-          columns={GAME_COLUMNS}
-          note="Ordenado por pontos, depois aproveitamento. Jogo decidido nos pênaltis conta como empate"
+          columns={columns}
+          note={
+            filter.id === "pontos"
+              ? "Pontuação geral: vitória vale 3 pontos e empate 1. Desempate por aproveitamento, saldo de gols e gols marcados. Jogo decidido nos pênaltis conta como empate"
+              : gameFilter
+                ? "Jogo decidido nos pênaltis conta como empate"
+                : undefined
+          }
         />
       </>
     ) : (
@@ -280,7 +306,8 @@ export default async function RankingPage(props: PageProps<"/ranking">) {
   return (
     <>
       <PageTitle title="Ranking" />
-      <nav aria-label="Seções do ranking" className="-mx-1 -mt-3 mb-6 flex gap-1 overflow-x-auto">
+      {podium}
+      <nav aria-label="Filtros do ranking" className="-mx-1 mb-6 flex gap-1 overflow-x-auto">
         {TABS.map((t) => (
           <Link
             key={t.id}

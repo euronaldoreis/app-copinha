@@ -5,6 +5,8 @@ import { useState, type ReactNode } from "react";
 export interface TabItem {
   id: string;
   label: string;
+  /** Ícone ao lado do nome (herda a cor do botão). */
+  icon?: ReactNode;
   content: ReactNode;
 }
 
@@ -37,9 +39,10 @@ export function Tabs({
             id={`aba-${t.id}`}
             aria-selected={t.id === current.id}
             aria-controls={`painel-${t.id}`}
-            className="chip"
+            className="chip gap-2"
             onClick={() => setActive(t.id)}
           >
+            {t.icon}
             {t.label}
           </button>
         ))}
