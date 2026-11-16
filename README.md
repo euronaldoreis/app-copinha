@@ -46,6 +46,8 @@ Ranking: mostra o pódio dos três primeiros do filtro escolhido (mais títulos,
 
 Configurações da edição: o botão "Configurações" (só para o admin) na página de uma edição abre a tela com participantes, times do sorteio, grupos e rodadas, fases e confrontos do mata-mata, dados, desfazer tabela e excluir.
 
+Imagens, ícones, fontes, cores e desenhos do app (e como trocar cada um): veja [ASSETS.md](ASSETS.md).
+
 Regras que o site aplica:
 
 - Desempate nos grupos: pontos, vitórias, saldo, gols pró, confronto direto e, por último, a ordem do sorteio.

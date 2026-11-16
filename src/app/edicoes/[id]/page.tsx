@@ -1,13 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  deleteEditionAction,
-  resetEditionAction,
-  setParticipantsAction,
-  setTeamPoolAction,
-  updateEditionAction,
-} from "@/app/actions";
 import { Arcade } from "@/components/Arcade";
 import { Avatar } from "@/components/Avatar";
 import {
@@ -442,18 +435,24 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
 
   return (
     <>
-      <PageTitle title={edition.name} subtitle={subtitle} />
+      <PageTitle
+        title={edition.name}
+        subtitle={subtitle}
+        action={
+          admin && (
+            <Link
+              href={`/edicoes/${edition.id}/configuracoes`}
+              className="btn btn-icon"
+              title="Configurações"
+              aria-label="Configurações da edição"
+            >
+              <SettingsIcon width={22} height={22} />
+            </Link>
+          )
+        }
+      />
       {edition.notes && (
         <p className="-mt-4 mb-8 text-body text-muted">{edition.notes}</p>
-      )}
-
-      {admin && (
-        <div className="-mt-4 mb-8">
-          <Link href={`/edicoes/${edition.id}/configuracoes`} className="btn">
-            <SettingsIcon width={18} height={18} />
-            Configurações
-          </Link>
-        </div>
       )}
 
       {/* Sempre presente, para notar o instante em que surge um campeão. */}
