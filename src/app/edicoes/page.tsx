@@ -43,7 +43,7 @@ export default async function EditionsPage() {
               <Link
                 key={edition.id}
                 href={`/edicoes/${edition.id}`}
-                className="card flex min-h-24 items-center gap-3.5 px-5 py-4"
+                className="card flex min-h-24 items-center gap-3.5 px-4 py-4"
               >
                 {champion ? (
                   <Avatar
@@ -53,7 +53,7 @@ export default async function EditionsPage() {
                     size={52}
                   />
                 ) : (
-                  <span className="flex size-[52px] shrink-0 items-center justify-center border-2 border-night bg-night font-pixel text-[13px] text-accent">
+                  <span className="flex size-[52px] shrink-0 items-center justify-center rounded-[22%] border-2 border-night bg-night font-pixel text-[18px] text-accent">
                     {edition.number}
                   </span>
                 )}
@@ -64,7 +64,7 @@ export default async function EditionsPage() {
                     </span>
                     {open && (
                       <span
-                        className="blink size-2 shrink-0 bg-accent"
+                        className="blink size-2 shrink-0 rounded-full bg-[#5bd94f]"
                         title={STATUS_LABELS[edition.status]}
                       />
                     )}

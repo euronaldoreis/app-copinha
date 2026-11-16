@@ -60,7 +60,7 @@ export default async function PlayerPage(props: PageProps<"/jogadores/[id]">) {
 
   return (
     <>
-      <header className="pitch -mx-6 mb-8 flex items-center gap-5 px-6 py-5">
+      <header className="pitch -mx-4 mb-8 flex items-center gap-4 px-4 py-5">
         <Avatar
           name={player.name}
           photoUrl={player.photoUrl}

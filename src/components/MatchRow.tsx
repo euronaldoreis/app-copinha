@@ -128,7 +128,7 @@ export function MatchRow(props: MatchRowProps) {
   ) : editable ? (
     <span className="btn btn-primary min-h-8 px-2">Placar</span>
   ) : (
-    <span className="font-pixel text-[10px] text-faint">VS</span>
+    <span className="font-pixel text-[15px] text-accent">VS</span>
   );
 
   return (

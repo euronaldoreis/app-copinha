@@ -27,8 +27,8 @@ export function Tabs({
   if (!current) return null;
 
   return (
-    <div className="mt-10">
-      <div role="tablist" className="-mx-1 mb-6 flex gap-1 overflow-x-auto">
+    <div className="mt-8">
+      <div role="tablist" className="-mx-1 mb-6 flex gap-2 overflow-x-auto px-1 pb-2">
         {tabs.map((t) => (
           <button
             key={t.id}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { Avatar } from "@/components/Avatar";
+import { Podium } from "@/components/Podium";
 import { Empty, PageTitle } from "@/components/ui";
 import { getData } from "@/lib/data";
 import { plural, resultLabel } from "@/lib/labels";
@@ -65,7 +66,7 @@ function RankTable({
 }) {
   const hide = (c: Column) => (c.wide ? "hidden sm:table-cell" : "");
   return (
-    <div className="card px-5 pb-2 pt-4">
+    <div className="card px-3 pb-2 pt-3">
       <table className="w-full text-body">
         <thead className="text-muted">
           <tr>
@@ -190,6 +191,7 @@ export default async function RankingPage(props: PageProps<"/ranking">) {
   } else if (tab === "titulos") {
     content = (
       <>
+        <Podium top={ranking.slice(0, 3)} />
         <RankTable
           rows={ranking}
           columns={TITLE_COLUMNS}
@@ -280,7 +282,7 @@ export default async function RankingPage(props: PageProps<"/ranking">) {
   return (
     <>
       <PageTitle title="Ranking" />
-      <nav aria-label="Seções do ranking" className="-mx-1 -mt-3 mb-6 flex gap-1 overflow-x-auto">
+      <nav aria-label="Seções do ranking" className="-mx-1 mb-6 flex gap-2 overflow-x-auto px-1 pb-2">
         {TABS.map((t) => (
           <Link
             key={t.id}

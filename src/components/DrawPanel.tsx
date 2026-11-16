@@ -86,7 +86,7 @@ export function DrawPanel({
                 <Arcade>{current.teamName}</Arcade>
               </p>
             ) : (
-              <p className="blink font-pixel text-[10px] uppercase text-accent">
+              <p className="blink font-pixel text-[16px] uppercase text-accent">
                 vai jogar com...
               </p>
             )}

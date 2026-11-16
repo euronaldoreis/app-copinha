@@ -211,7 +211,7 @@ function PartyOverlay({
       {party && <div className="party-flash" aria-hidden="true" />}
       <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col gap-5 px-4 py-6">
         <div className="scoreboard" aria-live="polite">
-          <div className="flex items-center justify-between gap-3 font-pixel text-[8px] uppercase text-accent">
+          <div className="flex items-center justify-between gap-3 font-pixel text-[13px] uppercase text-accent">
             <span>
               <Arcade>Premiação</Arcade>
             </span>
@@ -222,7 +222,7 @@ function PartyOverlay({
           <div className="flex min-h-[104px] flex-col items-center justify-center gap-2 text-center">
             <p
               key={`tag-${stage === "party" ? "champion" : stage}`}
-              className={`font-pixel text-[10px] uppercase text-accent ${
+              className={`font-pixel text-[15px] uppercase text-accent ${
                 stage === "drumroll" || big ? "blink" : ""
               }`}
             >

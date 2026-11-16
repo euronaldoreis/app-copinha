@@ -76,7 +76,7 @@ export function AttributeRadar({ values }: { values: Record<AttributeKey, number
             className="absolute -translate-x-1/2 -translate-y-1/2 text-center leading-none"
             style={{ left: `${(x / SIZE) * 100}%`, top: `${(y / SIZE) * 100}%` }}
           >
-            <div className="font-pixel text-[13px]">
+            <div className="font-pixel text-[15px]">
               <Arcade>{a.label}</Arcade>
             </div>
             <div className="num mt-1 text-body text-accent">{values[a.key]}</div>
