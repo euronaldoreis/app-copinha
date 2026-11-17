@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Arcade } from "@/components/Arcade";
 import { Avatar } from "@/components/Avatar";
 import {
   ChampionParty,
@@ -63,104 +62,47 @@ function Podium({ view }: { view: EditionView }) {
   const by = (code: string) => view.entries.find((e) => e.result === code);
   const champion = by("campeao");
   if (!champion) return null;
-  const runnersUp = [
-    { entry: by("vice"), label: "Vice-campeão", tier: "tier-vice" },
-    { entry: by("terceiro"), label: "3º lugar", tier: "tier-podio" },
+  const rows = [
+    { entry: champion, label: "Campeão", gold: true },
+    { entry: by("vice"), label: "Vice", gold: false },
+    { entry: by("terceiro"), label: "3º lugar", gold: false },
   ].filter((r) => r.entry != null);
   return (
-    <div className="card flex flex-col gap-3 p-3.5">
-      {/* Campeão: carta dourada em destaque. */}
-      <Link
-        href={`/jogadores/${champion.playerId}`}
-        className="player-card tier-campeao !flex-row !items-center !gap-4 !p-3.5"
-        aria-label={`Campeão: ${champion.player.name}`}
-      >
-        <Avatar
-          name={champion.player.name}
-          photoUrl={champion.player.photoUrl}
-          avatar={champion.player.avatar}
-          size={84}
-        />
-        <span className="min-w-0 flex-1">
-          <span className="flex items-center gap-1.5 text-[12px] font-black uppercase tracking-wider text-[#0a1a52]">
-            <TrophyIcon width={18} height={18} />
-            Campeão
-          </span>
-          <span className="text-title block truncate">
-            <Arcade>{champion.player.name}</Arcade>
-          </span>
-          {champion.team && (
-            <span className="mt-1 inline-block max-w-full truncate rounded-full bg-night/70 px-2.5 py-0.5 text-body font-black">
-              {champion.team.name}
-            </span>
-          )}
-        </span>
-      </Link>
-
-      {/* Vice e terceiro lugar: lado a lado; se só há um, ocupa a largura toda. */}
-      {runnersUp.length > 0 && (
-        <div
-          className={`grid gap-3 ${runnersUp.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}
-        >
-          {runnersUp.map(({ entry: e, label, tier }) =>
-            runnersUp.length > 1 ? (
-              <Link
-                key={e!.id}
-                href={`/jogadores/${e!.playerId}`}
-                className={`player-card ${tier} !gap-2 !p-3`}
-                aria-label={`${label}: ${e!.player.name}`}
-              >
-                <Avatar
-                  name={e!.player.name}
-                  photoUrl={e!.player.photoUrl}
-                  avatar={e!.player.avatar}
-                  size={52}
-                />
-                <span className="player-plate w-full">
-                  <span className="text-[11px] font-black uppercase tracking-wider text-muted">
-                    {label}
-                  </span>
-                  <span className="text-title w-full truncate text-center !text-[17px]">
-                    {e!.player.name}
-                  </span>
-                  {e!.team && (
-                    <span className="w-full truncate text-center text-body text-muted">
-                      {e!.team.name}
-                    </span>
-                  )}
+    <div className="card p-3">
+      <ul className="divide-y divide-bevel-dark/60">
+        {rows.map(({ entry: e, label, gold }) => (
+          <li key={e!.id}>
+            <Link
+              href={`/jogadores/${e!.playerId}`}
+              className="flex items-center gap-3 py-2"
+              aria-label={`${label}: ${e!.player.name}`}
+            >
+              <Avatar
+                name={e!.player.name}
+                photoUrl={e!.player.photoUrl}
+                avatar={e!.player.avatar}
+                size={40}
+              />
+              <span className="min-w-0 flex-1">
+                <span
+                  className={`flex items-center gap-1 text-[11px] font-black uppercase tracking-wider ${gold ? "text-accent" : "text-muted"}`}
+                >
+                  {gold && <TrophyIcon width={14} height={14} />}
+                  {label}
                 </span>
-              </Link>
-            ) : (
-              <Link
-                key={e!.id}
-                href={`/jogadores/${e!.playerId}`}
-                className={`player-card ${tier} !flex-row !items-center !gap-3.5 !p-3`}
-                aria-label={`${label}: ${e!.player.name}`}
-              >
-                <Avatar
-                  name={e!.player.name}
-                  photoUrl={e!.player.photoUrl}
-                  avatar={e!.player.avatar}
-                  size={56}
-                />
-                <span className="player-plate min-w-0 flex-1 !items-start">
-                  <span className="text-[11px] font-black uppercase tracking-wider text-muted">
-                    {label}
-                  </span>
-                  <span className="text-title w-full truncate !text-[18px]">
-                    {e!.player.name}
-                  </span>
-                  {e!.team && (
-                    <span className="w-full truncate text-body text-muted">
-                      {e!.team.name}
-                    </span>
-                  )}
+                <span className="block truncate font-black">
+                  {e!.player.name}
                 </span>
-              </Link>
-            ),
-          )}
-        </div>
-      )}
+              </span>
+              {e!.team && (
+                <span className="max-w-[40%] truncate text-body text-muted">
+                  {e!.team.name}
+                </span>
+              )}
+            </Link>
+          </li>
+        ))}
+      </ul>
       <PartyButton />
     </div>
   );
