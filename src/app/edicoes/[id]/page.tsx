@@ -97,37 +97,68 @@ function Podium({ view }: { view: EditionView }) {
         </span>
       </Link>
 
-      {/* Vice e terceiro lugar: cartas menores lado a lado. */}
+      {/* Vice e terceiro lugar: lado a lado; se só há um, ocupa a largura toda. */}
       {runnersUp.length > 0 && (
-        <div className="grid grid-cols-2 gap-3">
-          {runnersUp.map(({ entry: e, label, tier }) => (
-            <Link
-              key={e!.id}
-              href={`/jogadores/${e!.playerId}`}
-              className={`player-card ${tier} !gap-2 !p-3`}
-              aria-label={`${label}: ${e!.player.name}`}
-            >
-              <Avatar
-                name={e!.player.name}
-                photoUrl={e!.player.photoUrl}
-                avatar={e!.player.avatar}
-                size={52}
-              />
-              <span className="player-plate w-full">
-                <span className="text-[11px] font-black uppercase tracking-wider text-muted">
-                  {label}
-                </span>
-                <span className="text-title w-full truncate text-center !text-[17px]">
-                  {e!.player.name}
-                </span>
-                {e!.team && (
-                  <span className="w-full truncate text-center text-body text-muted">
-                    {e!.team.name}
+        <div
+          className={`grid gap-3 ${runnersUp.length > 1 ? "grid-cols-2" : "grid-cols-1"}`}
+        >
+          {runnersUp.map(({ entry: e, label, tier }) =>
+            runnersUp.length > 1 ? (
+              <Link
+                key={e!.id}
+                href={`/jogadores/${e!.playerId}`}
+                className={`player-card ${tier} !gap-2 !p-3`}
+                aria-label={`${label}: ${e!.player.name}`}
+              >
+                <Avatar
+                  name={e!.player.name}
+                  photoUrl={e!.player.photoUrl}
+                  avatar={e!.player.avatar}
+                  size={52}
+                />
+                <span className="player-plate w-full">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-muted">
+                    {label}
                   </span>
-                )}
-              </span>
-            </Link>
-          ))}
+                  <span className="text-title w-full truncate text-center !text-[17px]">
+                    {e!.player.name}
+                  </span>
+                  {e!.team && (
+                    <span className="w-full truncate text-center text-body text-muted">
+                      {e!.team.name}
+                    </span>
+                  )}
+                </span>
+              </Link>
+            ) : (
+              <Link
+                key={e!.id}
+                href={`/jogadores/${e!.playerId}`}
+                className={`player-card ${tier} !flex-row !items-center !gap-3.5 !p-3`}
+                aria-label={`${label}: ${e!.player.name}`}
+              >
+                <Avatar
+                  name={e!.player.name}
+                  photoUrl={e!.player.photoUrl}
+                  avatar={e!.player.avatar}
+                  size={56}
+                />
+                <span className="player-plate min-w-0 flex-1 !items-start">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-muted">
+                    {label}
+                  </span>
+                  <span className="text-title w-full truncate !text-[18px]">
+                    {e!.player.name}
+                  </span>
+                  {e!.team && (
+                    <span className="w-full truncate text-body text-muted">
+                      {e!.team.name}
+                    </span>
+                  )}
+                </span>
+              </Link>
+            ),
+          )}
         </div>
       )}
       <PartyButton />
