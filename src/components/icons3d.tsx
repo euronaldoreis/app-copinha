@@ -56,6 +56,63 @@ export function Trophy3D(props: P) {
   );
 }
 
+export function Star3D(props: P) {
+  return (
+    <svg width="24" height="24" viewBox="0 0 32 32" aria-hidden="true" {...props}>
+      <defs>
+        <linearGradient id="s3d-gold" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0" stopColor="#fff07a" />
+          <stop offset="0.5" stopColor="#ffc21f" />
+          <stop offset="1" stopColor="#e08a0a" />
+        </linearGradient>
+      </defs>
+      <path
+        d="m16 2.5 4.1 8.4 9.2 1.3-6.7 6.5 1.6 9.2L16 23.6l-8.2 4.3 1.6-9.2-6.7-6.5 9.2-1.3Z"
+        fill="url(#s3d-gold)"
+        stroke={OUTLINE}
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      {/* face de baixo mais escura, para dar volume */}
+      <path d="M16 16.5 22.6 18.7l1.6 9.2L16 23.6l-8.2 4.3 1.6-9.2Z" fill="#c9720a" opacity="0.35" />
+      <path d="M11.6 12.4 16 6.4" stroke="#fffbe0" strokeWidth="1.8" strokeLinecap="round" opacity="0.9" />
+      <circle cx="10.4" cy="13.2" r="1" fill="#fffbe0" opacity="0.9" />
+    </svg>
+  );
+}
+
+/** Três degraus do pódio: ouro no meio, prata à esquerda, bronze à direita. */
+export function Podium3D(props: P) {
+  const step = (x: number, y: number, w: number, top: string, front: string, n: string) => (
+    <g>
+      <rect x={x} y={y} width={w} height={29 - y} rx="1" fill={front} stroke={OUTLINE} strokeWidth="1.4" />
+      <rect x={x + 1} y={y + 1} width={w - 2} height="2.2" fill={top} opacity="0.9" />
+      <text
+        x={x + w / 2}
+        y={y + 9.5}
+        textAnchor="middle"
+        fontSize="7"
+        fontWeight="900"
+        fill="#fff"
+        stroke={OUTLINE}
+        strokeWidth="1.6"
+        paintOrder="stroke"
+        fontFamily="system-ui, sans-serif"
+      >
+        {n}
+      </text>
+    </g>
+  );
+  return (
+    <svg width="24" height="24" viewBox="0 0 32 32" aria-hidden="true" {...props}>
+      {step(2, 15, 9.5, "#f4f7ff", "#a9b7d6", "2")}
+      {step(20.5, 18.5, 9.5, "#ffd2a6", "#c8732f", "3")}
+      {step(11, 9, 10, "#fff3a8", "#f2b21f", "1")}
+      <rect x="1" y="28.5" width="30" height="2.2" rx="1" fill="#0a1a52" />
+    </svg>
+  );
+}
+
 export function Ball3D(props: P) {
   const outer = [0, 72, 144, 216, 288].map((deg) => {
     const a = ((deg - 90) * Math.PI) / 180;

@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Lilita_One, Nunito } from "next/font/google";
+import { Barlow_Condensed, Lilita_One, Nunito } from "next/font/google";
 import Link from "next/link";
 import { logoutAction } from "./actions";
 import { NavBar } from "@/components/NavBar";
@@ -23,6 +23,13 @@ const bodyFont = Nunito({
 const displayFont = Lilita_One({
   variable: "--font-display",
   weight: "400",
+  subsets: ["latin"],
+});
+
+// Nomes nos cartões de jogo: estreita e bem grossa, como letreiro de placar.
+const condensedFont = Barlow_Condensed({
+  variable: "--font-barlow",
+  weight: ["700", "900"],
   subsets: ["latin"],
 });
 
@@ -70,7 +77,7 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="pt-BR"
-      className={`${bodyFont.variable} ${displayFont.variable} h-full`}
+      className={`${bodyFont.variable} ${displayFont.variable} ${condensedFont.variable} h-full`}
     >
       <body className="min-h-full">
         <Splash />

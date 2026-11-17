@@ -40,7 +40,7 @@ function Side({
     return (
       <div className="flex min-w-0 flex-col items-center gap-1.5 text-center">
         <TeamShield team={null} />
-        <span className="text-[14px] font-bold leading-tight text-[#4a5f93]">
+        <span className="font-score text-[14px] font-bold leading-tight text-[#4a6cb8]">
           {placeholder}
         </span>
       </div>
@@ -52,11 +52,11 @@ function Side({
       className={`flex min-w-0 flex-col items-center gap-1.5 text-center ${dimmed ? "opacity-55" : ""}`}
     >
       <TeamBadge side={side} />
-      <span className="max-w-full truncate text-name font-black leading-tight text-[#0e1f5c]">
+      <span className="max-w-full truncate font-score text-[17px] font-black leading-tight text-[#1c3a6d]">
         {side.name}
       </span>
       {side.team && (
-        <span className="-mt-1 max-w-full truncate text-[13px] font-semibold text-[#4a5f93]">
+        <span className="-mt-1.5 max-w-full truncate font-score text-[13px] font-bold leading-tight text-[#4a6cb8]">
           {side.team}
         </span>
       )}
@@ -97,14 +97,20 @@ export function MatchCard(props: MatchCardProps) {
 
       <div className="px-4 pb-4 pt-3">
         <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2">
-          <Side side={home} placeholder={props.homePlaceholder} dimmed={homeAhead < 0} />
+          <Side
+            side={home}
+            placeholder={props.homePlaceholder}
+            dimmed={homeAhead < 0}
+          />
           <span className="flex min-w-[88px] flex-col items-center">
             {played ? (
-              <span className="font-pixel text-[38px] leading-none text-[#0e1f5c]">
+              <span className="font-pixel text-[28px] leading-none text-[#0e1f5c]">
                 {homeScore} : {awayScore}
               </span>
             ) : (
-              <span className="font-pixel text-[26px] leading-none text-[#4a5f93]">VS</span>
+              <span className="font-pixel text-[26px] leading-none text-[#4a5f93]">
+                VS
+              </span>
             )}
             {played && homePens != null && awayPens != null && (
               <span className="num mt-1 text-[13px] font-bold text-[#4a5f93]">
@@ -112,11 +118,19 @@ export function MatchCard(props: MatchCardProps) {
               </span>
             )}
           </span>
-          <Side side={away} placeholder={props.awayPlaceholder} dimmed={homeAhead > 0} />
+          <Side
+            side={away}
+            placeholder={props.awayPlaceholder}
+            dimmed={homeAhead > 0}
+          />
         </div>
 
         {editable && (
-          <button type="button" onClick={() => setEditing(true)} className="btn mt-4 w-full">
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="btn mt-4 w-full"
+          >
             <PencilIcon width={18} height={18} />
             {played ? "Editar placar" : "Lançar placar"}
           </button>

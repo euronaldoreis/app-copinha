@@ -172,6 +172,28 @@ export const TrashIcon = icon(
   </>,
 );
 
+/** Camisa de futebol: jogadores. */
+export const ShirtIcon = icon(
+  <>
+    <path d="M8.5 3 3 6.2l2.2 4.6 2.3-1V21h9V9.8l2.3 1L21 6.2 15.5 3c-.4 1.6-1.8 2.7-3.5 2.7S8.9 4.6 8.5 3Z" />
+    <path d="M10 12.5h4M12 12.5V17" />
+  </>,
+);
+
+/** Estrela: finais disputadas. */
+export const StarIcon = icon(
+  <path d="m12 3 2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.8l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8Z" />,
+);
+
+/** Degraus do pódio. */
+export const PodiumIcon = icon(
+  <>
+    <path d="M9 21V8h6v13" />
+    <path d="M3 21v-8h6M15 21v-5h6v5" />
+    <path d="M2 21h20" />
+  </>,
+);
+
 /** Coroa: o primeiro colocado. */
 export const CrownIcon = icon(
   <>

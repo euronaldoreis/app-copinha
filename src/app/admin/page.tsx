@@ -40,13 +40,14 @@ export default async function AdminPage() {
         >
           <label>
             <span className="label">Senha de administrador</span>
+            {/* Sem autoFocus: no iPhone o foco automático não abre o teclado e
+                o toque seguinte no campo (já focado) também não abre. */}
             <input
               type="password"
               name="password"
               className="field"
               autoComplete="current-password"
               required
-              autoFocus
             />
           </label>
           <SubmitButton>Entrar</SubmitButton>

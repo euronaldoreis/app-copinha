@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CardIcon, HomeIcon, SwordsIcon, TrophyIcon } from "./icons";
+import { HomeIcon, ShirtIcon, SwordsIcon, TrophyIcon } from "./icons";
 
 const ITEMS = [
   { href: "/", label: "Início", icon: HomeIcon },
   { href: "/edicoes", label: "Edições", icon: SwordsIcon },
   { href: "/ranking", label: "Ranking", icon: TrophyIcon },
-  { href: "/jogadores", label: "Jogadores", icon: CardIcon },
+  { href: "/jogadores", label: "Lixos", icon: ShirtIcon },
 ];
 
 /** Menu fixo no rodapé, como a barra de um jogo: a aba atual vira um botão aceso. */
@@ -21,7 +21,8 @@ export function NavBar() {
     >
       <div className="mx-auto grid w-full max-w-3xl grid-cols-4 px-1">
         {ITEMS.map(({ href, label, icon: Icon }) => {
-          const active = href === "/" ? pathname === "/" : pathname.startsWith(href);
+          const active =
+            href === "/" ? pathname === "/" : pathname.startsWith(href);
           return (
             <Link
               key={href}

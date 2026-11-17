@@ -3,7 +3,7 @@
 // NUNCA ficam guardadas: sempre vêm da rede. O cache só guarda arquivos
 // estáticos (JS/CSS/fontes/ícones) e uma tela simples para quando estiver sem
 // internet.
-const VERSION = "v1";
+const VERSION = "v3";
 const STATIC_CACHE = `copinha-static-${VERSION}`;
 const OFFLINE_URL = "/offline.html";
 const PRECACHE = [OFFLINE_URL, "/icon-192.png", "/icon-512.png"];

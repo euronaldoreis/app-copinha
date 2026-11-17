@@ -10,6 +10,7 @@
   --font-sans: var(--font-body), system-ui, sans-serif;
   --font-pixel: var(--font-display), "Arial Rounded MT Bold", system-ui, sans-serif;
   --font-strong: var(--font-body), system-ui, sans-serif;
+  --font-score: var(--font-barlow), Impact, sans-serif; /* nomes nos cartões de jogo */
 
   --color-night: #0a1a52; /* contornos e fundo dos campos */
   --color-canvas: #1c47ad; /* fundo da tela */
@@ -172,6 +173,56 @@ fieldset label:has(input[type="radio"]:checked) {
     text-transform: uppercase;
   }
 
+  /* A carta do jogador (.player-card) em tamanho grande, no topo do perfil. */
+  .player-card.profile-card {
+    gap: 10px;
+    padding: 10px 10px 12px;
+  }
+  .profile-card-photo {
+    display: block;
+    padding: 4px;
+    background: rgb(10 26 82 / 0.78);
+    border-radius: 26%;
+  }
+
+  /* Barra de aproveitamento: trilho escuro e preenchimento verde. */
+  .progress {
+    height: 18px;
+    padding: 3px;
+    background: #0a1a52;
+    border: 2px solid #4d7fe0;
+    border-radius: 8px;
+  }
+  .progress > span {
+    display: block;
+    height: 100%;
+    min-width: 4px;
+    background: linear-gradient(180deg, #8ef07a 0%, #3fbf3a 55%, #23902a 100%);
+    border-radius: 4px;
+    box-shadow: inset 0 2px 0 rgb(255 255 255 / 0.4);
+  }
+
+  /* Selo da colocação numa campanha. */
+  .result-pill {
+    flex-shrink: 0;
+    padding: 5px 12px;
+    background: #0f2466;
+    border: 2px solid #4d7fe0;
+    border-radius: 999px;
+    color: var(--color-muted);
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .result-pill-gold {
+    background: linear-gradient(#ffd95e, #f7a81d);
+    border-color: #ffe9a3;
+    color: #5b3600;
+    box-shadow: inset 0 -2px 0 #d98a0c;
+  }
+
   /* Painel: fundo azul, filete claro por dentro e contorno marinho. */
   .card {
     background: linear-gradient(#2358c6, #1b43a6);
@@ -197,6 +248,15 @@ fieldset label:has(input[type="radio"]:checked) {
   .pitch .text-muted {
     color: var(--color-ink);
     text-shadow: 0 2px 0 rgb(10 26 82 / 0.7);
+  }
+
+  /* Contorno marinho com sombra embaixo: o mesmo dos títulos de seção, para números e letreiros. */
+  .text-outline {
+    color: #ffffff;
+    text-shadow:
+      -1.5px 0 var(--color-night), 1.5px 0 var(--color-night),
+      0 -1.5px var(--color-night), 0 1.5px var(--color-night),
+      0 3px var(--color-night);
   }
 
   /* Título de seção: losango dourado e letra de título. */
