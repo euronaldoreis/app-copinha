@@ -17,7 +17,7 @@ export function NavBar() {
   return (
     <nav
       aria-label="Principal"
-      className="fixed inset-x-0 bottom-0 z-40 border-t-2 border-[#2f56b8] bg-[#0f1b4d] pb-[env(safe-area-inset-bottom)]"
+      className="navbar fixed inset-x-0 bottom-0 z-40 pb-[env(safe-area-inset-bottom)]"
     >
       <div className="mx-auto grid w-full max-w-3xl grid-cols-4 px-1">
         {ITEMS.map(({ href, label, icon: Icon }) => {
@@ -28,11 +28,7 @@ export function NavBar() {
               href={href}
               aria-label={label}
               aria-current={active ? "page" : undefined}
-              className={`relative m-2 flex h-[60px] flex-col items-center justify-center gap-1.5 rounded-[10px] border-2 text-[11px] font-black uppercase tracking-wider ${
-                active
-                  ? "border-[#5a8ff0] bg-gradient-to-b from-[#2f66d6] to-[#2250b8] text-accent before:absolute before:-top-[11px] before:left-1/2 before:h-[3px] before:w-[30px] before:-translate-x-1/2 before:rounded-sm before:bg-accent"
-                  : "border-transparent text-muted"
-              }`}
+              className="nav-item m-2 flex h-[60px] flex-col items-center justify-center gap-1.5 rounded-[10px] text-[11px] font-black uppercase tracking-wider"
             >
               <Icon width={26} height={26} />
               {label}

@@ -115,6 +115,63 @@ fieldset label:has(input[type="radio"]:checked) {
 }
 
 @layer components {
+  /* Menu do rodapé: faixa marinha em degradê, com brilho fino no topo. */
+  .navbar {
+    background: linear-gradient(180deg, #1d3c8f 0%, #13296b 45%, #0b1847 100%);
+    border-top: 2px solid #3a63c4;
+    box-shadow:
+      inset 0 1px 0 rgb(140 180 255 / 0.35),
+      0 -4px 12px rgb(4 10 40 / 0.45);
+  }
+  .nav-item {
+    color: #c5d6f5;
+    border: 2px solid transparent;
+    transition: color 120ms, background-color 120ms;
+  }
+  .nav-item:hover {
+    color: #ffffff;
+  }
+  .nav-item[aria-current="page"] {
+    color: var(--color-accent);
+    background: linear-gradient(180deg, #3a78e6 0%, #2a5fcf 50%, #1d47aa 100%);
+    border-color: #5d8ff0;
+    box-shadow:
+      inset 0 1px 0 rgb(190 215 255 / 0.55),
+      inset 0 -2px 0 rgb(10 30 100 / 0.5),
+      0 0 10px rgb(80 140 255 / 0.45),
+      0 3px 0 #0a1a52;
+  }
+  .nav-item[aria-current="page"] svg {
+    filter: drop-shadow(0 0 4px rgb(255 200 61 / 0.55));
+  }
+
+  /* Cartão de jogo: faixa marinha no topo e corpo claro, como o placar da TV. */
+  .match-card {
+    overflow: hidden;
+    background: linear-gradient(180deg, #eef4ff 0%, #d6e3fa 100%);
+    border: 2px solid #6ea0f5;
+    border-radius: 12px;
+    box-shadow:
+      inset 0 0 0 2px #ffffff,
+      0 0 0 2px var(--color-night),
+      0 5px 0 2px var(--color-night);
+  }
+  .match-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 34px;
+    padding: 0 14px;
+    background: linear-gradient(180deg, #1d3c8f 0%, #13296b 100%);
+    border-bottom: 2px solid #0a1a52;
+    color: var(--color-ink);
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
   /* Painel: fundo azul, filete claro por dentro e contorno marinho. */
   .card {
     background: linear-gradient(#2358c6, #1b43a6);
@@ -799,6 +856,83 @@ fieldset label:has(input[type="radio"]:checked) {
   max-width: 440px;
   padding: 24px;
   animation: reveal 0.25s steps(3, jump-end) both;
+}
+
+/* Modal do placar (src/components/ScoreDialog.tsx). */
+.score-window {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  padding: 26px 20px 22px;
+  background: linear-gradient(180deg, #2f6ad8 0%, #2155c0 55%, #1a44a3 100%);
+  border: 3px solid #8fb8ff;
+  border-radius: 16px;
+  box-shadow:
+    inset 0 0 0 2px #10286e,
+    inset 0 3px 0 2px rgb(190 215 255 / 0.35),
+    0 0 0 3px var(--color-night),
+    0 8px 0 3px var(--color-night);
+  animation: reveal 0.25s steps(3, jump-end) both;
+}
+.score-window .text-title {
+  font-family: var(--font-pixel);
+}
+.score-close {
+  position: absolute;
+  top: -14px;
+  right: -10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(#ff7a6a, #d9382a);
+  color: #ffffff;
+  border: 2px solid #ffb3a8;
+  border-radius: 10px;
+  cursor: pointer;
+  box-shadow:
+    inset 0 -3px 0 #a31f14,
+    0 0 0 2px var(--color-night),
+    0 4px 0 2px var(--color-night);
+}
+.score-close:active {
+  transform: translateY(2px);
+}
+.score-input {
+  width: 58px;
+  height: 60px;
+  flex-shrink: 0;
+  background: #0f2466;
+  color: #fff3c4;
+  font-family: var(--font-pixel);
+  font-size: 40px;
+  line-height: 1;
+  text-align: center;
+  border: 3px solid #8fb8ff;
+  border-radius: 12px;
+  box-shadow:
+    inset 0 4px 0 rgb(0 0 0 / 0.3),
+    0 0 0 2px var(--color-night);
+}
+.score-input::placeholder {
+  color: #5f78b8;
+}
+.score-input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  box-shadow:
+    inset 0 4px 0 rgb(0 0 0 / 0.3),
+    0 0 0 2px var(--color-night),
+    0 0 12px rgb(255 200 61 / 0.6);
+}
+.score-input:disabled {
+  opacity: 0.45;
+}
+.score-input-sm {
+  width: 56px;
+  height: 46px;
+  font-size: 28px;
 }
 
 /* Degraus do pódio do ranking (src/components/RankPodium.tsx) */

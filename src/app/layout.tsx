@@ -6,7 +6,8 @@ import { NavBar } from "@/components/NavBar";
 import { RegisterServiceWorker } from "@/components/RegisterServiceWorker";
 import { Splash } from "@/components/Splash";
 import { TopBarBrand } from "@/components/TopBarBrand";
-import { BallIcon, LockIcon, LogoutIcon, TrophyIcon } from "@/components/icons";
+import { LockIcon, LogoutIcon } from "@/components/icons";
+import { Ball3D, Trophy3D } from "@/components/icons3d";
 import { isAdmin } from "@/lib/auth";
 import { getData } from "@/lib/data";
 import "./globals.css";
@@ -80,11 +81,11 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             <TopBarBrand />
             <div className="flex shrink-0 items-center gap-1.5">
               <span className="pill" title={`${editions} edições`}>
-                <TrophyIcon width={20} height={20} className="text-accent" />
+                <Trophy3D width={22} height={22} />
                 <span className="num">{editions}</span>
               </span>
               <span className="pill" title={`${games} jogos`}>
-                <BallIcon width={20} height={20} />
+                <Ball3D width={22} height={22} />
                 <span className="num">{games}</span>
               </span>
               {admin ? (
