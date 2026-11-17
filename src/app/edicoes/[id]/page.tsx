@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Arcade } from "@/components/Arcade";
-import { Avatar } from "@/components/Avatar";
 import {
   ChampionParty,
   PartyButton,
@@ -35,6 +33,7 @@ import {
   roundLabel,
   sourceLabel,
 } from "@/lib/labels";
+import { ChampionPanel } from "@/components/ChampionPanel";
 import { configOf, editionView, type EditionView } from "@/lib/services";
 import {
   knockoutRounds,
@@ -63,48 +62,29 @@ function Podium({ view }: { view: EditionView }) {
   const by = (code: string) => view.entries.find((e) => e.result === code);
   const champion = by("campeao");
   if (!champion) return null;
-  const others = [by("vice"), by("terceiro")].filter((e) => e != null);
+  const third = by("terceiro");
   return (
-    <div className="card p-6">
-      <div className="flex items-center gap-4">
-        <Avatar
-          name={champion.player.name}
-          photoUrl={champion.player.photoUrl}
-          avatar={champion.player.avatar}
-          size={72}
-        />
-        <div className="min-w-0">
-          <p className="flex items-center gap-1.5 text-body font-semibold text-accent">
-            <TrophyIcon width={18} height={18} />
-            Campeão
-          </p>
+    <div className="card flex flex-col gap-2 p-3.5">
+      <Link
+        href={`/jogadores/${champion.playerId}`}
+        aria-label={`Campeão: ${champion.player.name}`}
+        className="block"
+      >
+        <ChampionPanel champion={champion} vice={by("vice")} />
+      </Link>
+      {third && (
+        <p className="px-1 text-body text-muted">
+          3º lugar:{" "}
           <Link
-            href={`/jogadores/${champion.playerId}`}
-            className="block truncate text-title"
-            aria-label={champion.player.name}
+            href={`/jogadores/${third.playerId}`}
+            className="font-black text-ink"
           >
-            <Arcade>{champion.player.name}</Arcade>
+            {third.player.name}
           </Link>
-          <p className="truncate text-body text-muted">{champion.team?.name}</p>
-        </div>
-      </div>
-      {others.length > 0 && (
-        <div className="mt-3 grid grid-cols-1 gap-x-6 sm:grid-cols-2">
-          {others.map((e) => (
-            <PersonRow
-              key={e.id}
-              href={`/jogadores/${e.playerId}`}
-              name={e.player.name}
-              photoUrl={e.player.photoUrl}
-              avatar={e.player.avatar}
-              detail={[resultLabel(e.result), e.team?.name]
-                .filter(Boolean)
-                .join(" · ")}
-            />
-          ))}
-        </div>
+          {third.team && ` · ${third.team.name}`}
+        </p>
       )}
-      <div className="-mb-2 -ml-2 mt-2">
+      <div className="-mb-1 -ml-2">
         <PartyButton />
       </div>
     </div>

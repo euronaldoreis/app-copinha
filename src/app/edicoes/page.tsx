@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Avatar } from "@/components/Avatar";
+import { ChampionPanel } from "@/components/ChampionPanel";
 import { PlusIcon } from "@/components/icons";
 import { Empty, PageTitle } from "@/components/ui";
 import { isAdmin } from "@/lib/auth";
@@ -34,69 +34,80 @@ export default async function EditionsPage() {
             : " Quem organiza precisa entrar para criar a primeira."}
         </Empty>
       ) : (
-        <div className="flex flex-col gap-3">
-          {views.map(({ edition, entries }) => {
+        <div className="flex flex-col gap-4">
+          {views.map(({ edition, entries, matches }) => {
             const champion = entries.find((e) => e.result === "campeao");
             const vice = entries.find((e) => e.result === "vice");
             const open = edition.status !== "encerrada";
+            const played = matches.filter((m) => m.homeScore != null).length;
+            const progress = matches.length
+              ? Math.round((played / matches.length) * 100)
+              : 0;
+            const meta = [
+              formatDate(edition.playedOn),
+              edition.game,
+              FORMAT_LABELS[edition.format as Format],
+              plural(entries.length, "participante", "participantes"),
+            ].filter(Boolean);
             return (
               <Link
                 key={edition.id}
                 href={`/edicoes/${edition.id}`}
-                className="card flex min-h-24 items-center gap-3.5 px-4 py-4"
+                className="card flex flex-col gap-3 p-3.5"
               >
-                {champion ? (
-                  <Avatar
-                    name={champion.player.name}
-                    photoUrl={champion.player.photoUrl}
-              avatar={champion.player.avatar}
-                    size={52}
-                  />
-                ) : (
-                  <span className="flex size-[52px] shrink-0 items-center justify-center rounded-[22%] border-2 border-night bg-night font-pixel text-[18px] text-accent">
+                {/* Título: número da edição e nome. */}
+                <span className="flex items-center gap-2.5">
+                  <span className="num flex h-10 min-w-10 shrink-0 items-center justify-center rounded-[10px] border-2 border-[#ffe9a3] bg-gradient-to-b from-[#ffd95e] to-[#f7a81d] px-1.5 font-pixel text-[20px] text-[#5b3600]">
                     {edition.number}
                   </span>
-                )}
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-2">
-                    <span className="truncate text-name font-semibold">
-                      {edition.name}
-                    </span>
-                    {open && (
-                      <span
-                        className="blink size-2 shrink-0 rounded-full bg-[#5bd94f]"
-                        title={STATUS_LABELS[edition.status]}
-                      />
-                    )}
+                  <span className="min-w-0 flex-1 text-name font-black leading-tight">
+                    {edition.name}
                   </span>
-                  <span className="block truncate text-body text-ink">
-                    {champion
-                      ? [
-                          `${champion.player.name} campeão`,
-                          champion.team && `com ${champion.team.name}`,
-                        ]
-                          .filter(Boolean)
-                          .join(" ")
-                      : open
-                        ? STATUS_LABELS[edition.status]
-                        : "Campeão não informado"}
-                    {vice && (
-                      <span className="text-muted">
-                        {" "}
-                        · vice {vice.player.name}
+                </span>
+
+                {/* Destaque: o campeão com o vice ao lado, ou o andamento do torneio. */}
+                {champion ? (
+                  <ChampionPanel champion={champion} vice={vice} />
+                ) : (
+                  <span className="flex flex-col gap-1.5 rounded-[10px] bg-night/40 p-2.5">
+                    {matches.length > 0 ? (
+                      <>
+                        <span className="flex justify-between text-body text-muted">
+                          <span>{open ? "Progresso" : "Jogos"}</span>
+                          <span className="num">
+                            {played} de {matches.length}
+                          </span>
+                        </span>
+                        <span
+                          className="meter"
+                          role="img"
+                          aria-label={`${played} de ${matches.length} jogos disputados`}
+                        >
+                          <span style={{ width: `${progress}%` }} />
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-body text-muted">
+                        {open ? "Os jogos ainda não começaram." : "Campeão não informado."}
                       </span>
                     )}
                   </span>
-                  <span className="block truncate text-body text-muted">
-                    {[
-                      edition.game,
-                      formatDate(edition.playedOn),
-                      FORMAT_LABELS[edition.format as Format],
-                      plural(entries.length, "participante", "participantes"),
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
+                )}
+
+                {/* Situação e detalhes em etiquetas, que quebram de linha em telas estreitas. */}
+                <span className="flex flex-wrap items-center gap-1.5">
+                  <span className="tag">
+                    {open && <span className="blink size-2 rounded-full bg-[#5bd94f]" />}
+                    {STATUS_LABELS[edition.status]}
                   </span>
+                    {meta.map((m) => (
+                      <span
+                        key={m}
+                        className="rounded-full bg-night/50 px-2.5 py-1 text-[12px] font-black text-muted"
+                      >
+                        {m}
+                      </span>
+                    ))}
                 </span>
               </Link>
             );
