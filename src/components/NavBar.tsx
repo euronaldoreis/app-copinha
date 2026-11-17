@@ -11,28 +11,46 @@ const ITEMS = [
   { href: "/jogadores", label: "Lixos", icon: ShirtIcon },
 ];
 
-/** Menu fixo no rodapé, como a barra de um jogo: a aba atual vira um botão aceso. */
+/**
+ * Menu fixo no rodapé, como a barra de um jogo. O botão aceso desliza até a aba
+ * escolhida (com um leve "quique" no fim), o ícone dela pula e o rótulo acende.
+ */
 export function NavBar() {
   const pathname = usePathname();
+  const current = ITEMS.findIndex(({ href }) =>
+    href === "/" ? pathname === "/" : pathname.startsWith(href),
+  );
   return (
     <nav
       aria-label="Principal"
-      className="navbar fixed inset-x-0 bottom-0 z-40 pb-[env(safe-area-inset-bottom)]"
+      className="fixed inset-x-0 bottom-0 z-40 border-t-2 border-[#2f56b8] bg-[#0f1b4d] pb-[env(safe-area-inset-bottom)]"
     >
-      <div className="mx-auto grid w-full max-w-3xl grid-cols-4 px-1">
-        {ITEMS.map(({ href, label, icon: Icon }) => {
-          const active =
-            href === "/" ? pathname === "/" : pathname.startsWith(href);
+      <div className="relative mx-auto grid w-full max-w-3xl grid-cols-4 px-1">
+        {/* Trilho do botão aceso: ocupa a largura das 4 abas e a peça anda por ele. */}
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-2 left-1 right-1"
+        >
+          <span
+            className="nav-glow"
+            style={{
+              transform: `translateX(${Math.max(current, 0) * 100}%)`,
+              opacity: current < 0 ? 0 : 1,
+            }}
+          />
+        </span>
+        {ITEMS.map(({ href, label, icon: Icon }, i) => {
+          const active = i === current;
           return (
             <Link
               key={href}
               href={href}
               aria-label={label}
               aria-current={active ? "page" : undefined}
-              className="nav-item m-2 flex h-[60px] flex-col items-center justify-center gap-1.5 rounded-[10px] text-[11px] font-black uppercase tracking-wider"
+              className={`nav-tab ${active ? "nav-tab-on" : ""}`}
             >
-              <Icon width={26} height={26} />
-              {label}
+              <Icon width={26} height={26} className="nav-icon" />
+              <span>{label}</span>
             </Link>
           );
         })}
