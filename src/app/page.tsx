@@ -8,6 +8,7 @@ import { getData } from "@/lib/data";
 import { STATUS_LABELS, plural } from "@/lib/labels";
 import { allEditionViews, type EditionView } from "@/lib/services";
 import { computeRanking } from "@/lib/stats";
+import { tierOf } from "@/lib/tier";
 
 /** Edição aberta: a "arena", com o próximo confronto, o progresso e o atalho para a tabela. */
 function LiveEdition({ view }: { view: EditionView }) {
@@ -122,6 +123,10 @@ export default async function HomePage() {
     return entry ? [{ edition: v.edition, entry }] : [];
   });
   const ranking = computeRanking(data).filter((r) => r.participations > 0);
+  // Mesma moldura da carta do jogador (campeão, esmeralda ou rubi, pelos títulos).
+  const tierById = new Map(
+    ranking.map((r) => [r.player.id, tierOf(r.bestResult, r.titles)]),
+  );
   const gamesPlayed = data.matches.filter((m) => m.homeScore != null).length;
 
   const summary = [
@@ -170,7 +175,7 @@ export default async function HomePage() {
               <Link
                 key={edition.id}
                 href={`/edicoes/${edition.id}`}
-                className="player-card tier-campeao w-[88px] shrink-0 !gap-1 !px-1.5"
+                className={`player-card tier-${tierById.get(entry.playerId) ?? "campeao"} w-[88px] shrink-0 !gap-1 !px-1.5`}
               >
                 <Avatar
                   name={entry.player.name}
