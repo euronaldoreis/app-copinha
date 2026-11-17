@@ -3,12 +3,12 @@
 import type { PlayerStats } from "./stats";
 
 export const ATTRIBUTES = [
-  { key: "atq", label: "ATQ", name: "Ataque", hint: "gols marcados por jogo" },
-  { key: "vit", label: "VIT", name: "Vitórias", hint: "aproveitamento dos pontos" },
-  { key: "pod", label: "PÓD", name: "Pódio", hint: "edições terminadas no pódio" },
-  { key: "def", label: "DEF", name: "Defesa", hint: "poucos gols sofridos por jogo" },
-  { key: "tit", label: "TÍT", name: "Títulos", hint: "edições que terminou campeão" },
-  { key: "exp", label: "EXP", name: "Experiência", hint: "jogos disputados, comparado ao veterano" },
+  { key: "atq", label: "ATQ", name: "Ataque", short: "ataque", hint: "gols marcados por jogo" },
+  { key: "vit", label: "VIT", name: "Vitórias", short: "vitórias", hint: "aproveitamento dos pontos" },
+  { key: "pod", label: "PÓD", name: "Pódio", short: "pódios", hint: "edições terminadas no pódio" },
+  { key: "def", label: "DEF", name: "Defesa", short: "defesa", hint: "poucos gols sofridos por jogo" },
+  { key: "tit", label: "TÍT", name: "Títulos", short: "títulos", hint: "edições que terminou campeão" },
+  { key: "exp", label: "EXP", name: "Experiência", short: "rodagem", hint: "jogos disputados, comparado ao veterano" },
 ] as const;
 
 export type AttributeKey = (typeof ATTRIBUTES)[number]["key"];

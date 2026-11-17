@@ -7,6 +7,7 @@ import { Empty, PageTitle, Section } from "@/components/ui";
 import { isAdmin } from "@/lib/auth";
 import { getData } from "@/lib/data";
 import { plural } from "@/lib/labels";
+import { tierOf } from "@/lib/tier";
 import { computeRanking } from "@/lib/stats";
 
 export const metadata: Metadata = { title: "Jogadores" };
@@ -39,6 +40,8 @@ export default async function PlayersPage() {
             photoUrl: r.player.photoUrl,
             avatar: r.player.avatar,
             titles: r.titles,
+            tier: tierOf(r.bestResult, r.titles),
+            level: r.participations,
             detail: r.participations
               ? [
                   plural(r.participations, "participação", "participações"),

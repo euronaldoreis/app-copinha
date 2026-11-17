@@ -20,7 +20,7 @@ export function PageTitle({
   action?: ReactNode;
 }) {
   return (
-    <header className="pitch -mx-6 mb-8 flex items-start justify-between gap-4 px-6 py-6">
+    <header className="pitch -mx-4 mb-7 flex items-start justify-between gap-4 px-4 py-5">
       <div className="min-w-0 flex-1">
       <h1
         className={recycle ? "flex items-center gap-3 text-title" : "text-title"}
@@ -28,9 +28,9 @@ export function PageTitle({
       >
         {recycle && (
           <RecycleIcon
-            width={40}
-            height={37}
-            className="h-[27px] w-[29px] shrink-0 text-ink drop-shadow-[3px_3px_0_#04051a] sm:h-[37px] sm:w-[40px]"
+            width={36}
+            height={36}
+            className="size-8 shrink-0 text-ink drop-shadow-[0_3px_0_#0a1a52] sm:size-9"
           />
         )}
         <span className="min-w-0">
@@ -54,8 +54,8 @@ export function Section({
   children: ReactNode;
 }) {
   return (
-    <section className="mt-10">
-      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+    <section className="mt-8">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
         <h2 className="heading" aria-label={title}>
           <Arcade>{title}</Arcade>
         </h2>
@@ -116,9 +116,9 @@ export function Empty({ children }: { children: ReactNode }) {
 /** Número grande com legenda, como um quadro de estatística do jogo. */
 export function Stat({ value, label }: { value: ReactNode; label: string }) {
   return (
-    <div className="card px-4 py-4">
+    <div className="card flex flex-col items-center px-2 py-3 text-center">
       <div className="num text-title text-accent">{value}</div>
-      <div className="mt-1 text-body text-muted">{label}</div>
+      <div className="mt-0.5 text-body text-muted">{label}</div>
     </div>
   );
 }
@@ -133,7 +133,7 @@ export function Disclosure({
 }) {
   return (
     <details className="card group">
-      <summary className="flex min-h-[60px] cursor-pointer list-none items-center justify-between px-5 text-name font-semibold [&::-webkit-details-marker]:hidden">
+      <summary className="flex min-h-[56px] cursor-pointer list-none items-center justify-between px-5 text-name font-black [&::-webkit-details-marker]:hidden">
         {title}
         <ChevronIcon className="text-accent group-open:rotate-90" />
       </summary>

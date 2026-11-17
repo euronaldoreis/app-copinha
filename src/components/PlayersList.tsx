@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { plural } from "@/lib/labels";
 import type { AvatarLook } from "@/lib/sprite";
+import Link from "next/link";
+import { TIER_LABELS, type Tier } from "@/lib/tier";
+import { Avatar } from "./Avatar";
 import { TrophyIcon } from "./icons";
-import { PersonRow } from "./ui";
 
 export interface PlayerItem {
   id: number;
@@ -13,6 +15,9 @@ export interface PlayerItem {
   avatar: AvatarLook | null;
   detail: string;
   titles: number;
+  tier: Tier;
+  /** Participações: o "nível" da carta. */
+  level: number;
 }
 
 /** Minúsculas e sem acento: "joao" encontra "João", "ITALO" encontra "Ítalo". */
@@ -59,27 +64,46 @@ export function PlayersList({ players }: { players: PlayerItem[] }) {
       </div>
 
       {shown.length > 0 && (
-        <div className="card px-5 py-1.5">
+        <div className="grid grid-cols-3 gap-x-2.5 gap-y-4 sm:grid-cols-4">
           {shown.map((p) => (
-            <PersonRow
+            <Link
               key={p.id}
               href={`/jogadores/${p.id}`}
-              name={p.name}
-              photoUrl={p.photoUrl}
-              avatar={p.avatar}
-              detail={p.detail}
-              trailing={
-                p.titles > 0 ? (
-                  <span
-                    className="num flex items-center gap-1 text-name font-semibold text-accent"
-                    title={plural(p.titles, "título", "títulos")}
-                  >
-                    {p.titles}
-                    <TrophyIcon width={18} height={18} />
-                  </span>
-                ) : null
-              }
-            />
+              className={`player-card tier-${p.tier}`}
+              title={p.detail}
+            >
+              <span className="flex w-full items-center justify-between">
+                <span className="player-badge">Nv {p.level}</span>
+                <span
+                  className="player-badge !px-1.5"
+                  title={plural(p.titles, "título", "títulos")}
+                >
+                  <TrophyIcon width={14} height={14} className="text-accent" />
+                  <span className="num">{p.titles}</span>
+                </span>
+              </span>
+              <Avatar
+                name={p.name}
+                photoUrl={p.photoUrl}
+                avatar={p.avatar}
+                size={68}
+              />
+              <span className="player-plate">
+                <span className="text-title w-full truncate text-center !text-[16px] !leading-tight">
+                  {p.name}
+                </span>
+                <span
+                  className={`max-w-full truncate whitespace-nowrap text-center font-black uppercase text-muted ${
+                    // "Super campeão" é longo: letra menor e sem espaço extra para caber
+                    TIER_LABELS[p.tier].length > 10
+                      ? "text-[9px] tracking-normal"
+                      : "text-[10px] tracking-wide"
+                  }`}
+                >
+                  {TIER_LABELS[p.tier]}
+                </span>
+              </span>
+            </Link>
           ))}
         </div>
       )}

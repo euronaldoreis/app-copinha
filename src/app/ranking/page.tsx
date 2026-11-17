@@ -68,7 +68,7 @@ function RankTable({
 }) {
   const hide = (c: Column) => (c.wide ? "hidden sm:table-cell" : "");
   return (
-    <div className="card px-5 pb-2 pt-4">
+    <div className="card px-3 pb-2 pt-3">
       <table className="w-full text-body">
         <thead className="text-muted">
           <tr>
@@ -307,7 +307,7 @@ export default async function RankingPage(props: PageProps<"/ranking">) {
     <>
       <PageTitle title="Ranking" />
       {podium}
-      <nav aria-label="Filtros do ranking" className="-mx-1 mb-6 flex gap-1 overflow-x-auto">
+      <nav aria-label="Filtros do ranking" className="-mx-1 mb-6 flex gap-2 overflow-x-auto px-1 pb-2">
         {TABS.map((t) => (
           <Link
             key={t.id}

@@ -12,7 +12,7 @@ import { DrawPanel } from "@/components/DrawPanel";
 import { EntryControls } from "@/components/EntryControls";
 import { StartPanel } from "@/components/GroupDraw";
 import { Tabs, type TabItem } from "@/components/Tabs";
-import { MatchRow, type MatchSide } from "@/components/MatchRow";
+import { MatchCard, type MatchSide } from "@/components/MatchCard";
 import { StandingsTable } from "@/components/StandingsTable";
 import {
   PeopleIcon,
@@ -116,11 +116,17 @@ function MatchList({
   view,
   admin,
   totalRounds,
+  numbers,
+  label,
 }: {
   matches: Match[];
   view: EditionView;
   admin: boolean;
   totalRounds: number;
+  /** Número de cada jogo na edição, pelo id. */
+  numbers: Map<number, number>;
+  /** Fase mostrada na faixa de cada cartão. */
+  label: (m: Match) => string;
 }) {
   const entryById = new Map(view.entries.map((e) => [e.id, e]));
   const side = (entryId: number | null): MatchSide | null => {
@@ -129,16 +135,20 @@ function MatchList({
       ? {
           playerId: e.playerId,
           name: e.player.name,
-          team: e.team?.name ?? null,
+          team: view.edition.useTeams ? (e.team?.name ?? null) : null,
+          photoUrl: e.player.photoUrl,
+          avatar: e.player.avatar,
         }
       : null;
   };
   return (
-    <div className="card px-5 py-1.5">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       {matches.map((m) => (
-        <MatchRow
+        <MatchCard
           key={m.id}
           matchId={m.id}
+          number={numbers.get(m.id) ?? 0}
+          label={label(m)}
           knockout={m.stage !== "grupo"}
           home={side(m.homeEntryId)}
           away={side(m.awayEntryId)}
@@ -211,6 +221,28 @@ function Tournament({ view, admin }: { view: EditionView; admin: boolean }) {
   const rounds = [...new Set(groupMatches.map((m) => m.round))].sort(
     (a, b) => a - b,
   );
+  const roundMatches = (round: number) =>
+    groupMatches
+      .filter((m) => m.round === round)
+      .sort(
+        (a, b) =>
+          (a.groupLabel ?? "").localeCompare(b.groupLabel ?? "") ||
+          a.slot - b.slot,
+      );
+
+  // Numeração dos jogos na ordem em que acontecem: rodadas e depois o mata-mata.
+  const numbers = new Map<number, number>();
+  for (const m of [
+    ...rounds.flatMap(roundMatches),
+    ...stages.flatMap((s) => [...s.matches].sort((a, b) => a.slot - b.slot)),
+  ])
+    numbers.set(m.id, numbers.size + 1);
+
+  const groupLabel = (m: Match) =>
+    edition.format === "liga" || !m.groupLabel || tables.length <= 1
+      ? `Rodada ${m.round}`
+      : `Grupo ${m.groupLabel}`;
+  const stageLabel = (label: string) => () => label;
 
   const tabs: TabItem[] = [];
 
@@ -258,6 +290,8 @@ function Tournament({ view, admin }: { view: EditionView; admin: boolean }) {
                 view={view}
                 admin={admin}
                 totalRounds={totalRounds}
+                numbers={numbers}
+                label={stageLabel(s.label)}
               />
             </div>
           ))}
@@ -278,26 +312,19 @@ function Tournament({ view, admin }: { view: EditionView; admin: boolean }) {
               {pairingNote(edition.pairing, edition.crossGames)}
             </p>
           )}
-          {rounds.map((round) => {
-            const ms = groupMatches
-              .filter((m) => m.round === round)
-              .sort(
-                (a, b) =>
-                  (a.groupLabel ?? "").localeCompare(b.groupLabel ?? "") ||
-                  a.slot - b.slot,
-              );
-            return (
-              <div key={round} className="mt-5 first:mt-0">
-                <SubHeading>Rodada {round}</SubHeading>
-                <MatchList
-                  matches={ms}
-                  view={view}
-                  admin={admin}
-                  totalRounds={totalRounds}
-                />
-              </div>
-            );
-          })}
+          {rounds.map((round) => (
+            <div key={round} className="mt-5 first:mt-0">
+              <SubHeading>Rodada {round}</SubHeading>
+              <MatchList
+                matches={roundMatches(round)}
+                view={view}
+                admin={admin}
+                totalRounds={totalRounds}
+                numbers={numbers}
+                label={groupLabel}
+              />
+            </div>
+          ))}
         </>
       ),
     });

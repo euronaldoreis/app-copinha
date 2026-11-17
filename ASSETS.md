@@ -15,25 +15,26 @@ Sumário: [1. Arquivos de imagem](#1-arquivos-de-imagem) · [2. Imagem de compar
 
 | Arquivo | O que é | Formato e tamanho | Hoje mostra |
 | --- | --- | --- | --- |
-| [src/app/icon.svg](src/app/icon.svg) | Favicon (ícone da aba do navegador) | SVG quadrado, `viewBox="4 6 92 92"` | Três setas brancas de reciclagem sobre verde `#1c9440` |
-| [src/app/apple-icon.png](src/app/apple-icon.png) | Ícone ao "adicionar à tela de início" no iPhone/iPad | PNG 180×180 | Bola de pixels branca sobre verde |
-| [public/icon-192.png](public/icon-192.png) | Ícone do app instalado (Android/PC) | PNG 192×192 | Bola de pixels branca sobre verde |
-| [public/icon-512.png](public/icon-512.png) | Ícone do app instalado, tamanho grande | PNG 512×512 | Bola de pixels branca sobre verde |
-| [public/icon-maskable-512.png](public/icon-maskable-512.png) | Ícone "adaptável" do Android (o sistema recorta em círculo, quadrado arredondado etc.) | PNG 512×512 | Bola menor, centrada, com margem |
+| [src/app/icon.png](src/app/icon.png) | Favicon (ícone da aba do navegador) | PNG 256×256, fundo transparente | Escudo dourado de seis lados, fundo azul, taça dourada com reciclagem verde |
+| [src/app/apple-icon.png](src/app/apple-icon.png) | Ícone ao "adicionar à tela de início" no iPhone/iPad | PNG 180×180, fundo marinho `#0f2466` | Brasão a 84% do quadro |
+| [public/icon-192.png](public/icon-192.png) | Ícone do app instalado (Android/PC) | PNG 192×192, fundo transparente | Brasão a 94% do quadro |
+| [public/icon-512.png](public/icon-512.png) | Ícone do app instalado, tamanho grande | PNG 512×512, fundo transparente | Brasão a 94% do quadro |
+| [public/icon-maskable-512.png](public/icon-maskable-512.png) | Ícone "adaptável" do Android (o sistema recorta em círculo, quadrado arredondado etc.) | PNG 512×512, fundo marinho `#0f2466` | Brasão a 70%, dentro da área segura |
+| [public/brasao.png](public/brasao.png) | Brasão na barra de cima (componente `Emblem` em [src/components/TopBarBrand.tsx](src/components/TopBarBrand.tsx)) | PNG 147×192, fundo transparente, sem sobra em volta | O mesmo escudo dos ícones |
 | [public/offline.html](public/offline.html) | Tela mostrada sem internet | HTML com CSS embutido (sem imagem) | Texto "Sem conexão" e botão |
 | [src/app/manifest.ts](src/app/manifest.ts) | Cadastro do app instalável (nome, cores, quais ícones usar) | TypeScript | , |
 | [public/sw.js](public/sw.js) | Service worker: guarda arquivos estáticos e a tela sem internet | JavaScript | , |
 
-> Os PNGs de instalação (`apple-icon`, `icon-192`, `icon-512`, `icon-maskable-512`) ainda mostram a **bola**; só o favicon (`icon.svg`) já foi trocado para a reciclagem. Para uma identidade consistente, troque os cinco juntos (ver o [checklist](#9-checklist-para-trocar-a-identidade-visual)).
+> Os cinco ícones saem de uma única imagem do brasão (PNG quadrado com fundo transparente). Para trocar, gere os cinco de novo a partir da imagem nova, com os mesmos tamanhos e fundos da tabela, e aumente o `VERSION` do [public/sw.js](public/sw.js).
 
 ### Como o Next.js usa esses arquivos
-- `src/app/icon.svg` e `src/app/apple-icon.png` são pegos **pelo nome do arquivo**: o Next gera sozinho as tags `<link rel="icon">` e `<link rel="apple-touch-icon">`, com um código no final da URL para o navegador não ficar com o antigo. Basta substituir o arquivo, mantendo o nome.
+- `src/app/icon.png` e `src/app/apple-icon.png` são pegos **pelo nome do arquivo**: o Next gera sozinho as tags `<link rel="icon">` e `<link rel="apple-touch-icon">`, com um código no final da URL para o navegador não ficar com o antigo. Basta substituir o arquivo, mantendo o nome.
 - Os PNGs em `public/` são referenciados por caminho em [src/app/manifest.ts](src/app/manifest.ts) (`/icon-192.png`, `/icon-512.png`, `/icon-maskable-512.png`). Se mudar um nome, mude lá também.
 - O favicon pode ser trocado por `icon.png` ou `favicon.ico` (nomes que o Next também reconhece), mas **não deixe dois ao mesmo tempo** para não haver dúvida de qual vale.
 
 ### Requisitos de cada ícone
-- **Favicon (SVG):** forma simples, que se lê em 16×16 px. Evite detalhes finos. Fundo preenchido (não transparente) fica melhor em abas escuras e claras.
-- **PNGs de instalação:** quadrados, **sem cantos arredondados e sem transparência**: o sistema aplica a máscara. O `apple-icon` em especial fica com fundo preto onde for transparente.
+- **Favicon:** precisa se ler em 16×16 px. O brasão tem bastante detalhe, mas a silhueta (escudo dourado com a taça) ainda se reconhece na aba.
+- **PNGs de instalação:** quadrados e sem cantos arredondados: o sistema aplica a máscara. O `apple-icon` **não pode ter transparência** (o iPhone pinta de preto), por isso tem fundo marinho. Os ícones `any` (192 e 512) ficam transparentes, para o brasão aparecer solto na área de trabalho.
 - **Maskable:** o símbolo precisa caber no **círculo central de 80%** da imagem (cerca de 205 px de margem em cada lado numa imagem de 512). Fora disso o Android pode cortar. Use o mesmo fundo de cor sólida até a borda.
 - Imagens de pixel art: exporte **sem suavização** (vizinho mais próximo), senão as bordas ficam borradas.
 
@@ -207,7 +208,7 @@ Definidas como variáveis em [src/app/globals.css](src/app/globals.css) (bloco `
 
 Se for trocar o símbolo da marca (hoje a **bola** e a **reciclagem**), estes são todos os lugares:
 
-1. **Favicon:** [src/app/icon.svg](src/app/icon.svg).
+1. **Favicon:** [src/app/icon.png](src/app/icon.png).
 2. **Ícones de instalação:** [src/app/apple-icon.png](src/app/apple-icon.png) (180), [public/icon-192.png](public/icon-192.png), [public/icon-512.png](public/icon-512.png) e [public/icon-maskable-512.png](public/icon-maskable-512.png) (símbolo dentro dos 80% centrais).
 3. **Imagem de compartilhamento:** [src/app/opengraph-image.tsx](src/app/opengraph-image.tsx).
 4. **Marca na interface:** `BallIcon` e `RecycleIcon` em [src/components/icons.tsx](src/components/icons.tsx), usados por [src/components/TopBarBrand.tsx](src/components/TopBarBrand.tsx) (barra de cima), [src/components/ui.tsx](src/components/ui.tsx) (título da página inicial) e [src/components/Splash.tsx](src/components/Splash.tsx) (abertura).

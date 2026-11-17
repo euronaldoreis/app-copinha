@@ -6,7 +6,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { BallIcon, ChevronIcon, RecycleIcon } from "./icons";
+import { ChevronIcon } from "./icons";
 
 /** Telas do menu de baixo: nelas não há para onde voltar. */
 const ROOTS = new Set(["/", "/edicoes", "/ranking", "/jogadores"]);
@@ -43,6 +43,24 @@ function recordVisit(pathname: string) {
   }
 }
 
+/**
+ * Brasão do torneio (taça com reciclagem), o mesmo do ícone do app.
+ * `size` é a altura; a largura segue a proporção do escudo (147×192).
+ */
+export function Emblem({ size = 48 }: { size?: number }) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- imagem pequena e fixa, sem otimização
+    <img
+      src="/brasao.png"
+      alt=""
+      width={Math.round((size * 147) / 192)}
+      height={size}
+      className="shrink-0 drop-shadow-[0_2px_0_rgb(10_26_82_/_0.6)]"
+      decoding="async"
+    />
+  );
+}
+
 export function TopBarBrand() {
   const pathname = usePathname();
   const router = useRouter();
@@ -55,28 +73,27 @@ export function TopBarBrand() {
       {inner && (
         <button
           type="button"
-          className="btn btn-quiet -ml-2 min-h-10 gap-1 text-ink"
+          className="btn-hud shrink-0"
+          aria-label="Voltar"
           onClick={() => {
             // Veio de outra tela do site: volta para ela, do jeito que estava.
             if (readTrail().length > 1) router.back();
             else router.replace(parentOf(pathname));
           }}
         >
-          <ChevronIcon width={16} height={16} className="rotate-180" />
-          Voltar
+          <ChevronIcon width={22} height={22} className="rotate-180" />
         </button>
       )}
       <Link
         href="/"
         aria-label="Copinha dos Lixos"
-        className="flex min-w-0 items-center gap-2 font-pixel text-[9px] uppercase text-accent"
+        className="flex min-w-0 items-center gap-2"
       >
-        <BallIcon width={16} height={16} className="shrink-0 text-ink" />
-        <RecycleIcon width={16} height={15} className="shrink-0 text-[#39d36b]" />
-        {/* Com o voltar na barra, o nome só cabe em telas mais largas. */}
-        <span className={inner ? "hidden truncate sm:inline" : "truncate"}>
-          Copinha dos Lixos
-        </span>
+        <Emblem />
+        {/* Nas telas de dentro o voltar ocupa o lugar do nome. */}
+        {!inner && (
+          <span className="text-title !text-[19px] leading-none text-ink">Copinha</span>
+        )}
       </Link>
     </div>
   );
