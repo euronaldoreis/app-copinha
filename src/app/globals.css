@@ -259,6 +259,61 @@ fieldset label:has(input[type="radio"]:checked) {
       0 3px var(--color-night);
   }
 
+  /* Campo de senha da tela Entrar (src/components/LoginForm.tsx). */
+  .login-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 56px;
+    padding: 0 6px 0 14px;
+    background: #0f2466;
+    border: 2px solid #4d7fe0;
+    border-radius: 12px;
+    box-shadow: inset 0 3px 0 rgb(0 0 0 / 0.25);
+    cursor: text;
+  }
+  .login-box:focus-within {
+    border-color: var(--color-accent);
+    box-shadow:
+      inset 0 3px 0 rgb(0 0 0 / 0.25),
+      0 0 0 3px rgb(255 200 61 / 0.35);
+  }
+  .login-box-error {
+    border-color: var(--color-danger);
+  }
+  .login-input {
+    flex: 1;
+    min-width: 0;
+    height: 52px;
+    background: transparent;
+    border: 0;
+    outline: none;
+    color: var(--color-ink);
+    font-size: 16px; /* 16 px ou mais: o iPhone não dá zoom ao focar */
+    font-weight: 800;
+    -webkit-user-select: text;
+    user-select: text;
+    touch-action: manipulation;
+  }
+  .login-input::placeholder {
+    color: #7fa3ec;
+  }
+  .login-eye {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    flex-shrink: 0;
+    border-radius: 10px;
+    color: var(--color-faint);
+    cursor: pointer;
+  }
+  .login-eye:hover,
+  .login-eye[aria-pressed="true"] {
+    color: var(--color-ink);
+  }
+
   /* Título de seção: losango dourado e letra de título. */
   .heading {
     display: flex;
@@ -464,9 +519,96 @@ fieldset label:has(input[type="radio"]:checked) {
       0 0 0 2px var(--color-night),
       0 5px 0 2px var(--color-night);
   }
+  /* Super campeão (10 títulos ou mais): rubi brilhante, com facetas, pontos
+     de brilho e um reflexo que passa. */
+  .tier-rubi {
+    position: relative;
+    overflow: hidden;
+    color: #ffffff;
+    background:
+      /* pontos de brilho da pedra */
+      radial-gradient(circle at 18% 14%, rgb(255 255 255 / 0.95) 0 1.5px, transparent 2.5px),
+      radial-gradient(circle at 84% 36%, rgb(255 255 255 / 0.9) 0 1.2px, transparent 2.2px),
+      radial-gradient(circle at 26% 78%, rgb(255 215 225 / 0.9) 0 1px, transparent 2px),
+      radial-gradient(circle at 78% 88%, rgb(255 255 255 / 0.8) 0 1.3px, transparent 2.3px),
+      /* luz no alto, como numa pedra lapidada */
+      radial-gradient(ellipse 80% 45% at 30% 0%, rgb(255 150 175 / 0.7), transparent 70%),
+      /* facetas: faixas diagonais de vermelho claro e escuro */
+      linear-gradient(135deg, #4a0418 0%, #a3122f 18%, #ff4d6d 30%, #7a0b24 44%, #c81d3f 58%, #ff8fa3 68%, #5e0a1f 82%, #33020e 100%);
+    border-color: #ffc2cf;
+    box-shadow:
+      inset 0 0 0 2px #4a0418,
+      inset 0 2px 0 3px rgb(255 180 200 / 0.35),
+      0 0 0 2px var(--color-night),
+      0 5px 0 2px var(--color-night),
+      0 0 18px rgb(255 60 100 / 0.75);
+  }
+
+  /* Campeão com 5 a 9 títulos: esmeralda brilhante, mesmo efeito do rubi. */
+  .tier-esmeralda {
+    position: relative;
+    overflow: hidden;
+    color: #ffffff;
+    background:
+      radial-gradient(circle at 18% 14%, rgb(255 255 255 / 0.95) 0 1.5px, transparent 2.5px),
+      radial-gradient(circle at 84% 36%, rgb(255 255 255 / 0.9) 0 1.2px, transparent 2.2px),
+      radial-gradient(circle at 26% 78%, rgb(210 255 230 / 0.9) 0 1px, transparent 2px),
+      radial-gradient(circle at 78% 88%, rgb(255 255 255 / 0.8) 0 1.3px, transparent 2.3px),
+      radial-gradient(ellipse 80% 45% at 30% 0%, rgb(150 255 200 / 0.7), transparent 70%),
+      linear-gradient(135deg, #04492a 0%, #0f8a4c 18%, #3fd98a 30%, #0b6e3d 44%, #17a85e 58%, #6ef0a8 68%, #0a5c33 82%, #033a21 100%);
+    border-color: #b8f5d2;
+    box-shadow:
+      inset 0 0 0 2px #05452a,
+      inset 0 2px 0 3px rgb(170 255 210 / 0.35),
+      0 0 0 2px var(--color-night),
+      0 5px 0 2px var(--color-night),
+      0 0 18px rgb(60 220 130 / 0.75);
+  }
+
+  /* Reflexo que atravessa as cartas de pedra preciosa. */
+  .tier-rubi::after,
+  .tier-esmeralda::after {
+    content: "";
+    position: absolute;
+    inset: -40% -60%;
+    pointer-events: none;
+    background: linear-gradient(
+      115deg,
+      transparent 40%,
+      rgb(255 240 245 / 0.7) 47%,
+      rgb(255 255 255 / 0.9) 50%,
+      rgb(255 255 255 / 0.45) 53%,
+      transparent 60%
+    );
+    transform: translateX(-60%);
+    animation: gem-shine 3.2s ease-in-out infinite;
+  }
+  @keyframes gem-shine {
+    0%,
+    35% {
+      transform: translateX(-60%);
+    }
+    100% {
+      transform: translateX(60%);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tier-rubi::after,
+    .tier-esmeralda::after {
+      animation: none;
+      opacity: 0;
+    }
+  }
+
+  /* Campeão: carta toda dourada, com brilho no alto e moldura clara. */
   .tier-campeao {
-    background: linear-gradient(#9a6bf0, #5b34b3);
-    border-color: #f5c542;
+    background: linear-gradient(180deg, #fff09a 0%, #ffd23f 30%, #f5a91c 70%, #d9820c 100%);
+    border-color: #fff4c2;
+    box-shadow:
+      inset 0 0 0 2px #b8650a,
+      0 0 0 2px var(--color-night),
+      0 5px 0 2px var(--color-night),
+      0 0 14px rgb(255 200 61 / 0.45);
   }
   .tier-vice {
     background: linear-gradient(#7c5ce6, #4a2fa6);

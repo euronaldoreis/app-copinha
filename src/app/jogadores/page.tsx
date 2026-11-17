@@ -40,7 +40,7 @@ export default async function PlayersPage() {
             photoUrl: r.player.photoUrl,
             avatar: r.player.avatar,
             titles: r.titles,
-            tier: tierOf(r.bestResult),
+            tier: tierOf(r.bestResult, r.titles),
             level: r.participations,
             detail: r.participations
               ? [

@@ -128,7 +128,7 @@ export default async function PlayerPage(props: PageProps<"/jogadores/[id]">) {
   const latest =
     allCampaigns.find((c) => c.edition.status !== "inscricoes") ??
     allCampaigns[0];
-  const tier = tierOf(stats.bestResult);
+  const tier = tierOf(stats.bestResult, stats.titles);
   const rivals = computeHeadToHead(data, player.id);
   const hasHistory = data.entries.some((e) => e.playerId === player.id);
 
@@ -158,7 +158,7 @@ export default async function PlayerPage(props: PageProps<"/jogadores/[id]">) {
               size={104}
             />
           </span>
-          <span className="player-plate text-[12px] font-black uppercase tracking-wider text-accent">
+          <span className="player-plate whitespace-nowrap text-[12px] font-black uppercase tracking-wide text-accent">
             {stats.participations ? TIER_LABELS[tier] : "Estreante"}
           </span>
         </div>

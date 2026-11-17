@@ -92,7 +92,14 @@ export function PlayersList({ players }: { players: PlayerItem[] }) {
                 <span className="text-title w-full truncate text-center !text-[16px] !leading-tight">
                   {p.name}
                 </span>
-                <span className="text-[10px] font-black uppercase tracking-wider text-muted">
+                <span
+                  className={`max-w-full truncate whitespace-nowrap text-center font-black uppercase text-muted ${
+                    // "Super campeão" é longo: letra menor e sem espaço extra para caber
+                    TIER_LABELS[p.tier].length > 10
+                      ? "text-[9px] tracking-normal"
+                      : "text-[10px] tracking-wide"
+                  }`}
+                >
                   {TIER_LABELS[p.tier]}
                 </span>
               </span>

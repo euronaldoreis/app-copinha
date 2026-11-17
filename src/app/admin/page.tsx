@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { loginAction } from "../actions";
-import { ActionForm, SubmitButton } from "@/components/forms";
+import { LoginForm } from "@/components/LoginForm";
 import { PageTitle } from "@/components/ui";
 import { adminConfigured, isAdmin } from "@/lib/auth";
 
@@ -34,24 +33,7 @@ export default async function AdminPage() {
         subtitle="Só quem organiza a Copinha precisa entrar. O resto do site é aberto para todo mundo ver."
       />
       {adminConfigured() ? (
-        <ActionForm
-          action={loginAction}
-          className="flex max-w-sm flex-col gap-3"
-        >
-          <label>
-            <span className="label">Senha de administrador</span>
-            {/* Sem autoFocus: no iPhone o foco automático não abre o teclado e
-                o toque seguinte no campo (já focado) também não abre. */}
-            <input
-              type="password"
-              name="password"
-              className="field"
-              autoComplete="current-password"
-              required
-            />
-          </label>
-          <SubmitButton>Entrar</SubmitButton>
-        </ActionForm>
+        <LoginForm />
       ) : (
         <p className="card max-w-lg px-6 py-5 text-body text-muted"></p>
       )}
