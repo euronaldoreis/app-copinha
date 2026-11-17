@@ -16,6 +16,8 @@ export async function GET(
     headers: {
       "Content-Type": photo.contentType,
       "Cache-Control": "public, max-age=31536000, immutable",
+      // O navegador não pode "adivinhar" outro tipo para o arquivo.
+      "X-Content-Type-Options": "nosniff",
     },
   });
 }

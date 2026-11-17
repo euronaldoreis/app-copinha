@@ -88,11 +88,17 @@ async function findPlayerByName(db: Db, name: string) {
   return rows.find((p) => sameName(p.name, name)) ?? null;
 }
 
-function cleanPhotoUrl(value: unknown) {
+/**
+ * Link externo de foto: só https. `current` é o link já salvo; um link antigo
+ * em http continua aceito enquanto não for trocado, para salvar o jogador com
+ * outra mudança (o nome, por exemplo) não falhar por causa dele.
+ */
+function cleanPhotoUrl(value: unknown, current?: string | null) {
   const url = String(value ?? "").trim();
   if (!url) return null;
-  if (!/^https?:\/\/\S+$/i.test(url) || url.length > 500)
-    throw new UserError("O link da foto precisa começar com http:// ou https://.");
+  if (current && url === current && /^https?:\/\/\S+$/i.test(url)) return url;
+  if (!/^https:\/\/\S+$/i.test(url) || url.length > 500)
+    throw new UserError("O link da foto precisa começar com https://.");
   return url;
 }
 
@@ -192,7 +198,7 @@ export async function updatePlayer(
   // Foto: enviada > link novo > manter a enviada > link. O campo de link só
   // cuida de links externos; ele vazio não apaga uma foto enviada.
   const upload = parsePhotoData(input.photoData);
-  const link = cleanPhotoUrl(input.photoUrl);
+  const link = cleanPhotoUrl(input.photoUrl, current.photoUrl);
   let photoUrl: string | null;
   if (upload) {
     photoUrl = await storePhoto(db, id, upload);

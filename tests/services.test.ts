@@ -5,7 +5,7 @@ import { migrate } from "drizzle-orm/libsql/migrator";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { createDb } from "@/db";
-import { entries, matches } from "@/db/schema";
+import { entries, matches, players } from "@/db/schema";
 import {
   UserError,
   regenerateMatches,
@@ -860,6 +860,22 @@ describe("foto enviada do jogador", () => {
     });
     expect((await find(player.id)).photoUrl).toBe("https://exemplo.com/a.jpg");
     expect(await getPlayerPhoto(db, player.id)).toBeNull();
+  });
+
+  it("link de foto novo só aceita https; um http antigo continua valendo até trocar", async () => {
+    await expect(createPlayer(db, "Link Http", "http://exemplo.com/a.jpg")).rejects.toThrow(
+      /https:\/\//,
+    );
+    const player = await createPlayer(db, "Link Https", "https://exemplo.com/a.jpg");
+    expect(player.photoUrl).toBe("https://exemplo.com/a.jpg");
+    await expect(
+      updatePlayer(db, player.id, { name: player.name, photoUrl: "http://exemplo.com/b.jpg" }),
+    ).rejects.toThrow(/https:\/\//);
+
+    // um link http que já estava salvo não impede de mudar o nome
+    await db.update(players).set({ photoUrl: "http://antigo.com/a.jpg" }).where(eq(players.id, player.id));
+    await updatePlayer(db, player.id, { name: "Link Https 2", photoUrl: "http://antigo.com/a.jpg" });
+    expect((await find(player.id)).name).toBe("Link Https 2");
   });
 
   it("recusa arquivos que não são imagem e fotos grandes, sem criar o jogador", async () => {
