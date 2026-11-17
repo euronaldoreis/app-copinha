@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { Avatar } from "@/components/Avatar";
 import {
   ChampionParty,
   PartyButton,
@@ -34,6 +33,7 @@ import {
   roundLabel,
   sourceLabel,
 } from "@/lib/labels";
+import { ChampionPanel } from "@/components/ChampionPanel";
 import { configOf, editionView, type EditionView } from "@/lib/services";
 import {
   knockoutRounds,
@@ -62,48 +62,31 @@ function Podium({ view }: { view: EditionView }) {
   const by = (code: string) => view.entries.find((e) => e.result === code);
   const champion = by("campeao");
   if (!champion) return null;
-  const rows = [
-    { entry: champion, label: "Campeão", gold: true },
-    { entry: by("vice"), label: "Vice", gold: false },
-    { entry: by("terceiro"), label: "3º lugar", gold: false },
-  ].filter((r) => r.entry != null);
+  const third = by("terceiro");
   return (
-    <div className="card p-3">
-      <ul className="divide-y divide-bevel-dark/60">
-        {rows.map(({ entry: e, label, gold }) => (
-          <li key={e!.id}>
-            <Link
-              href={`/jogadores/${e!.playerId}`}
-              className="flex items-center gap-3 py-2"
-              aria-label={`${label}: ${e!.player.name}`}
-            >
-              <Avatar
-                name={e!.player.name}
-                photoUrl={e!.player.photoUrl}
-                avatar={e!.player.avatar}
-                size={40}
-              />
-              <span className="min-w-0 flex-1">
-                <span
-                  className={`flex items-center gap-1 text-[11px] font-black uppercase tracking-wider ${gold ? "text-accent" : "text-muted"}`}
-                >
-                  {gold && <TrophyIcon width={14} height={14} />}
-                  {label}
-                </span>
-                <span className="block truncate font-black">
-                  {e!.player.name}
-                </span>
-              </span>
-              {e!.team && (
-                <span className="max-w-[40%] truncate text-body text-muted">
-                  {e!.team.name}
-                </span>
-              )}
-            </Link>
-          </li>
-        ))}
-      </ul>
-      <PartyButton />
+    <div className="card flex flex-col gap-2 p-3.5">
+      <Link
+        href={`/jogadores/${champion.playerId}`}
+        aria-label={`Campeão: ${champion.player.name}`}
+        className="block"
+      >
+        <ChampionPanel champion={champion} vice={by("vice")} />
+      </Link>
+      {third && (
+        <p className="px-1 text-body text-muted">
+          3º lugar:{" "}
+          <Link
+            href={`/jogadores/${third.playerId}`}
+            className="font-black text-ink"
+          >
+            {third.player.name}
+          </Link>
+          {third.team && ` · ${third.team.name}`}
+        </p>
+      )}
+      <div className="-mb-1 -ml-2">
+        <PartyButton />
+      </div>
     </div>
   );
 }
