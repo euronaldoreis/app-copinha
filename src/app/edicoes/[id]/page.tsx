@@ -63,50 +63,74 @@ function Podium({ view }: { view: EditionView }) {
   const by = (code: string) => view.entries.find((e) => e.result === code);
   const champion = by("campeao");
   if (!champion) return null;
-  const others = [by("vice"), by("terceiro")].filter((e) => e != null);
+  const runnersUp = [
+    { entry: by("vice"), label: "Vice-campeão", tier: "tier-vice" },
+    { entry: by("terceiro"), label: "3º lugar", tier: "tier-podio" },
+  ].filter((r) => r.entry != null);
   return (
-    <div className="card p-6">
-      <div className="flex items-center gap-4">
+    <div className="card flex flex-col gap-3 p-3.5">
+      {/* Campeão: carta dourada em destaque. */}
+      <Link
+        href={`/jogadores/${champion.playerId}`}
+        className="player-card tier-campeao !flex-row !items-center !gap-4 !p-3.5"
+        aria-label={`Campeão: ${champion.player.name}`}
+      >
         <Avatar
           name={champion.player.name}
           photoUrl={champion.player.photoUrl}
           avatar={champion.player.avatar}
-          size={72}
+          size={84}
         />
-        <div className="min-w-0">
-          <p className="flex items-center gap-1.5 text-body font-semibold text-accent">
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-1.5 text-[12px] font-black uppercase tracking-wider text-[#0a1a52]">
             <TrophyIcon width={18} height={18} />
             Campeão
-          </p>
-          <Link
-            href={`/jogadores/${champion.playerId}`}
-            className="block truncate text-title"
-            aria-label={champion.player.name}
-          >
+          </span>
+          <span className="text-title block truncate">
             <Arcade>{champion.player.name}</Arcade>
-          </Link>
-          <p className="truncate text-body text-muted">{champion.team?.name}</p>
-        </div>
-      </div>
-      {others.length > 0 && (
-        <div className="mt-3 grid grid-cols-1 gap-x-6 sm:grid-cols-2">
-          {others.map((e) => (
-            <PersonRow
-              key={e.id}
-              href={`/jogadores/${e.playerId}`}
-              name={e.player.name}
-              photoUrl={e.player.photoUrl}
-              avatar={e.player.avatar}
-              detail={[resultLabel(e.result), e.team?.name]
-                .filter(Boolean)
-                .join(" · ")}
-            />
+          </span>
+          {champion.team && (
+            <span className="mt-1 inline-block max-w-full truncate rounded-full bg-night/70 px-2.5 py-0.5 text-body font-black">
+              {champion.team.name}
+            </span>
+          )}
+        </span>
+      </Link>
+
+      {/* Vice e terceiro lugar: cartas menores lado a lado. */}
+      {runnersUp.length > 0 && (
+        <div className="grid grid-cols-2 gap-3">
+          {runnersUp.map(({ entry: e, label, tier }) => (
+            <Link
+              key={e!.id}
+              href={`/jogadores/${e!.playerId}`}
+              className={`player-card ${tier} !gap-2 !p-3`}
+              aria-label={`${label}: ${e!.player.name}`}
+            >
+              <Avatar
+                name={e!.player.name}
+                photoUrl={e!.player.photoUrl}
+                avatar={e!.player.avatar}
+                size={52}
+              />
+              <span className="player-plate w-full">
+                <span className="text-[11px] font-black uppercase tracking-wider text-muted">
+                  {label}
+                </span>
+                <span className="text-title w-full truncate text-center !text-[17px]">
+                  {e!.player.name}
+                </span>
+                {e!.team && (
+                  <span className="w-full truncate text-center text-body text-muted">
+                    {e!.team.name}
+                  </span>
+                )}
+              </span>
+            </Link>
           ))}
         </div>
       )}
-      <div className="-mb-2 -ml-2 mt-2">
-        <PartyButton />
-      </div>
+      <PartyButton />
     </div>
   );
 }
