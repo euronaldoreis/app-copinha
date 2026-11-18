@@ -398,7 +398,7 @@ export default async function RankingPage(props: PageProps<"/ranking">) {
             }
             detail="Levantaram a taça sem perder nenhum jogo"
           >
-            {unbeatenChampions.map((c) => (
+            {unbeatenChampions.slice(0, 5).map((c) => (
               <span key={c.edition.id} className="block">
                 {c.player.name}{" "}
                 <span className="text-body font-normal text-muted">
@@ -409,6 +409,11 @@ export default async function RankingPage(props: PageProps<"/ranking">) {
                 </span>
               </span>
             ))}
+            {unbeatenChampions.length > 5 && (
+              <span className="block text-body font-normal text-muted">
+                e mais {unbeatenChampions.length - 5}
+              </span>
+            )}
           </RecordCard>
         )}
         {penaltyKing && (
