@@ -310,7 +310,9 @@ export default async function RankingPage(props: PageProps<"/ranking">) {
       <nav aria-label="Filtros do ranking" className="-mx-1 mb-6 flex gap-2 overflow-x-auto px-1 pb-2">
         {TABS.map((t) => (
           <Link
-            key={t.id}
+            // A chave muda com o estado: o botão é recriado (e repintado
+            // inteiro) quando entra ou sai de ativo.
+            key={`${t.id}:${tab === t.id}`}
             href={t.id === "titulos" ? "/ranking" : `/ranking?aba=${t.id}`}
             className="chip"
             aria-current={tab === t.id ? "page" : undefined}

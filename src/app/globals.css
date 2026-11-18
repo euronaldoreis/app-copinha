@@ -464,6 +464,11 @@ fieldset label:has(input[type="radio"]:checked) {
     color: var(--color-muted);
     white-space: nowrap;
     cursor: pointer;
+    /* Camada própria: no Safari do iPhone, dentro de uma faixa que rola de
+       lado, a troca de filtro às vezes repintava só metade do botão (fundo
+       dourado no antigo, texto com o fundo velho no novo). */
+    transform: translateZ(0);
+    -webkit-tap-highlight-color: transparent;
   }
   .chip[aria-current="page"],
   .chip[aria-selected="true"],

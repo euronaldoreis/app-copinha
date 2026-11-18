@@ -33,7 +33,8 @@ export function Tabs({
       <div role="tablist" className="-mx-1 mb-6 flex gap-2 overflow-x-auto px-1 pb-2">
         {tabs.map((t) => (
           <button
-            key={t.id}
+            // Recria o botão ao mudar de ativo (repintura no Safari do iPhone).
+            key={`${t.id}:${t.id === current.id}`}
             type="button"
             role="tab"
             id={`aba-${t.id}`}
