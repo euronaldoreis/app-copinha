@@ -17,7 +17,9 @@ export function RecordsTeaser({ items }: { items: RecordItem[] }) {
       ? top.layout.person
       : top.layout.type === "versus"
         ? top.layout.left
-        : top.layout.people[0]?.person);
+        : top.layout.type === "list"
+          ? top.layout.people[0]?.person
+          : undefined);
 
   return (
     <Link

@@ -4,10 +4,23 @@ import { computeRecords, type AllData } from "@/lib/stats";
 
 // Dados montados à mão: três jogadores (Ana, Beto, Caio) em duas edições.
 const players = ["Ana", "Beto", "Caio"].map(
-  (name, i) => ({ id: i + 1, name, photoUrl: null, avatar: null, createdAt: "" }) as Player,
+  (name, i) =>
+    ({
+      id: i + 1,
+      name,
+      photoUrl: null,
+      avatar: null,
+      createdAt: "",
+    }) as Player,
 );
 const edition = (id: number, number: number) =>
-  ({ id, number, name: `Copinha #${number}`, playedOn: `2026-0${number}-01`, status: "encerrada" }) as Edition;
+  ({
+    id,
+    number,
+    name: `Copinha #${number}`,
+    playedOn: `2026-0${number}-01`,
+    status: "encerrada",
+  }) as Edition;
 const editions = [edition(10, 1), edition(20, 2)];
 
 // Inscrição = edição * 10 + jogador (ex.: 101 = Ana na edição 10).
@@ -24,10 +37,13 @@ for (const e of editions)
       result: null,
     } as unknown as Entry);
 const setResult = (id: number, result: string) => {
-  (entries.find((x) => x.id === id) as { result: string | null }).result = result;
+  (entries.find((x) => x.id === id) as { result: string | null }).result =
+    result;
 };
 setResult(101, "campeao"); // Ana campeã da #1 (invicta)
 setResult(202, "campeao"); // Beto campeão da #2 (perdeu um jogo)
+setResult(102, "vice"); // Beto vice na #1
+setResult(201, "vice"); // Ana vice na #2
 
 let nextId = 1;
 const match = (
@@ -94,9 +110,14 @@ describe("recordes por jogador", () => {
   });
 
   it("campeão invicto: só quem não perdeu nenhum jogo", () => {
-    expect(records.unbeatenChampions.map((c) => [c.player.name, c.edition.number, c.wins, c.draws])).toEqual([
-      ["Ana", 1, 2, 1],
-    ]);
+    expect(
+      records.unbeatenChampions.map((c) => [
+        c.player.name,
+        c.edition.number,
+        c.wins,
+        c.draws,
+      ]),
+    ).toEqual([["Ana", 1, 2, 1]]);
   });
 
   it("lixo do lixo: Caio na #1, zero pontos e 1 x 9 nos gols", () => {
@@ -111,7 +132,11 @@ describe("recordes por jogador", () => {
 
   it("rei dos pênaltis: Beto venceu 2 de 3 disputas", () => {
     // Ana venceu 1 de 2; Beto 2 de 3; Caio 0 de 1.
-    expect(records.penaltyKing).toMatchObject({ player: { name: "Beto" }, won: 2, total: 3 });
+    expect(records.penaltyKing).toMatchObject({
+      player: { name: "Beto" },
+      won: 2,
+      total: 3,
+    });
   });
 
   it("sem jogos, nenhum recorde novo aparece", () => {
@@ -121,5 +146,103 @@ describe("recordes por jogador", () => {
     expect(empty.unbeatenChampions).toEqual([]);
     expect(empty.worstCampaign).toBeNull();
     expect(empty.penaltyKing).toBeNull();
+    for (const key of [
+      "finalRout",
+      "finalGoals",
+      "longestShootout",
+      "goalFest",
+      "bestDefense",
+      "bestGoalDiff",
+      "winStreak",
+      "drought",
+      "classic",
+    ] as const)
+      expect(empty[key]).toBeNull();
+  });
+
+  it("final com mais gols e disputa de pênaltis mais longa", () => {
+    expect(records.finalRout).toBeNull(); // as duas finais empataram
+    expect(records.finalGoals).toMatchObject({
+      home: { name: "Ana" },
+      away: { name: "Beto" },
+      homeScore: 1,
+      awayScore: 1,
+      edition: { number: 1 },
+    });
+    expect(records.longestShootout).toMatchObject({
+      home: { name: "Ana" },
+      homePens: 5,
+      awayPens: 4,
+    });
+  });
+
+  it("edição mais goleadora pela média de gols por jogo", () => {
+    expect(records.goalFest).toMatchObject({
+      edition: { number: 1 },
+      games: 4,
+      goals: 14,
+    });
+  });
+
+  it("melhor defesa e maior saldo numa edição", () => {
+    expect(records.bestDefense).toMatchObject({
+      player: { name: "Ana" },
+      edition: { number: 1 },
+      played: 3,
+      ga: 1,
+    });
+    expect(records.bestGoalDiff).toMatchObject({
+      player: { name: "Ana" },
+      edition: { number: 1 },
+      gd: 7,
+    });
+  });
+
+  it("vitórias seguidas e jejum (empate não conta como vitória)", () => {
+    expect(records.winStreak).toMatchObject({
+      player: { name: "Ana" },
+      count: 2,
+    });
+    expect(records.drought).toMatchObject({
+      player: { name: "Beto" },
+      count: 4,
+      from: { number: 1 },
+      to: { number: 2 },
+    });
+  });
+
+  it("finais seguidas; títulos seguidos só com o mesmo campeão", () => {
+    expect(records.finalsStreak).toMatchObject({
+      player: { name: "Ana" },
+      count: 2,
+    });
+    expect(records.titleStreak).toBeNull();
+  });
+
+  it("títulos seguidos: Ana campeã nas duas edições", () => {
+    const swapped = entries.map((x) =>
+      x.id === 201
+        ? { ...x, result: "campeao" }
+        : x.id === 202
+          ? { ...x, result: "vice" }
+          : x,
+    ) as Entry[];
+    const r = computeRecords({ ...data, entries: swapped });
+    expect(r.titleStreak).toMatchObject({
+      player: { name: "Ana" },
+      count: 2,
+      from: { number: 1 },
+      to: { number: 2 },
+    });
+  });
+
+  it("clássico mais jogado, com quem venceu mais primeiro", () => {
+    expect(records.classic).toMatchObject({
+      a: { name: "Ana" },
+      b: { name: "Beto" },
+      aWins: 2,
+      bWins: 0,
+      draws: 2,
+    });
   });
 });
