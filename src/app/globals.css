@@ -1893,3 +1893,92 @@ fieldset label:has(input[type="radio"]:checked) {
     animation: none !important;
   }
 }
+
+/* Chamada para o mural de recordes (início e ranking). */
+@layer components {
+  .rec-teaser {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    border: 3px solid #6ea0f5;
+    border-radius: 16px;
+    background:
+      radial-gradient(ellipse 50% 90% at 0% 0%, rgb(255 200 61 / 0.3), transparent 70%),
+      radial-gradient(ellipse 50% 90% at 100% 100%, rgb(255 110 90 / 0.3), transparent 70%),
+      #17389a;
+    box-shadow: 0 0 0 2px var(--color-night), 0 5px 0 2px var(--color-night);
+    transition: transform 120ms;
+  }
+  .rec-teaser:active {
+    transform: translateY(2px) scale(0.99);
+  }
+  .rec-teaser-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .rec-teaser-half {
+    position: relative;
+    display: flex;
+    min-width: 0;
+    min-height: 82px;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 6px;
+    overflow: hidden;
+    padding: 8px 10px;
+    border: 2px solid;
+    border-radius: 12px;
+  }
+  .rec-teaser-lenda {
+    border-color: #ffe9a3;
+    background: linear-gradient(160deg, #f9c23c 0%, #e49a12 55%, #b56a06 100%);
+    color: #3d2200;
+  }
+  .rec-teaser-lenda::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(105deg, transparent 40%, rgb(255 255 255 / 0.55) 50%, transparent 60%);
+    transform: translateX(-120%);
+    animation: rec-shine 3.6s ease-in-out infinite 1s;
+    pointer-events: none;
+  }
+  .rec-teaser-vexame {
+    border-color: #ff9d8f;
+    background:
+      repeating-linear-gradient(135deg, rgb(0 0 0 / 0.18) 0 8px, transparent 8px 16px),
+      #4b1020;
+    color: #ffffff;
+  }
+  .rec-teaser-vexame > .font-pixel {
+    animation: rec-pulse 1.4s ease-in-out infinite;
+    transform-origin: left center;
+  }
+  .rec-teaser-tape {
+    position: absolute;
+    top: 50%;
+    left: -10%;
+    width: 120%;
+    padding: 1px 0;
+    background: repeating-linear-gradient(135deg, #ffd42a 0 10px, #111122 10px 20px);
+    font-family: var(--font-pixel);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    text-align: center;
+    color: #ffffff;
+    text-shadow: 0 0 3px #000, 0 0 3px #000;
+    white-space: nowrap;
+    transform: translateY(-80%) rotate(-6deg);
+    opacity: 0.9;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rec-teaser-lenda::after,
+  .rec-teaser-vexame > .font-pixel {
+    animation: none !important;
+  }
+}

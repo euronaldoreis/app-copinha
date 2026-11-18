@@ -7,7 +7,9 @@ import { isAdmin } from "@/lib/auth";
 import { getData } from "@/lib/data";
 import { STATUS_LABELS, plural } from "@/lib/labels";
 import { allEditionViews, type EditionView } from "@/lib/services";
-import { computeRanking } from "@/lib/stats";
+import { computeRanking, computeRecords } from "@/lib/stats";
+import { recordItems } from "@/lib/recordItems";
+import { RecordsTeaser } from "@/components/RecordsTeaser";
 import { tierOf } from "@/lib/tier";
 
 /** Edição aberta: a "arena", com o próximo confronto, o progresso e o atalho para a tabela. */
@@ -16,13 +18,16 @@ function LiveEdition({ view }: { view: EditionView }) {
   const byId = new Map(entries.map((e) => [e.id, e]));
   const played = matches.filter((m) => m.homeScore != null).length;
   const upcoming = matches.filter(
-    (m) => m.homeScore == null && m.homeEntryId != null && m.awayEntryId != null,
+    (m) =>
+      m.homeScore == null && m.homeEntryId != null && m.awayEntryId != null,
   );
   const next = upcoming[0];
   const home = next && byId.get(next.homeEntryId!);
   const away = next && byId.get(next.awayEntryId!);
   const later = upcoming.slice(1, 3);
-  const progress = matches.length ? Math.round((played / matches.length) * 100) : 0;
+  const progress = matches.length
+    ? Math.round((played / matches.length) * 100)
+    : 0;
 
   return (
     <section className="card flex flex-col gap-3 p-4">
@@ -123,6 +128,7 @@ export default async function HomePage() {
     return entry ? [{ edition: v.edition, entry }] : [];
   });
   const ranking = computeRanking(data).filter((r) => r.participations > 0);
+  const records = recordItems(computeRecords(data));
   // Mesma moldura da carta do jogador (campeão, esmeralda ou rubi, pelos títulos).
   const tierById = new Map(
     ranking.map((r) => [r.player.id, tierOf(r.bestResult, r.titles)]),
@@ -195,6 +201,12 @@ export default async function HomePage() {
         </Section>
       )}
 
+      {records.length > 0 && (
+        <Section title="Resenha">
+          <RecordsTeaser items={records} />
+        </Section>
+      )}
+
       {ranking.length > 0 && (
         <Section
           title="Ranking"
@@ -212,7 +224,7 @@ export default async function HomePage() {
                 href={`/jogadores/${r.player.id}`}
                 name={r.player.name}
                 photoUrl={r.player.photoUrl}
-              avatar={r.player.avatar}
+                avatar={r.player.avatar}
                 detail={[
                   r.finals ? plural(r.finals, "final", "finais") : "",
                   plural(r.participations, "participação", "participações"),
