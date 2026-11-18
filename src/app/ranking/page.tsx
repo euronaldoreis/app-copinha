@@ -18,7 +18,14 @@ import {
   computeTeamRanking,
   type MatchRecord,
   type PlayerStats,
+  type Records,
 } from "@/lib/stats";
+import type { Player } from "@/db/schema";
+import {
+  RecordsBoard,
+  type RecordItem,
+  type RecordPerson,
+} from "@/components/RecordsBoard";
 
 export const metadata: Metadata = { title: "Ranking" };
 
@@ -177,40 +184,176 @@ function Legend({ columns, note }: { columns: Column[]; note?: string }) {
   );
 }
 
-function RecordCard({
-  label,
-  children,
-  detail,
-}: {
-  label: string;
-  children: ReactNode;
-  detail: string;
-}) {
-  return (
-    <div className="card px-5 py-4">
-      <p className="text-body text-muted">{label}</p>
-      <p className="mt-1 text-name font-semibold">{children}</p>
-      <p className="text-body text-muted">{detail}</p>
-    </div>
-  );
-}
+/** Só o que o mural precisa de cada jogador (nada além disso vai ao navegador). */
+const person = (p: Player): RecordPerson => ({
+  id: p.id,
+  name: p.name,
+  photoUrl: p.photoUrl,
+  avatar: p.avatar,
+});
 
-function scoreLine(m: MatchRecord) {
-  return (
-    <>
-      {m.home.name}{" "}
-      <span className="num">
-        {m.homeScore} – {m.awayScore}
-      </span>{" "}
-      {m.away.name}
-    </>
-  );
-}
+const matchDetail = (m: MatchRecord) =>
+  [
+    m.homeTeam && m.awayTeam ? `${m.homeTeam} × ${m.awayTeam}` : null,
+    m.edition.name,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
-function matchDetail(m: MatchRecord) {
-  const teams =
-    m.homeTeam && m.awayTeam ? `${m.homeTeam} × ${m.awayTeam} · ` : "";
-  return `${teams}${m.edition.name}`;
+/** Monta os cartões do mural de recordes: lendas primeiro, depois os vexames. */
+function recordItems(r: Records): RecordItem[] {
+  const items: RecordItem[] = [];
+
+  if (r.unbeatenRun) {
+    const { player, games, from, to } = r.unbeatenRun;
+    items.push({
+      id: "invicto",
+      kind: "lenda",
+      title: "Ninguém segura",
+      tagline: "Maior sequência sem perder",
+      layout: {
+        type: "single",
+        person: person(player),
+        value: games,
+        unit: "jogos sem perder",
+      },
+      detail:
+        from.id === to.id ? `Na ${from.name}` : `De ${from.name} a ${to.name}`,
+      share: `${player.name} ficou ${games} jogos sem perder na Copinha dos Lixos. Alguém para esse cara?`,
+    });
+  }
+  if (r.bestAttack) {
+    const { player, goals, edition } = r.bestAttack;
+    items.push({
+      id: "ataque",
+      kind: "lenda",
+      title: "Máquina de gols",
+      tagline: "Melhor ataque em uma edição",
+      layout: {
+        type: "single",
+        person: person(player),
+        value: goals,
+        unit: "gols numa edição",
+      },
+      detail: edition.name,
+      share: `${player.name} meteu ${goals} gols numa edição só da Copinha dos Lixos (${edition.name}).`,
+    });
+  }
+  if (r.penaltyKing) {
+    const { player, won, total } = r.penaltyKing;
+    items.push({
+      id: "penaltis",
+      kind: "lenda",
+      title: "Rei dos pênaltis",
+      tagline: "Frieza na marca da cal",
+      layout: {
+        type: "single",
+        person: person(player),
+        value: won,
+        unit: won === 1 ? "disputa vencida" : "disputas vencidas",
+      },
+      detail: `Venceu ${won} de ${plural(total, "disputa", "disputas")}`,
+      share: `${player.name} é o rei dos pênaltis da Copinha dos Lixos: ${won} de ${total} disputas vencidas.`,
+    });
+  }
+  if (r.unbeatenChampions.length > 0) {
+    const list = r.unbeatenChampions;
+    items.push({
+      id: "campeao-invicto",
+      kind: "lenda",
+      title: list.length > 1 ? "Campeões invictos" : "Campeão invicto",
+      tagline: "Levantaram a taça sem perder um jogo",
+      layout: {
+        type: "list",
+        people: list.slice(0, 5).map((c) => ({
+          person: person(c.player),
+          text: `${c.edition.name} · ${c.wins}V ${c.draws}E`,
+        })),
+        more: Math.max(0, list.length - 5),
+      },
+      detail: plural(list.length, "taça invicta", "taças invictas"),
+      share: `Campeão invicto da Copinha dos Lixos: ${list[0].player.name} (${list[0].edition.name}). Sem perder um jogo!`,
+    });
+  }
+  if (r.mostGoals) {
+    const m = r.mostGoals;
+    items.push({
+      id: "jogaco",
+      kind: "lenda",
+      title: "Jogaço",
+      tagline: `O jogo com mais gols da história: ${plural(m.homeScore + m.awayScore, "gol", "gols")}`,
+      layout: {
+        type: "versus",
+        left: person(m.home),
+        right: person(m.away),
+        leftValue: m.homeScore,
+        rightValue: m.awayScore,
+      },
+      detail: matchDetail(m),
+      share: `Jogaço na Copinha dos Lixos: ${m.home.name} ${m.homeScore} x ${m.awayScore} ${m.away.name}.`,
+    });
+  }
+
+  if (r.biggestWin) {
+    const m = r.biggestWin;
+    const homeWon = m.homeScore > m.awayScore;
+    const [w, l, ws, ls] = homeWon
+      ? [m.home, m.away, m.homeScore, m.awayScore]
+      : [m.away, m.home, m.awayScore, m.homeScore];
+    items.push({
+      id: "sacode",
+      kind: "vexame",
+      title: "Maior sacode",
+      tagline: "Tem placar que não se apaga",
+      layout: {
+        type: "versus",
+        left: person(w),
+        right: person(l),
+        leftValue: ws,
+        rightValue: ls,
+        loserLabel: "Tomou",
+      },
+      detail: matchDetail(m),
+      share: `${l.name} tomou ${ws} a ${ls} de ${w.name} na Copinha dos Lixos. Maior sacode da história.`,
+    });
+  }
+  if (r.rivalry) {
+    const { winner, loser, wins, losses, draws } = r.rivalry;
+    items.push({
+      id: "fregues",
+      kind: "vexame",
+      title: "Freguês de carteirinha",
+      tagline: "Maior freguesia no confronto direto",
+      layout: {
+        type: "versus",
+        left: person(winner),
+        right: person(loser),
+        leftValue: wins,
+        rightValue: losses,
+        loserLabel: "Freguês",
+      },
+      detail: `Vitórias no confronto direto${draws ? ` · ${plural(draws, "empate", "empates")}` : ""}`,
+      share: `${loser.name} é freguês de ${winner.name} na Copinha dos Lixos: ${wins} a ${losses} no confronto direto.`,
+    });
+  }
+  if (r.worstCampaign) {
+    const { player, edition, played, points, gf, ga } = r.worstCampaign;
+    items.push({
+      id: "lixo",
+      kind: "vexame",
+      title: "Lixo do lixo",
+      tagline: "A pior campanha numa edição",
+      layout: {
+        type: "single",
+        person: person(player),
+        value: points,
+        unit: points === 1 ? "ponto" : "pontos",
+      },
+      detail: `${edition.name} · ${plural(played, "jogo", "jogos")}, ${plural(gf, "gol pró", "gols pró")} e ${ga} contra`,
+      share: `${player.name} fez ${plural(points, "ponto", "pontos")} e tomou ${ga} gols na ${edition.name}. O lixo do lixo da Copinha.`,
+    });
+  }
+  return items;
 }
 
 export default async function RankingPage(props: PageProps<"/ranking">) {
@@ -313,140 +456,9 @@ export default async function RankingPage(props: PageProps<"/ranking">) {
       <Empty>Nenhum time sorteado ainda.</Empty>
     );
   } else {
-    const records = computeRecords(data);
-    const {
-      biggestWin,
-      mostGoals,
-      bestAttack,
-      rivalry,
-      unbeatenRun,
-      unbeatenChampions,
-      worstCampaign,
-      penaltyKing,
-    } = records;
-    const span = (
-      from: { name: string; id: number },
-      to: { name: string; id: number },
-    ) =>
-      from.id === to.id ? `Na ${from.name}` : `De ${from.name} a ${to.name}`;
-    const any =
-      biggestWin ||
-      mostGoals ||
-      bestAttack ||
-      rivalry ||
-      unbeatenRun ||
-      unbeatenChampions.length > 0 ||
-      worstCampaign ||
-      penaltyKing;
-    content = any ? (
-      <div className="grid grid-cols-1 gap-3">
-        {biggestWin && (
-          <RecordCard label="Maior goleada" detail={matchDetail(biggestWin)}>
-            {scoreLine(biggestWin)}
-          </RecordCard>
-        )}
-        {mostGoals && (
-          <RecordCard
-            label="Jogo com mais gols"
-            detail={matchDetail(mostGoals)}
-          >
-            {scoreLine(mostGoals)}
-          </RecordCard>
-        )}
-        {bestAttack && (
-          <RecordCard
-            label="Melhor ataque em uma edição"
-            detail={bestAttack.edition.name}
-          >
-            {bestAttack.player.name},{" "}
-            <span className="num">
-              {plural(bestAttack.goals, "gol", "gols")}
-            </span>
-          </RecordCard>
-        )}
-        {rivalry && (
-          <RecordCard
-            label="Maior freguesia"
-            detail={`Vitórias no confronto direto · ${plural(
-              rivalry.wins + rivalry.losses + rivalry.draws,
-              "jogo",
-              "jogos",
-            )}${rivalry.draws ? `, ${plural(rivalry.draws, "empate", "empates")}` : ""}`}
-          >
-            {rivalry.winner.name}{" "}
-            <span className="num">
-              {rivalry.wins} – {rivalry.losses}
-            </span>{" "}
-            {rivalry.loser.name}
-          </RecordCard>
-        )}
-        {unbeatenRun && (
-          <RecordCard
-            label="Maior sequência invicta"
-            detail={span(unbeatenRun.from, unbeatenRun.to)}
-          >
-            {unbeatenRun.player.name},{" "}
-            <span className="num">{unbeatenRun.games}</span> jogos sem perder
-          </RecordCard>
-        )}
-        {unbeatenChampions.length > 0 && (
-          <RecordCard
-            label={
-              unbeatenChampions.length > 1
-                ? "Campeões invictos"
-                : "Campeão invicto"
-            }
-            detail="Levantaram a taça sem perder nenhum jogo"
-          >
-            {unbeatenChampions.slice(0, 5).map((c) => (
-              <span key={c.edition.id} className="block">
-                {c.player.name}{" "}
-                <span className="text-body font-normal text-muted">
-                  · {c.edition.name} ·{" "}
-                  <span className="num">
-                    {c.wins}V {c.draws}E
-                  </span>
-                </span>
-              </span>
-            ))}
-            {unbeatenChampions.length > 5 && (
-              <span className="block text-body font-normal text-muted">
-                e mais {unbeatenChampions.length - 5}
-              </span>
-            )}
-          </RecordCard>
-        )}
-        {penaltyKing && (
-          <RecordCard
-            label="Rei dos pênaltis"
-            detail={`Venceu ${penaltyKing.won} de ${plural(
-              penaltyKing.total,
-              "disputa",
-              "disputas",
-            )}`}
-          >
-            {penaltyKing.player.name},{" "}
-            <span className="num">
-              {plural(penaltyKing.won, "disputa vencida", "disputas vencidas")}
-            </span>
-          </RecordCard>
-        )}
-        {worstCampaign && (
-          <RecordCard
-            label="Lixo do lixo: pior campanha"
-            detail={`${worstCampaign.edition.name} · ${plural(
-              worstCampaign.played,
-              "jogo",
-              "jogos",
-            )}, ${plural(worstCampaign.gf, "gol pró", "gols pró")} e ${worstCampaign.ga} contra`}
-          >
-            {worstCampaign.player.name},{" "}
-            <span className="num">
-              {plural(worstCampaign.points, "ponto", "pontos")}
-            </span>
-          </RecordCard>
-        )}
-      </div>
+    const items = recordItems(computeRecords(data));
+    content = items.length ? (
+      <RecordsBoard items={items} />
     ) : (
       <Empty>Os recordes aparecem depois dos primeiros placares.</Empty>
     );
