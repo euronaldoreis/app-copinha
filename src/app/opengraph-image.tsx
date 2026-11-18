@@ -120,7 +120,7 @@ export default async function Image() {
                 textShadow: `${OUTLINE(2)}`,
               }}
             >
-              FIFA E BOMBA PATCH DA GALERA
+              PURA RESENHA LIXOSA
             </div>
           </div>
         </div>
