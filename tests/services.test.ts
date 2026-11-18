@@ -8,6 +8,10 @@ import { createDb } from "@/db";
 import { entries, matches, players } from "@/db/schema";
 import {
   UserError,
+  mergeTeams,
+  deleteUnusedTeams,
+  renameTeam,
+  deleteTeam,
   createPlayerAccess,
   findPlayerByAccessToken,
   getPlayerAccessHash,
@@ -39,7 +43,16 @@ import { computeHeadToHead, computeRanking, computeRecords } from "@/lib/stats";
 const dir = mkdtempSync(join(tmpdir(), "copinha-test-"));
 const db = createDb(`file:${join(dir, "test.db").replace(/\\/g, "/")}`);
 
-const NAMES = ["Ronaldo", "Bruno", "Caio", "Diego", "Edu", "Fábio", "Gui", "Hugo"];
+const NAMES = [
+  "Ronaldo",
+  "Bruno",
+  "Caio",
+  "Diego",
+  "Edu",
+  "Fábio",
+  "Gui",
+  "Hugo",
+];
 const TEAMS = [
   "Íbis",
   "Tabajara",
@@ -62,7 +75,12 @@ beforeAll(async () => {
 afterAll(() => {
   db.$client.close();
   try {
-    rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+    rmSync(dir, {
+      recursive: true,
+      force: true,
+      maxRetries: 5,
+      retryDelay: 100,
+    });
   } catch {
     // No Windows o arquivo do banco pode continuar travado por um instante;
     // a pasta temporária fica para o sistema limpar.
@@ -93,7 +111,8 @@ async function playEverything(editionId: number) {
     const v = await view(editionId);
     const playerOf = new Map(v.entries.map((e) => [e.id, e.playerId]));
     const next = v.matches.find(
-      (m) => m.homeScore == null && m.homeEntryId != null && m.awayEntryId != null,
+      (m) =>
+        m.homeScore == null && m.homeEntryId != null && m.awayEntryId != null,
     );
     if (!next) return;
     const homeWins =
@@ -240,7 +259,11 @@ describe("histórico e ranking", () => {
       participations: 2,
     });
     expect(row("Bruno")).toMatchObject({ titles: 1, vices: 1, finals: 2 });
-    expect(row("Ivo")).toMatchObject({ participations: 1, titles: 0, played: 0 });
+    expect(row("Ivo")).toMatchObject({
+      participations: 1,
+      titles: 0,
+      played: 0,
+    });
     // 3 jogos de grupo + semifinal + final
     expect(row("Ronaldo").played).toBe(5);
     expect(row("Ronaldo").draws).toBe(1);
@@ -287,7 +310,9 @@ describe("histórico e ranking", () => {
   });
 
   it("não exclui jogador com histórico", async () => {
-    await expect(deletePlayer(db, playerIds[0])).rejects.toBeInstanceOf(UserError);
+    await expect(deletePlayer(db, playerIds[0])).rejects.toBeInstanceOf(
+      UserError,
+    );
   });
 
   it("desfazer a tabela volta para inscrições e limpa as colocações", async () => {
@@ -346,11 +371,15 @@ describe("grupos manuais e rodadas novas", () => {
     await setEntryGroups(db, editionId, [
       { entryId: v.entries[0].id, groupLabel: "A" },
     ]);
-    await expect(startEdition(db, editionId)).rejects.toThrow("todos os participantes");
+    await expect(startEdition(db, editionId)).rejects.toThrow(
+      "todos os participantes",
+    );
 
     // grupo inexistente e participante de outra edição são recusados
     await expect(
-      setEntryGroups(db, editionId, [{ entryId: v.entries[1].id, groupLabel: "Z" }]),
+      setEntryGroups(db, editionId, [
+        { entryId: v.entries[1].id, groupLabel: "Z" },
+      ]),
     ).rejects.toBeInstanceOf(UserError);
     await expect(
       setEntryGroups(db, editionId, [{ entryId: 999999, groupLabel: "A" }]),
@@ -366,7 +395,8 @@ describe("grupos manuais e rodadas novas", () => {
     const after = await view(editionId);
     expect(after.edition.status).toBe("andamento");
     const groupOf = new Map(after.entries.map((e) => [e.id, e.groupLabel]));
-    for (const [i, e] of v.entries.entries()) expect(groupOf.get(e.id)).toBe(label(i));
+    for (const [i, e] of v.entries.entries())
+      expect(groupOf.get(e.id)).toBe(label(i));
     // 10 jogos no grupo de 5, 3 no de 3, mais 4 do mata-mata
     expect(after.matches.filter((m) => m.stage === "grupo")).toHaveLength(13);
     expect(after.matches).toHaveLength(17);
@@ -379,7 +409,9 @@ describe("grupos manuais e rodadas novas", () => {
 
     // mover um do A para o B deixa 4 e 4
     const moved = v.entries.find((e) => e.groupLabel === "A")!;
-    await setEntryGroups(db, editionId, [{ entryId: moved.id, groupLabel: "B" }]);
+    await setEntryGroups(db, editionId, [
+      { entryId: moved.id, groupLabel: "B" },
+    ]);
     const after = await view(editionId);
     expect(after.entries.find((e) => e.id === moved.id)!.groupLabel).toBe("B");
     expect(after.matches.filter((m) => m.stage === "grupo")).toHaveLength(12);
@@ -429,7 +461,9 @@ describe("grupos manuais e rodadas novas", () => {
       number: 21,
       playerIds: playerIds.slice(0, 4),
     });
-    await expect(regenerateMatches(db, draft.id)).rejects.toBeInstanceOf(UserError);
+    await expect(regenerateMatches(db, draft.id)).rejects.toBeInstanceOf(
+      UserError,
+    );
   });
 });
 
@@ -485,7 +519,8 @@ describe("confrontos do mata-mata editados à mão", () => {
     expect(after.matches.find((m) => m.id === semi1.id)!.homeScore).toBeNull();
     // a final ainda não tem os dois lados
     expect(
-      after.matches.find((m) => m.stage === "mata" && m.round === 2)!.homeEntryId,
+      after.matches.find((m) => m.stage === "mata" && m.round === 2)!
+        .homeEntryId,
     ).toBeNull();
   });
 
@@ -549,7 +584,9 @@ describe("confrontos do mata-mata editados à mão", () => {
     await setKnockoutSlots(db, edition.id, [
       { matchId: semi.id, side: "home", entryId: who },
     ]);
-    const after = (await view(edition.id)).matches.find((m) => m.id === semi.id)!;
+    const after = (await view(edition.id)).matches.find(
+      (m) => m.id === semi.id,
+    )!;
     expect(after.homeEntryId).toBe(who);
     expect(after.homeSource).toBeNull();
 
@@ -568,7 +605,9 @@ describe("confrontos do mata-mata editados à mão", () => {
       config: { ...baseEdition.config, format: "mata" },
       playerIds: playerIds.slice(0, 4),
     });
-    await expect(setKnockoutSlots(db, draft.id, [])).rejects.toBeInstanceOf(UserError);
+    await expect(setKnockoutSlots(db, draft.id, [])).rejects.toBeInstanceOf(
+      UserError,
+    );
   });
 });
 
@@ -588,12 +627,16 @@ describe("remover participante", () => {
     expect(after.entries).toHaveLength(4);
     expect(after.entries.some((e) => e.id === v.entries[0].id)).toBe(false);
     // o jogador continua cadastrado e pode voltar para a edição
-    expect((await loadAll(db)).players.some((p) => p.id === v.entries[0].playerId)).toBe(true);
+    expect(
+      (await loadAll(db)).players.some((p) => p.id === v.entries[0].playerId),
+    ).toBe(true);
 
     await expect(removeEntry(db, 999999)).rejects.toBeInstanceOf(UserError);
     await drawTeams(db, edition.id);
     await startEdition(db, edition.id);
-    await expect(removeEntry(db, after.entries[0].id)).rejects.toThrow("tabela já foi gerada");
+    await expect(removeEntry(db, after.entries[0].id)).rejects.toThrow(
+      "tabela já foi gerada",
+    );
     expect((await view(edition.id)).entries).toHaveLength(4);
   });
 
@@ -615,7 +658,9 @@ describe("mais fases no mata-mata com a copa em andamento", () => {
   let editionId = 0;
 
   const playGroups = async () => {
-    for (const m of (await view(editionId)).matches.filter((x) => x.stage === "grupo")) {
+    for (const m of (await view(editionId)).matches.filter(
+      (x) => x.stage === "grupo",
+    )) {
       if (m.homeScore == null)
         await saveMatchResult(db, m.id, { homeScore: 2, awayScore: 1 });
     }
@@ -636,7 +681,9 @@ describe("mais fases no mata-mata com a copa em andamento", () => {
 
     let v = await view(editionId);
     const semi = v.matches.find((m) => m.stage === "mata" && m.round === 1)!;
-    expect(v.matches.filter((m) => m.stage === "mata" && m.round === 1)).toHaveLength(2);
+    expect(
+      v.matches.filter((m) => m.stage === "mata" && m.round === 1),
+    ).toHaveLength(2);
     expect(semi.homeEntryId).not.toBeNull(); // grupos acabaram: semis definidas
     await saveMatchResult(db, semi.id, { homeScore: 1, awayScore: 0 });
 
@@ -650,13 +697,19 @@ describe("mais fases no mata-mata com a copa em andamento", () => {
     expect(groupGames.every((m) => m.homeScore != null)).toBe(true);
     // mata-mata novo: 4 quartas, 2 semis, final e 3º lugar, tudo sem placar
     const ko = v.matches.filter((m) => m.stage !== "grupo");
-    expect(ko.filter((m) => m.stage === "mata" && m.round === 1)).toHaveLength(4);
-    expect(ko.filter((m) => m.stage === "mata" && m.round === 2)).toHaveLength(2);
+    expect(ko.filter((m) => m.stage === "mata" && m.round === 1)).toHaveLength(
+      4,
+    );
+    expect(ko.filter((m) => m.stage === "mata" && m.round === 2)).toHaveLength(
+      2,
+    );
     expect(ko).toHaveLength(8);
     expect(ko.every((m) => m.homeScore == null)).toBe(true);
     // as quartas já saem preenchidas com a classificação dos grupos
     expect(
-      ko.filter((m) => m.round === 1).every((m) => m.homeEntryId && m.awayEntryId),
+      ko
+        .filter((m) => m.round === 1)
+        .every((m) => m.homeEntryId && m.awayEntryId),
     ).toBe(true);
 
     await playEverything(editionId);
@@ -667,7 +720,10 @@ describe("mais fases no mata-mata com a copa em andamento", () => {
   });
 
   it("também dá para diminuir as fases e tirar o 3º lugar", async () => {
-    await setKnockoutPhases(db, editionId, { qualifiers: 2, thirdPlace: false });
+    await setKnockoutPhases(db, editionId, {
+      qualifiers: 2,
+      thirdPlace: false,
+    });
     const v = await view(editionId);
     const ko = v.matches.filter((m) => m.stage !== "grupo");
     expect(ko).toHaveLength(1);
@@ -715,7 +771,12 @@ describe("mais fases no mata-mata com a copa em andamento", () => {
       ...baseEdition,
       name: "Liga que ganhou final",
       number: 53,
-      config: { ...baseEdition.config, format: "liga", groupsCount: 1, qualifiers: 0 },
+      config: {
+        ...baseEdition.config,
+        format: "liga",
+        groupsCount: 1,
+        qualifiers: 0,
+      },
       playerIds: playerIds.slice(0, 4),
       teamPool: TEAMS,
     });
@@ -730,7 +791,11 @@ describe("mais fases no mata-mata com a copa em andamento", () => {
     const v = await view(liga.id);
     expect(v.edition.status).toBe("andamento"); // agora falta o mata-mata
     expect(v.matches.filter((m) => m.stage === "mata")).toHaveLength(3);
-    expect(v.matches.filter((m) => m.stage === "grupo").every((m) => m.homeScore != null)).toBe(true);
+    expect(
+      v.matches
+        .filter((m) => m.stage === "grupo")
+        .every((m) => m.homeScore != null),
+    ).toBe(true);
   });
 });
 
@@ -749,7 +814,9 @@ describe("torneio só com os jogadores, sem times", () => {
 
     await expect(drawTeams(db, edition.id)).rejects.toThrow("sem times");
     const v = await view(edition.id);
-    await expect(setEntryTeam(db, v.entries[0].id, "Íbis")).rejects.toThrow("sem times");
+    await expect(setEntryTeam(db, v.entries[0].id, "Íbis")).rejects.toThrow(
+      "sem times",
+    );
 
     // gera a tabela sem sorteio de times
     await startEdition(db, edition.id);
@@ -781,7 +848,9 @@ describe("torneio só com os jogadores, sem times", () => {
       teamPool: TEAMS,
     });
     await drawTeams(db, edition.id);
-    expect((await view(edition.id)).entries.every((e) => e.team != null)).toBe(true);
+    expect((await view(edition.id)).entries.every((e) => e.team != null)).toBe(
+      true,
+    );
 
     await updateEdition(db, edition.id, {
       name: edition.name,
@@ -805,26 +874,51 @@ describe("avatar do jogador", () => {
     const player = await createPlayer(db, "Jogador de Avatar");
     const look = { skin: 2, hair: 1, style: 3, shirt: 5 };
 
-    await updatePlayer(db, player.id, { name: player.name, photoUrl: "", avatar: look });
+    await updatePlayer(db, player.id, {
+      name: player.name,
+      photoUrl: "",
+      avatar: look,
+    });
     let saved = (await loadAll(db)).players.find((p) => p.id === player.id)!;
     expect(saved.avatar).toEqual(look);
 
     // sem informar o avatar, ele não muda
-    await updatePlayer(db, player.id, { name: "Jogador de Avatar 2", photoUrl: "" });
+    await updatePlayer(db, player.id, {
+      name: "Jogador de Avatar 2",
+      photoUrl: "",
+    });
     saved = (await loadAll(db)).players.find((p) => p.id === player.id)!;
     expect(saved.name).toBe("Jogador de Avatar 2");
     expect(saved.avatar).toEqual(look);
 
     // valores fora das listas são recusados e nada muda
-    for (const bad of [{ ...look, skin: 9 }, { ...look, style: -1 }, { skin: 1 }, "texto", 7]) {
+    for (const bad of [
+      { ...look, skin: 9 },
+      { ...look, style: -1 },
+      { skin: 1 },
+      "texto",
+      7,
+    ]) {
       await expect(
-        updatePlayer(db, player.id, { name: saved.name, photoUrl: "", avatar: bad }),
+        updatePlayer(db, player.id, {
+          name: saved.name,
+          photoUrl: "",
+          avatar: bad,
+        }),
       ).rejects.toBeInstanceOf(UserError);
     }
-    expect((await loadAll(db)).players.find((p) => p.id === player.id)!.avatar).toEqual(look);
+    expect(
+      (await loadAll(db)).players.find((p) => p.id === player.id)!.avatar,
+    ).toEqual(look);
 
-    await updatePlayer(db, player.id, { name: saved.name, photoUrl: "", avatar: null });
-    expect((await loadAll(db)).players.find((p) => p.id === player.id)!.avatar).toBeNull();
+    await updatePlayer(db, player.id, {
+      name: saved.name,
+      photoUrl: "",
+      avatar: null,
+    });
+    expect(
+      (await loadAll(db)).players.find((p) => p.id === player.id)!.avatar,
+    ).toBeNull();
   });
 });
 
@@ -832,14 +926,17 @@ describe("foto enviada do jogador", () => {
   // PNG de 1x1 pixel
   const PNG =
     "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
-  const find = async (id: number) => (await loadAll(db)).players.find((p) => p.id === id)!;
+  const find = async (id: number) =>
+    (await loadAll(db)).players.find((p) => p.id === id)!;
 
   it("guarda a foto no cadastro e aponta o jogador para ela", async () => {
     const player = await createPlayer(db, "Jogador com Foto", "", PNG);
     expect(player.photoUrl).toMatch(/^\/foto\/\d+\?v=\d+$/);
     const photo = await getPlayerPhoto(db, player.id);
     expect(photo?.contentType).toBe("image/png");
-    expect(Buffer.from(photo!.data, "base64").subarray(1, 4).toString()).toBe("PNG");
+    expect(Buffer.from(photo!.data, "base64").subarray(1, 4).toString()).toBe(
+      "PNG",
+    );
   });
 
   it("link vazio não apaga a foto; remover e link novo apagam", async () => {
@@ -850,16 +947,28 @@ describe("foto enviada do jogador", () => {
     expect(await getPlayerPhoto(db, player.id)).not.toBeNull();
 
     // trocar por outra foto
-    await updatePlayer(db, player.id, { name: player.name, photoUrl: "", photoData: PNG });
+    await updatePlayer(db, player.id, {
+      name: player.name,
+      photoUrl: "",
+      photoData: PNG,
+    });
     expect((await find(player.id)).photoUrl).toMatch(/^\/foto\//);
 
     // remover
-    await updatePlayer(db, player.id, { name: player.name, photoUrl: "", removePhoto: true });
+    await updatePlayer(db, player.id, {
+      name: player.name,
+      photoUrl: "",
+      removePhoto: true,
+    });
     expect((await find(player.id)).photoUrl).toBeNull();
     expect(await getPlayerPhoto(db, player.id)).toBeNull();
 
     // link externo no lugar de uma foto enviada
-    await updatePlayer(db, player.id, { name: player.name, photoUrl: "", photoData: PNG });
+    await updatePlayer(db, player.id, {
+      name: player.name,
+      photoUrl: "",
+      photoData: PNG,
+    });
     await updatePlayer(db, player.id, {
       name: player.name,
       photoUrl: "https://exemplo.com/a.jpg",
@@ -869,28 +978,56 @@ describe("foto enviada do jogador", () => {
   });
 
   it("link de foto novo só aceita https; um http antigo continua valendo até trocar", async () => {
-    await expect(createPlayer(db, "Link Http", "http://exemplo.com/a.jpg")).rejects.toThrow(
-      /https:\/\//,
+    await expect(
+      createPlayer(db, "Link Http", "http://exemplo.com/a.jpg"),
+    ).rejects.toThrow(/https:\/\//);
+    const player = await createPlayer(
+      db,
+      "Link Https",
+      "https://exemplo.com/a.jpg",
     );
-    const player = await createPlayer(db, "Link Https", "https://exemplo.com/a.jpg");
     expect(player.photoUrl).toBe("https://exemplo.com/a.jpg");
     await expect(
-      updatePlayer(db, player.id, { name: player.name, photoUrl: "http://exemplo.com/b.jpg" }),
+      updatePlayer(db, player.id, {
+        name: player.name,
+        photoUrl: "http://exemplo.com/b.jpg",
+      }),
     ).rejects.toThrow(/https:\/\//);
 
     // um link http que já estava salvo não impede de mudar o nome
-    await db.update(players).set({ photoUrl: "http://antigo.com/a.jpg" }).where(eq(players.id, player.id));
-    await updatePlayer(db, player.id, { name: "Link Https 2", photoUrl: "http://antigo.com/a.jpg" });
+    await db
+      .update(players)
+      .set({ photoUrl: "http://antigo.com/a.jpg" })
+      .where(eq(players.id, player.id));
+    await updatePlayer(db, player.id, {
+      name: "Link Https 2",
+      photoUrl: "http://antigo.com/a.jpg",
+    });
     expect((await find(player.id)).name).toBe("Link Https 2");
   });
 
   it("recusa arquivos que não são imagem e fotos grandes, sem criar o jogador", async () => {
-    const fake = "data:image/png;base64," + Buffer.from("isto não é uma imagem").toString("base64");
-    await expect(createPlayer(db, "Jogador Falso", "", fake)).rejects.toBeInstanceOf(UserError);
-    await expect(createPlayer(db, "Jogador Falso", "", "texto qualquer")).rejects.toBeInstanceOf(UserError);
-    const big = "data:image/jpeg;base64," + Buffer.concat([Buffer.from([0xff, 0xd8, 0xff]), Buffer.alloc(400_000)]).toString("base64");
-    await expect(createPlayer(db, "Jogador Falso", "", big)).rejects.toThrow("grande demais");
-    expect((await loadAll(db)).players.some((p) => p.name === "Jogador Falso")).toBe(false);
+    const fake =
+      "data:image/png;base64," +
+      Buffer.from("isto não é uma imagem").toString("base64");
+    await expect(
+      createPlayer(db, "Jogador Falso", "", fake),
+    ).rejects.toBeInstanceOf(UserError);
+    await expect(
+      createPlayer(db, "Jogador Falso", "", "texto qualquer"),
+    ).rejects.toBeInstanceOf(UserError);
+    const big =
+      "data:image/jpeg;base64," +
+      Buffer.concat([
+        Buffer.from([0xff, 0xd8, 0xff]),
+        Buffer.alloc(400_000),
+      ]).toString("base64");
+    await expect(createPlayer(db, "Jogador Falso", "", big)).rejects.toThrow(
+      "grande demais",
+    );
+    expect(
+      (await loadAll(db)).players.some((p) => p.name === "Jogador Falso"),
+    ).toBe(false);
   });
 
   it("excluir o jogador leva a foto junto", async () => {
@@ -940,7 +1077,9 @@ describe("acesso do jogador ao próprio perfil", () => {
     for (const bad of ["", "abc", "x".repeat(200)]) {
       expect(await findPlayerByAccessToken(db, bad)).toBeUndefined();
     }
-    await expect(createPlayerAccess(db, 999999)).rejects.toBeInstanceOf(UserError);
+    await expect(createPlayerAccess(db, 999999)).rejects.toBeInstanceOf(
+      UserError,
+    );
   });
 
   it("o jogador troca foto e avatar, mas não o nome", async () => {
@@ -957,5 +1096,234 @@ describe("acesso do jogador ao próprio perfil", () => {
     await expect(
       updatePlayerProfile(db, 999999, { photoUrl: "" }),
     ).rejects.toBeInstanceOf(UserError);
+  });
+});
+
+describe("juntar times", () => {
+  const cfg = {
+    format: "manual" as const,
+    groupsCount: 0,
+    legs: 1,
+    pairing: "interno" as const,
+    crossGames: 0,
+    qualifiers: 0,
+    thirdPlace: false,
+  };
+  it("passa participantes e listas de sorteio para o time certo e apaga o errado", async () => {
+    const a = await createPlayer(db, "Junta A");
+    const b = await createPlayer(db, "Junta B");
+    const e1 = await createEdition(db, {
+      name: "Junta #1",
+      number: 901,
+      game: "FIFA",
+      playedOn: "2026-01-01",
+      config: cfg,
+      playerIds: [a.id, b.id],
+      teamPool: ["Al Hilan", "Íbis"],
+    });
+    const e2 = await createEdition(db, {
+      name: "Junta #2",
+      number: 902,
+      game: "FIFA",
+      playedOn: "2026-02-01",
+      config: cfg,
+      playerIds: [a.id],
+      teamPool: ["Al Hilal", "Al Hilan"],
+    });
+    const v1 = editionView(await loadAll(db), e1.id)!;
+    const v2 = editionView(await loadAll(db), e2.id)!;
+    await setEntryTeam(
+      db,
+      v1.entries.find((x) => x.playerId === a.id)!.id,
+      "Al Hilan",
+    );
+    await setEntryTeam(db, v2.entries[0].id, "Al Hilal");
+    let all = await loadAll(db);
+    const wrong = all.teams.find((t) => t.name === "Al Hilan")!;
+    const right = all.teams.find((t) => t.name === "Al Hilal")!;
+
+    await expect(mergeTeams(db, wrong.id, wrong.id)).rejects.toBeInstanceOf(
+      UserError,
+    );
+    expect(await mergeTeams(db, wrong.id, right.id)).toEqual({
+      from: "Al Hilan",
+      into: "Al Hilal",
+    });
+
+    all = await loadAll(db);
+    expect(all.teams.some((t) => t.name === "Al Hilan")).toBe(false);
+    expect(
+      editionView(all, e1.id)!.entries.find((x) => x.playerId === a.id)!.team
+        ?.name,
+    ).toBe("Al Hilal");
+    expect(all.editions.find((e) => e.id === e1.id)!.teamPool).toEqual([
+      "Al Hilal",
+      "Íbis",
+    ]);
+    expect(all.editions.find((e) => e.id === e2.id)!.teamPool).toEqual([
+      "Al Hilal",
+    ]);
+  });
+
+  it("recusa quando os dois times estão com participantes na mesma edição", async () => {
+    const a = await createPlayer(db, "Junta C");
+    const b = await createPlayer(db, "Junta D");
+    const e = await createEdition(db, {
+      name: "Junta #3",
+      number: 903,
+      game: "FIFA",
+      playedOn: "2026-03-01",
+      config: cfg,
+      playerIds: [a.id, b.id],
+      teamPool: [],
+    });
+    const v = editionView(await loadAll(db), e.id)!;
+    await setEntryTeam(db, v.entries[0].id, "Time X");
+    await setEntryTeam(db, v.entries[1].id, "Time Y");
+    const all = await loadAll(db);
+    const x = all.teams.find((t) => t.name === "Time X")!;
+    const y = all.teams.find((t) => t.name === "Time Y")!;
+    await expect(mergeTeams(db, x.id, y.id)).rejects.toThrow(/Junta #3/);
+    expect((await loadAll(db)).teams.some((t) => t.id === x.id)).toBe(true);
+  });
+});
+
+describe("apagar times sem uso", () => {
+  it("apaga só os times que nenhum participante usa", async () => {
+    const cfg = {
+      format: "manual" as const,
+      groupsCount: 0,
+      legs: 1,
+      pairing: "interno" as const,
+      crossGames: 0,
+      qualifiers: 0,
+      thirdPlace: false,
+    };
+    const p = await createPlayer(db, "Sem Uso A");
+    const e = await createEdition(db, {
+      name: "Sem uso #1",
+      number: 950,
+      game: "FIFA",
+      playedOn: "2026-05-01",
+      config: cfg,
+      playerIds: [p.id],
+      teamPool: [],
+    });
+    await setEntryTeam(
+      db,
+      editionView(await loadAll(db), e.id)!.entries[0].id,
+      "Time Em Uso",
+    );
+    // vira time sem uso: participante troca de time
+    await setEntryTeam(
+      db,
+      editionView(await loadAll(db), e.id)!.entries[0].id,
+      "Time Trocado",
+    );
+    await setEntryTeam(
+      db,
+      editionView(await loadAll(db), e.id)!.entries[0].id,
+      "Time Em Uso",
+    );
+
+    const removed = await deleteUnusedTeams(db);
+    expect(removed).toContain("Time Trocado");
+    expect(removed).not.toContain("Time Em Uso");
+    const all = await loadAll(db);
+    const usedIds = new Set(
+      all.entries.map((x) => x.teamId).filter((x) => x != null),
+    );
+    expect(all.teams.every((t) => usedIds.has(t.id))).toBe(true);
+    expect(await deleteUnusedTeams(db)).toEqual([]);
+  });
+});
+
+describe("gerenciar times", () => {
+  const cfg = {
+    format: "manual" as const,
+    groupsCount: 0,
+    legs: 1,
+    pairing: "interno" as const,
+    crossGames: 0,
+    qualifiers: 0,
+    thirdPlace: false,
+  };
+  it("renomeia em todo lugar e recusa nome de outro time", async () => {
+    const p = await createPlayer(db, "Renomeia A");
+    const e = await createEdition(db, {
+      name: "Renomeia #1",
+      number: 960,
+      game: "FIFA",
+      playedOn: "2026-06-01",
+      config: cfg,
+      playerIds: [p.id],
+      teamPool: ["Flamengo Errado", "Outro"],
+    });
+    await setEntryTeam(
+      db,
+      editionView(await loadAll(db), e.id)!.entries[0].id,
+      "Flamengo Errado",
+    );
+    await setEntryTeam(
+      db,
+      editionView(await loadAll(db), e.id)!.entries[0].id,
+      "Flamengo Errado",
+    );
+    let all = await loadAll(db);
+    const t = all.teams.find((x) => x.name === "Flamengo Errado")!;
+    await renameTeam(db, t.id, "  Flamengo  ");
+    all = await loadAll(db);
+    expect(all.teams.find((x) => x.id === t.id)!.name).toBe("Flamengo");
+    expect(editionView(all, e.id)!.entries[0].team?.name).toBe("Flamengo");
+    expect(all.editions.find((x) => x.id === e.id)!.teamPool).toEqual([
+      "Flamengo",
+      "Outro",
+    ]);
+    await setEntryTeam(db, editionView(all, e.id)!.entries[0].id, "Outro");
+    const outro = (await loadAll(db)).teams.find((x) => x.name === "Outro")!;
+    await expect(renameTeam(db, outro.id, "flamengo")).rejects.toThrow(
+      /Juntar times/,
+    );
+    await expect(renameTeam(db, outro.id, "")).rejects.toBeInstanceOf(
+      UserError,
+    );
+  });
+
+  it("só apaga time sem uso", async () => {
+    const p = await createPlayer(db, "Apaga A");
+    const e = await createEdition(db, {
+      name: "Apaga #1",
+      number: 961,
+      game: "FIFA",
+      playedOn: "2026-07-01",
+      config: cfg,
+      playerIds: [p.id],
+      teamPool: [],
+    });
+    await setEntryTeam(
+      db,
+      editionView(await loadAll(db), e.id)!.entries[0].id,
+      "Usado FC",
+    );
+    await setEntryTeam(
+      db,
+      editionView(await loadAll(db), e.id)!.entries[0].id,
+      "Largado FC",
+    );
+    await setEntryTeam(
+      db,
+      editionView(await loadAll(db), e.id)!.entries[0].id,
+      "Usado FC",
+    );
+    const all = await loadAll(db);
+    const usado = all.teams.find((x) => x.name === "Usado FC")!;
+    const largado = all.teams.find((x) => x.name === "Largado FC")!;
+    await expect(deleteTeam(db, usado.id)).rejects.toThrow(
+      /não pode ser apagado/,
+    );
+    await deleteTeam(db, largado.id);
+    expect((await loadAll(db)).teams.some((x) => x.id === largado.id)).toBe(
+      false,
+    );
   });
 });

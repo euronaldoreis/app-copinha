@@ -120,8 +120,12 @@ interface PhotoData {
 function parsePhotoData(value: unknown): PhotoData | null {
   const text = String(value ?? "").trim();
   if (!text) return null;
-  const m = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(text);
-  if (!m) throw new UserError("Foto inválida. Use uma imagem JPG, PNG ou WebP.");
+  const m =
+    /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(
+      text,
+    );
+  if (!m)
+    throw new UserError("Foto inválida. Use uma imagem JPG, PNG ou WebP.");
   const bytes = Buffer.from(m[2], "base64");
   if (bytes.length > PHOTO_MAX_BYTES)
     throw new UserError("A foto ficou grande demais. Tente uma imagem menor.");
@@ -130,7 +134,8 @@ function parsePhotoData(value: unknown): PhotoData | null {
   const isJpeg = starts(0xff, 0xd8, 0xff);
   const isPng = starts(0x89, 0x50, 0x4e, 0x47);
   const isWebp =
-    starts(0x52, 0x49, 0x46, 0x46) && bytes.subarray(8, 12).toString("ascii") === "WEBP";
+    starts(0x52, 0x49, 0x46, 0x46) &&
+    bytes.subarray(8, 12).toString("ascii") === "WEBP";
   if (!isJpeg && !isPng && !isWebp)
     throw new UserError("Foto inválida. Use uma imagem JPG, PNG ou WebP.");
   return { contentType: m[1], base64: m[2] };
@@ -140,7 +145,12 @@ async function storePhoto(db: Db, playerId: number, photo: PhotoData) {
   const updatedAt = new Date().toISOString();
   await db
     .insert(playerPhotos)
-    .values({ playerId, contentType: photo.contentType, data: photo.base64, updatedAt })
+    .values({
+      playerId,
+      contentType: photo.contentType,
+      data: photo.base64,
+      updatedAt,
+    })
     .onConflictDoUpdate({
       target: playerPhotos.playerId,
       set: { contentType: photo.contentType, data: photo.base64, updatedAt },
@@ -171,7 +181,10 @@ export async function createPlayer(
   // Valida tudo antes de gravar, para uma foto ruim não deixar o jogador pela metade.
   const upload = parsePhotoData(photoData);
   const link = upload ? null : cleanPhotoUrl(photo);
-  const [row] = await db.insert(players).values({ name, photoUrl: link }).returning();
+  const [row] = await db
+    .insert(players)
+    .values({ name, photoUrl: link })
+    .returning();
   if (!upload) return row;
   const photoUrl = await storePhoto(db, row.id, upload);
   await db.update(players).set({ photoUrl }).where(eq(players.id, row.id));
@@ -267,7 +280,10 @@ export async function createPlayerAccess(db: Db, playerId: number) {
 
 /** Desativa o acesso: o link e as sessões abertas deixam de valer. */
 export async function revokePlayerAccess(db: Db, playerId: number) {
-  await db.update(players).set({ accessHash: null }).where(eq(players.id, playerId));
+  await db
+    .update(players)
+    .set({ accessHash: null })
+    .where(eq(players.id, playerId));
 }
 
 export async function playerHasAccess(db: Db, playerId: number) {
@@ -379,7 +395,8 @@ function parseEditionMeta(input: EditionInput) {
 }
 
 function parseConfig(config: FormatConfig) {
-  if (!FORMATS.includes(config.format)) throw new UserError("Formato inválido.");
+  if (!FORMATS.includes(config.format))
+    throw new UserError("Formato inválido.");
   return normalizeConfig({
     format: config.format,
     groupsCount: Number(config.groupsCount) || 0,
@@ -423,7 +440,8 @@ export async function createEdition(
         .select({ id: players.id })
         .from(players)
         .where(inArray(players.id, [...ids]));
-      if (found.length !== ids.size) throw new UserError("Jogador não encontrado.");
+      if (found.length !== ids.size)
+        throw new UserError("Jogador não encontrado.");
     }
     const [edition] = await tx
       .insert(editions)
@@ -469,12 +487,17 @@ export async function updateEdition(db: Db, id: number, input: EditionInput) {
       .set({
         ...rest,
         ...config,
-        ...(canChangeTeams ? { useTeams, ...(useTeams ? {} : { teamPool: [] }) } : {}),
+        ...(canChangeTeams
+          ? { useTeams, ...(useTeams ? {} : { teamPool: [] }) }
+          : {}),
       })
       .where(eq(editions.id, id));
     if (canChangeTeams && !useTeams) {
       // Sem times: quem já tinha um perde o vínculo.
-      await tx.update(entries).set({ teamId: null }).where(eq(entries.editionId, id));
+      await tx
+        .update(entries)
+        .set({ teamId: null })
+        .where(eq(entries.editionId, id));
     }
   });
 }
@@ -535,7 +558,10 @@ export async function setTeamPool(db: Db, editionId: number, names: unknown[]) {
 }
 
 async function getEntry(db: Db, entryId: number) {
-  const [entry] = await db.select().from(entries).where(eq(entries.id, entryId));
+  const [entry] = await db
+    .select()
+    .from(entries)
+    .where(eq(entries.id, entryId));
   if (!entry) throw new UserError("Participante não encontrado.");
   return entry;
 }
@@ -545,7 +571,10 @@ export async function setEntryTeam(db: Db, entryId: number, teamName: unknown) {
   const entry = await getEntry(db, entryId);
   const name = clean(teamName, 60);
   if (!name) {
-    await db.update(entries).set({ teamId: null }).where(eq(entries.id, entryId));
+    await db
+      .update(entries)
+      .set({ teamId: null })
+      .where(eq(entries.id, entryId));
     return;
   }
   if (!(await getEdition(db, entry.editionId)).useTeams)
@@ -557,7 +586,134 @@ export async function setEntryTeam(db: Db, entryId: number, teamName: unknown) {
     .where(eq(entries.editionId, entry.editionId));
   if (siblings.some((e) => e.id !== entryId && e.teamId === team.id))
     throw new UserError(`${team.name} já está com outro participante.`);
-  await db.update(entries).set({ teamId: team.id }).where(eq(entries.id, entryId));
+  await db
+    .update(entries)
+    .set({ teamId: team.id })
+    .where(eq(entries.id, entryId));
+}
+
+/**
+ * Junta dois times (por exemplo, um nome digitado errado): os participantes e
+ * as listas de sorteio do time `fromId` passam para o `intoId`, e o `fromId`
+ * deixa de existir. Recusa se os dois estiverem com participantes diferentes
+ * na mesma edição.
+ */
+export async function mergeTeams(db: Db, fromId: number, intoId: number) {
+  if (fromId === intoId) throw new UserError("Escolha dois times diferentes.");
+  const [from] = await db.select().from(teams).where(eq(teams.id, fromId));
+  const [into] = await db.select().from(teams).where(eq(teams.id, intoId));
+  if (!from || !into) throw new UserError("Time não encontrado.");
+
+  const used = await db
+    .select({ editionId: entries.editionId, teamId: entries.teamId })
+    .from(entries)
+    .where(inArray(entries.teamId, [fromId, intoId]));
+  const clash = used.find(
+    (a) =>
+      a.teamId === fromId &&
+      used.some((b) => b.teamId === intoId && b.editionId === a.editionId),
+  );
+  if (clash) {
+    const [edition] = await db
+      .select({ name: editions.name })
+      .from(editions)
+      .where(eq(editions.id, clash.editionId));
+    throw new UserError(
+      `${from.name} e ${into.name} estão com participantes diferentes na ${edition?.name ?? "mesma edição"}. Ajuste um deles antes de juntar.`,
+    );
+  }
+
+  const fold = (s: string) => s.toLocaleLowerCase("pt-BR");
+  const allEditions = await db.select().from(editions);
+  await db.transaction(async (tx) => {
+    await tx
+      .update(entries)
+      .set({ teamId: intoId })
+      .where(eq(entries.teamId, fromId));
+    for (const edition of allEditions) {
+      const pool = edition.teamPool ?? [];
+      if (!pool.some((t) => fold(t) === fold(from.name))) continue;
+      const next: string[] = [];
+      for (const t of pool) {
+        const name = fold(t) === fold(from.name) ? into.name : t;
+        if (!next.some((n) => fold(n) === fold(name))) next.push(name);
+      }
+      await tx
+        .update(editions)
+        .set({ teamPool: next })
+        .where(eq(editions.id, edition.id));
+    }
+    await tx.delete(teams).where(eq(teams.id, fromId));
+  });
+  return { from: from.name, into: into.name };
+}
+
+/** Troca o nome de um time em todo lugar (participantes e listas de sorteio). */
+export async function renameTeam(db: Db, id: number, rawName: unknown) {
+  const name = clean(rawName, 60);
+  if (!name) throw new UserError("Informe o nome do time.");
+  const all = await db.select().from(teams);
+  const team = all.find((t) => t.id === id);
+  if (!team) throw new UserError("Time não encontrado.");
+  const other = all.find((t) => t.id !== id && sameName(t.name, name));
+  if (other)
+    throw new UserError(
+      `Já existe o time ${other.name}. Para unir os dois, use "Juntar times".`,
+    );
+  if (team.name === name) return;
+  const allEditions = await db.select().from(editions);
+  await db.transaction(async (tx) => {
+    await tx.update(teams).set({ name }).where(eq(teams.id, id));
+    for (const edition of allEditions) {
+      const pool = edition.teamPool ?? [];
+      if (!pool.some((t) => sameName(t, team.name))) continue;
+      await tx
+        .update(editions)
+        .set({
+          teamPool: cleanTeamList(
+            pool.map((t) => (sameName(t, team.name) ? name : t)),
+          ),
+        })
+        .where(eq(editions.id, edition.id));
+    }
+  });
+}
+
+/** Apaga um time que nenhum participante usa. */
+export async function deleteTeam(db: Db, id: number) {
+  const [team] = await db.select().from(teams).where(eq(teams.id, id));
+  if (!team) throw new UserError("Time não encontrado.");
+  const [inUse] = await db
+    .select({ id: entries.id })
+    .from(entries)
+    .where(eq(entries.teamId, id))
+    .limit(1);
+  if (inUse)
+    throw new UserError(
+      `${team.name} já foi usado por participantes e não pode ser apagado. Dá para renomear ou juntar com outro.`,
+    );
+  await db.delete(teams).where(eq(teams.id, id));
+}
+
+/**
+ * Apaga os times que nenhum participante usa (nomes que só ficaram na lista
+ * de sorteio ou que foram trocados). Devolve os nomes apagados.
+ */
+export async function deleteUnusedTeams(db: Db) {
+  const used = new Set(
+    (await db.select({ teamId: entries.teamId }).from(entries))
+      .map((e) => e.teamId)
+      .filter((id): id is number => id != null),
+  );
+  const unused = (await db.select().from(teams)).filter((t) => !used.has(t.id));
+  if (unused.length === 0) return [];
+  await db.delete(teams).where(
+    inArray(
+      teams.id,
+      unused.map((t) => t.id),
+    ),
+  );
+  return unused.map((t) => t.name).sort((a, b) => a.localeCompare(b, "pt-BR"));
 }
 
 export interface DrawAssignment {
@@ -567,7 +723,10 @@ export interface DrawAssignment {
 }
 
 /** Sorteia um time da lista para cada participante. */
-export async function drawTeams(db: Db, editionId: number): Promise<DrawAssignment[]> {
+export async function drawTeams(
+  db: Db,
+  editionId: number,
+): Promise<DrawAssignment[]> {
   const edition = await getEdition(db, editionId);
   if (!edition.useTeams)
     throw new UserError("Esta edição é só com os jogadores, sem times.");
@@ -579,7 +738,9 @@ export async function drawTeams(db: Db, editionId: number): Promise<DrawAssignme
     .innerJoin(players, eq(entries.playerId, players.id))
     .where(eq(entries.editionId, editionId));
   if (rows.length < 2)
-    throw new UserError("Adicione pelo menos 2 participantes antes de sortear.");
+    throw new UserError(
+      "Adicione pelo menos 2 participantes antes de sortear.",
+    );
   if (edition.teamPool.length < rows.length)
     throw new UserError(
       `Faltam times para o sorteio: são ${rows.length} participantes e ${edition.teamPool.length} times na lista.`,
@@ -664,7 +825,9 @@ export async function startEdition(
 ): Promise<GroupDrawItem[]> {
   const edition = await getEdition(db, editionId);
   if (edition.format === "manual")
-    throw new UserError("Edições de registro histórico não têm tabela de jogos.");
+    throw new UserError(
+      "Edições de registro histórico não têm tabela de jogos.",
+    );
   if (edition.status !== "inscricoes")
     throw new UserError("A tabela desta edição já foi gerada.");
   const config = configOf(edition);
@@ -675,7 +838,9 @@ export async function startEdition(
   const problem = validateConfig(config, current.length);
   if (problem) throw new UserError(problem);
   if (edition.useTeams && current.some((e) => e.teamId == null))
-    throw new UserError("Ainda há participantes sem time. Faça o sorteio primeiro.");
+    throw new UserError(
+      "Ainda há participantes sem time. Faça o sorteio primeiro.",
+    );
 
   let seeded: Seeded[];
   if (config.format === "grupos" && current.some((e) => e.groupLabel)) {
@@ -833,7 +998,7 @@ export async function setKnockoutPhases(
     );
   if (edition.status === "inscricoes")
     throw new UserError(
-      "Antes de gerar a tabela, mude as fases em \"Dados e formato\".",
+      'Antes de gerar a tabela, mude as fases em "Dados e formato".',
     );
   const qualifiers = Number(input.qualifiers);
   if (!Number.isInteger(qualifiers) || qualifiers < 0)
@@ -860,13 +1025,13 @@ export async function setKnockoutPhases(
       : validateConfig(config, current.length);
   if (problem) throw new UserError(problem);
 
-  const knockout = planMatches(config, current).filter((m) => m.stage !== "grupo");
+  const knockout = planMatches(config, current).filter(
+    (m) => m.stage !== "grupo",
+  );
   await db.transaction(async (tx) => {
     await tx
       .delete(matches)
-      .where(
-        and(eq(matches.editionId, editionId), ne(matches.stage, "grupo")),
-      );
+      .where(and(eq(matches.editionId, editionId), ne(matches.stage, "grupo")));
     await tx
       .update(editions)
       .set({ qualifiers, thirdPlace: config.thirdPlace })
@@ -939,7 +1104,8 @@ export async function setKnockoutSlots(
         throw new UserError(
           "Essa vaga é decidida pelo resultado de outro jogo e não pode ser editada.",
         );
-      if ((home ? match.homeEntryId : match.awayEntryId) === slot.entryId) continue;
+      if ((home ? match.homeEntryId : match.awayEntryId) === slot.entryId)
+        continue;
       const change = changes.get(match.id) ?? {
         homeScore: null,
         awayScore: null,
@@ -947,8 +1113,10 @@ export async function setKnockoutSlots(
         awayPens: null,
         playedAt: null,
       };
-      if (home) Object.assign(change, { homeEntryId: slot.entryId, homeSource: null });
-      else Object.assign(change, { awayEntryId: slot.entryId, awaySource: null });
+      if (home)
+        Object.assign(change, { homeEntryId: slot.entryId, homeSource: null });
+      else
+        Object.assign(change, { awayEntryId: slot.entryId, awaySource: null });
       changes.set(match.id, change);
     }
     if (changes.size === 0) return;
@@ -959,7 +1127,10 @@ export async function setKnockoutSlots(
     await syncEdition(tx, editionId);
 
     // Depois de refazer tudo: ninguém joga duas vezes na mesma fase, nem contra si.
-    const after = await tx.select().from(matches).where(eq(matches.editionId, editionId));
+    const after = await tx
+      .select()
+      .from(matches)
+      .where(eq(matches.editionId, editionId));
     const seen = new Set<string>();
     for (const m of after.filter((x) => x.stage === "mata")) {
       if (m.homeEntryId != null && m.homeEntryId === m.awayEntryId)
@@ -1046,7 +1217,11 @@ export async function syncEdition(db: Db, editionId: number) {
     }
   }
   const status =
-    matchRows.length === 0 ? "inscricoes" : finished ? "encerrada" : "andamento";
+    matchRows.length === 0
+      ? "inscricoes"
+      : finished
+        ? "encerrada"
+        : "andamento";
   if (status !== edition.status) {
     await db.update(editions).set({ status }).where(eq(editions.id, editionId));
   }
@@ -1067,8 +1242,15 @@ function parseScore(value: unknown, what: string) {
   return n;
 }
 
-export async function saveMatchResult(db: Db, matchId: number, input: ScoreInput) {
-  const [match] = await db.select().from(matches).where(eq(matches.id, matchId));
+export async function saveMatchResult(
+  db: Db,
+  matchId: number,
+  input: ScoreInput,
+) {
+  const [match] = await db
+    .select()
+    .from(matches)
+    .where(eq(matches.id, matchId));
   if (!match) throw new UserError("Jogo não encontrado.");
   if (match.homeEntryId == null || match.awayEntryId == null)
     throw new UserError("Este confronto ainda não está definido.");
@@ -1100,7 +1282,10 @@ export async function saveMatchResult(db: Db, matchId: number, input: ScoreInput
 }
 
 export async function clearMatchResult(db: Db, matchId: number) {
-  const [match] = await db.select().from(matches).where(eq(matches.id, matchId));
+  const [match] = await db
+    .select()
+    .from(matches)
+    .where(eq(matches.id, matchId));
   if (!match) throw new UserError("Jogo não encontrado.");
   await db.transaction(async (tx) => {
     await tx
@@ -1182,7 +1367,10 @@ export function sortEditions(list: Edition[]) {
   );
 }
 
-export function editionView(data: AllData, editionId: number): EditionView | null {
+export function editionView(
+  data: AllData,
+  editionId: number,
+): EditionView | null {
   const edition = data.editions.find((e) => e.id === editionId);
   if (!edition) return null;
   const playerById = new Map(data.players.map((p) => [p.id, p]));

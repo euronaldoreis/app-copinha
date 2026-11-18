@@ -77,7 +77,12 @@ export async function logoutAction() {
 
 export async function createPlayerAction(_prev: ActionState, fd: FormData) {
   return run(() =>
-    svc.createPlayer(getDb(), fd.get("name"), fd.get("photoUrl"), fd.get("photoData")),
+    svc.createPlayer(
+      getDb(),
+      fd.get("name"),
+      fd.get("photoUrl"),
+      fd.get("photoData"),
+    ),
   );
 }
 
@@ -94,7 +99,11 @@ function parseAvatarField(value: FormDataEntryValue | null): unknown {
 
 // --- Acesso do jogador ao próprio perfil -----------------------------------
 
-export type AccessLinkState = { error?: string; path?: string; ok?: boolean } | null;
+export type AccessLinkState = {
+  error?: string;
+  path?: string;
+  ok?: boolean;
+} | null;
 
 /** Organizador: gera um link novo de acesso (o anterior deixa de valer). */
 export async function createAccessLinkAction(
@@ -140,7 +149,10 @@ export async function saveProfileAction(
   };
   try {
     if (admin)
-      await svc.updatePlayer(getDb(), playerId, { ...look, name: fd.get("name") });
+      await svc.updatePlayer(getDb(), playerId, {
+        ...look,
+        name: fd.get("name"),
+      });
     else await svc.updatePlayerProfile(getDb(), playerId, look);
   } catch (err) {
     if (err instanceof svc.UserError) return { error: err.message };
@@ -153,6 +165,26 @@ export async function saveProfileAction(
 export async function playerLogoutAction() {
   await endPlayerSession();
   redirect("/");
+}
+
+// --- Times -----------------------------------------------------------------
+
+/** Junta um time digitado errado ao certo (participantes e listas de sorteio). */
+export async function mergeTeamsAction(_prev: ActionState, fd: FormData) {
+  return run(() => svc.mergeTeams(getDb(), id(fd, "fromId"), id(fd, "intoId")));
+}
+
+export async function renameTeamAction(_prev: ActionState, fd: FormData) {
+  return run(() => svc.renameTeam(getDb(), id(fd, "teamId"), fd.get("name")));
+}
+
+export async function deleteTeamAction(_prev: ActionState, fd: FormData) {
+  return run(() => svc.deleteTeam(getDb(), id(fd, "teamId")));
+}
+
+/** Apaga os times que nenhum participante usa. */
+export async function deleteUnusedTeamsAction(): Promise<ActionState> {
+  return run(() => svc.deleteUnusedTeams(getDb()));
 }
 
 export async function deletePlayerAction(_prev: ActionState, fd: FormData) {
@@ -206,7 +238,8 @@ export async function setParticipantsAction(_prev: ActionState, fd: FormData) {
     const ids = fd.getAll("playerId").map(Number);
     for (const name of lines(fd.get("newPlayers"))) {
       const existing = (await svc.listPlayers(db)).find(
-        (p) => p.name.toLocaleLowerCase("pt-BR") === name.toLocaleLowerCase("pt-BR"),
+        (p) =>
+          p.name.toLocaleLowerCase("pt-BR") === name.toLocaleLowerCase("pt-BR"),
       );
       ids.push((existing ?? (await svc.createPlayer(db, name))).id);
     }
@@ -296,7 +329,10 @@ export async function setKnockoutAction(_prev: ActionState, fd: FormData) {
   });
 }
 
-export async function setKnockoutPhasesAction(_prev: ActionState, fd: FormData) {
+export async function setKnockoutPhasesAction(
+  _prev: ActionState,
+  fd: FormData,
+) {
   return run(() =>
     svc.setKnockoutPhases(getDb(), id(fd, "editionId"), {
       qualifiers: Number(fd.get("qualifiers")),
@@ -305,7 +341,10 @@ export async function setKnockoutPhasesAction(_prev: ActionState, fd: FormData) 
   );
 }
 
-export async function regenerateMatchesAction(_prev: ActionState, fd: FormData) {
+export async function regenerateMatchesAction(
+  _prev: ActionState,
+  fd: FormData,
+) {
   return run(() => svc.regenerateMatches(getDb(), id(fd, "editionId")));
 }
 
@@ -314,7 +353,9 @@ export async function resetEditionAction(_prev: ActionState, fd: FormData) {
 }
 
 export async function deleteEditionAction(_prev: ActionState, fd: FormData) {
-  const state = await run(() => svc.deleteEdition(getDb(), id(fd, "editionId")));
+  const state = await run(() =>
+    svc.deleteEdition(getDb(), id(fd, "editionId")),
+  );
   if (state?.ok) redirect("/edicoes");
   return state;
 }
