@@ -15,6 +15,7 @@ const ROOTS = new Set(["/", "/edicoes", "/ranking", "/jogadores"]);
 function parentOf(pathname: string) {
   if (pathname.startsWith("/edicoes/")) return "/edicoes";
   if (pathname.startsWith("/jogadores/")) return "/jogadores";
+  if (pathname.startsWith("/admin/")) return "/admin";
   return "/";
 }
 
@@ -34,7 +35,8 @@ function readTrail(): string[] {
 function recordVisit(pathname: string) {
   const trail = readTrail();
   if (trail.at(-1) === pathname) return; // recarregou a mesma tela
-  if (trail.at(-2) === pathname) trail.pop(); // voltou uma tela
+  if (trail.at(-2) === pathname)
+    trail.pop(); // voltou uma tela
   else trail.push(pathname);
   try {
     sessionStorage.setItem(TRAIL_KEY, JSON.stringify(trail.slice(-50)));
@@ -92,7 +94,9 @@ export function TopBarBrand() {
         <Emblem />
         {/* Nas telas de dentro o voltar ocupa o lugar do nome. */}
         {!inner && (
-          <span className="text-title !text-[19px] leading-none text-ink">Copinha</span>
+          <span className="text-title !text-[19px] leading-none text-ink">
+            Copinha
+          </span>
         )}
       </Link>
     </div>

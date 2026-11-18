@@ -21,6 +21,9 @@ export default async function AdminPage() {
           <Link href="/jogadores" className="btn">
             Gerenciar jogadores
           </Link>
+          <Link href="/admin/times" className="btn">
+            Gerenciar times
+          </Link>
         </div>
       </>
     );
