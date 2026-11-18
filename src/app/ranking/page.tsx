@@ -6,7 +6,12 @@ import { RankPodium } from "@/components/RankPodium";
 import { Empty, PageTitle } from "@/components/ui";
 import { getData } from "@/lib/data";
 import { plural, resultLabel } from "@/lib/labels";
-import { RANK_FILTERS, eligible, rankFilter, sortByFilter } from "@/lib/ranking";
+import {
+  RANK_FILTERS,
+  eligible,
+  rankFilter,
+  sortByFilter,
+} from "@/lib/ranking";
 import {
   computeRanking,
   computeRecords,
@@ -37,16 +42,41 @@ interface Column {
 
 const TITLE_COLUMNS: Column[] = [
   { key: "titulos", head: "Tit.", title: "Títulos", value: (r) => r.titles },
-  { key: "finais", head: "Fin.", title: "Finais disputadas", value: (r) => r.finals },
-  { head: "Pod.", title: "Pódios (1º, 2º ou 3º)", value: (r) => r.podiums, wide: true },
-  { head: "Semi", title: "Vezes entre os 4 melhores", value: (r) => r.top4, wide: true },
-  { key: "participacoes", head: "Part.", title: "Participações", value: (r) => r.participations },
+  {
+    key: "finais",
+    head: "Fin.",
+    title: "Finais disputadas",
+    value: (r) => r.finals,
+  },
+  {
+    head: "Pod.",
+    title: "Pódios (1º, 2º ou 3º)",
+    value: (r) => r.podiums,
+    wide: true,
+  },
+  {
+    head: "Semi",
+    title: "Vezes entre os 4 melhores",
+    value: (r) => r.top4,
+    wide: true,
+  },
+  {
+    key: "participacoes",
+    head: "Part.",
+    title: "Participações",
+    value: (r) => r.participations,
+  },
 ];
 
 const signed = (n: number) => (n > 0 ? `+${n}` : n);
 
 const GAME_COLUMNS: Column[] = [
-  { key: "pontos", head: "Pts", title: "Pontos (vitória 3, empate 1)", value: (r) => r.points },
+  {
+    key: "pontos",
+    head: "Pts",
+    title: "Pontos (vitória 3, empate 1)",
+    value: (r) => r.points,
+  },
   { head: "%", title: "Aproveitamento", value: (r) => `${r.pct}%` },
   { head: "J", title: "Jogos", value: (r) => r.played },
   { key: "vitorias", head: "V", title: "Vitórias", value: (r) => r.wins },
@@ -109,7 +139,9 @@ function RankTable({
                     <span className="block truncate text-name font-semibold">
                       {r.player.name}
                     </span>
-                    <span className="block truncate text-muted">{detail(r)}</span>
+                    <span className="block truncate text-muted">
+                      {detail(r)}
+                    </span>
                   </span>
                 </Link>
               </td>
@@ -193,7 +225,9 @@ export default async function RankingPage(props: PageProps<"/ranking">) {
   let podium: ReactNode = null;
   let content: ReactNode;
   if (ranking.length === 0) {
-    content = <Empty>O ranking aparece quando a primeira edição começar.</Empty>;
+    content = (
+      <Empty>O ranking aparece quando a primeira edição começar.</Empty>
+    );
   } else if (filter) {
     const rows = sortByFilter(filter.id, eligible(filter, ranking));
     // Pódio: os três primeiros que realmente têm o que o filtro mede.
@@ -248,7 +282,10 @@ export default async function RankingPage(props: PageProps<"/ranking">) {
     content = teams.length ? (
       <div className="card px-5 py-1.5">
         {teams.map((t) => (
-          <div key={t.team.id} className="flex min-h-[68px] items-center gap-3.5">
+          <div
+            key={t.team.id}
+            className="flex min-h-[68px] items-center gap-3.5"
+          >
             <span className="min-w-0 flex-1">
               <span className="block truncate text-name font-semibold">
                 {t.team.name}
@@ -256,7 +293,9 @@ export default async function RankingPage(props: PageProps<"/ranking">) {
               <span className="block truncate text-body text-muted">
                 {[
                   `Sorteado ${plural(t.uses, "vez", "vezes")}`,
-                  t.champions.length ? `campeão com ${t.champions.join(", ")}` : "",
+                  t.champions.length
+                    ? `campeão com ${t.champions.join(", ")}`
+                    : "",
                 ]
                   .filter(Boolean)
                   .join(" · ")}
@@ -275,39 +314,152 @@ export default async function RankingPage(props: PageProps<"/ranking">) {
     );
   } else {
     const records = computeRecords(data);
-    content =
-      records.biggestWin || records.mostGoals || records.bestAttack ? (
-        <div className="grid grid-cols-1 gap-3">
-          {records.biggestWin && (
-            <RecordCard label="Maior goleada" detail={matchDetail(records.biggestWin)}>
-              {scoreLine(records.biggestWin)}
-            </RecordCard>
-          )}
-          {records.mostGoals && (
-            <RecordCard label="Jogo com mais gols" detail={matchDetail(records.mostGoals)}>
-              {scoreLine(records.mostGoals)}
-            </RecordCard>
-          )}
-          {records.bestAttack && (
-            <RecordCard
-              label="Melhor ataque em uma edição"
-              detail={records.bestAttack.edition.name}
-            >
-              {records.bestAttack.player.name},{" "}
-              <span className="num">{plural(records.bestAttack.goals, "gol", "gols")}</span>
-            </RecordCard>
-          )}
-        </div>
-      ) : (
-        <Empty>Os recordes aparecem depois dos primeiros placares.</Empty>
-      );
+    const {
+      biggestWin,
+      mostGoals,
+      bestAttack,
+      rivalry,
+      unbeatenRun,
+      unbeatenChampions,
+      worstCampaign,
+      penaltyKing,
+    } = records;
+    const span = (
+      from: { name: string; id: number },
+      to: { name: string; id: number },
+    ) =>
+      from.id === to.id ? `Na ${from.name}` : `De ${from.name} a ${to.name}`;
+    const any =
+      biggestWin ||
+      mostGoals ||
+      bestAttack ||
+      rivalry ||
+      unbeatenRun ||
+      unbeatenChampions.length > 0 ||
+      worstCampaign ||
+      penaltyKing;
+    content = any ? (
+      <div className="grid grid-cols-1 gap-3">
+        {biggestWin && (
+          <RecordCard label="Maior goleada" detail={matchDetail(biggestWin)}>
+            {scoreLine(biggestWin)}
+          </RecordCard>
+        )}
+        {mostGoals && (
+          <RecordCard
+            label="Jogo com mais gols"
+            detail={matchDetail(mostGoals)}
+          >
+            {scoreLine(mostGoals)}
+          </RecordCard>
+        )}
+        {bestAttack && (
+          <RecordCard
+            label="Melhor ataque em uma edição"
+            detail={bestAttack.edition.name}
+          >
+            {bestAttack.player.name},{" "}
+            <span className="num">
+              {plural(bestAttack.goals, "gol", "gols")}
+            </span>
+          </RecordCard>
+        )}
+        {rivalry && (
+          <RecordCard
+            label="Maior freguesia"
+            detail={`Vitórias no confronto direto · ${plural(
+              rivalry.wins + rivalry.losses + rivalry.draws,
+              "jogo",
+              "jogos",
+            )}${rivalry.draws ? `, ${plural(rivalry.draws, "empate", "empates")}` : ""}`}
+          >
+            {rivalry.winner.name}{" "}
+            <span className="num">
+              {rivalry.wins} – {rivalry.losses}
+            </span>{" "}
+            {rivalry.loser.name}
+          </RecordCard>
+        )}
+        {unbeatenRun && (
+          <RecordCard
+            label="Maior sequência invicta"
+            detail={span(unbeatenRun.from, unbeatenRun.to)}
+          >
+            {unbeatenRun.player.name},{" "}
+            <span className="num">{unbeatenRun.games}</span> jogos sem perder
+          </RecordCard>
+        )}
+        {unbeatenChampions.length > 0 && (
+          <RecordCard
+            label={
+              unbeatenChampions.length > 1
+                ? "Campeões invictos"
+                : "Campeão invicto"
+            }
+            detail="Levantaram a taça sem perder nenhum jogo"
+          >
+            {unbeatenChampions.slice(0, 5).map((c) => (
+              <span key={c.edition.id} className="block">
+                {c.player.name}{" "}
+                <span className="text-body font-normal text-muted">
+                  · {c.edition.name} ·{" "}
+                  <span className="num">
+                    {c.wins}V {c.draws}E
+                  </span>
+                </span>
+              </span>
+            ))}
+            {unbeatenChampions.length > 5 && (
+              <span className="block text-body font-normal text-muted">
+                e mais {unbeatenChampions.length - 5}
+              </span>
+            )}
+          </RecordCard>
+        )}
+        {penaltyKing && (
+          <RecordCard
+            label="Rei dos pênaltis"
+            detail={`Venceu ${penaltyKing.won} de ${plural(
+              penaltyKing.total,
+              "disputa",
+              "disputas",
+            )}`}
+          >
+            {penaltyKing.player.name},{" "}
+            <span className="num">
+              {plural(penaltyKing.won, "disputa vencida", "disputas vencidas")}
+            </span>
+          </RecordCard>
+        )}
+        {worstCampaign && (
+          <RecordCard
+            label="Lixo do lixo: pior campanha"
+            detail={`${worstCampaign.edition.name} · ${plural(
+              worstCampaign.played,
+              "jogo",
+              "jogos",
+            )}, ${plural(worstCampaign.gf, "gol pró", "gols pró")} e ${worstCampaign.ga} contra`}
+          >
+            {worstCampaign.player.name},{" "}
+            <span className="num">
+              {plural(worstCampaign.points, "ponto", "pontos")}
+            </span>
+          </RecordCard>
+        )}
+      </div>
+    ) : (
+      <Empty>Os recordes aparecem depois dos primeiros placares.</Empty>
+    );
   }
 
   return (
     <>
       <PageTitle title="Ranking" />
       {podium}
-      <nav aria-label="Filtros do ranking" className="-mx-1 mb-6 flex gap-2 overflow-x-auto px-1 pb-2">
+      <nav
+        aria-label="Filtros do ranking"
+        className="-mx-1 mb-6 flex gap-2 overflow-x-auto px-1 pb-2"
+      >
         {TABS.map((t) => (
           <Link
             // A chave muda com o estado: o botão é recriado (e repintado
