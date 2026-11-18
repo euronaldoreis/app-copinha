@@ -3,7 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getDb } from "@/db";
-import { login, logout, requireAdmin } from "@/lib/auth";
+import {
+  currentPlayerId,
+  endPlayerSession,
+  isAdmin,
+  login,
+  logout,
+  requireAdmin,
+} from "@/lib/auth";
 import * as svc from "@/lib/services";
 import type { FormatConfig } from "@/lib/tournament";
 
@@ -85,16 +92,67 @@ function parseAvatarField(value: FormDataEntryValue | null): unknown {
   }
 }
 
-export async function updatePlayerAction(_prev: ActionState, fd: FormData) {
-  return run(() =>
-    svc.updatePlayer(getDb(), id(fd, "playerId"), {
-      name: fd.get("name"),
-      photoUrl: fd.get("photoUrl"),
-      avatar: parseAvatarField(fd.get("avatar")),
-      photoData: fd.get("photoData"),
-      removePhoto: fd.get("removePhoto") === "1",
-    }),
-  );
+// --- Acesso do jogador ao próprio perfil -----------------------------------
+
+export type AccessLinkState = { error?: string; path?: string; ok?: boolean } | null;
+
+/** Organizador: gera um link novo de acesso (o anterior deixa de valer). */
+export async function createAccessLinkAction(
+  _prev: AccessLinkState,
+  fd: FormData,
+): Promise<AccessLinkState> {
+  await requireAdmin();
+  try {
+    const token = await svc.createPlayerAccess(getDb(), id(fd, "playerId"));
+    revalidatePath("/", "layout");
+    return { ok: true, path: `/entrar/${token}` };
+  } catch (err) {
+    if (err instanceof svc.UserError) return { error: err.message };
+    throw err;
+  }
+}
+
+export async function revokeAccessAction(_prev: ActionState, fd: FormData) {
+  return run(() => svc.revokePlayerAccess(getDb(), id(fd, "playerId")));
+}
+
+/**
+ * Tela de edição do perfil. O organizador muda tudo (inclusive o nome); o
+ * jogador com sessão muda só a foto e o avatar, e só do próprio perfil.
+ */
+export async function saveProfileAction(
+  _prev: ActionState,
+  fd: FormData,
+): Promise<ActionState> {
+  const playerId = id(fd, "playerId");
+  const admin = await isAdmin();
+  if (!admin && (await currentPlayerId()) !== playerId) {
+    return {
+      error:
+        "Você só pode editar o seu próprio perfil. Se a sessão expirou, abra o seu link de acesso de novo.",
+    };
+  }
+  const look = {
+    photoUrl: fd.get("photoUrl"),
+    avatar: parseAvatarField(fd.get("avatar")),
+    photoData: fd.get("photoData"),
+    removePhoto: fd.get("removePhoto") === "1",
+  };
+  try {
+    if (admin)
+      await svc.updatePlayer(getDb(), playerId, { ...look, name: fd.get("name") });
+    else await svc.updatePlayerProfile(getDb(), playerId, look);
+  } catch (err) {
+    if (err instanceof svc.UserError) return { error: err.message };
+    throw err;
+  }
+  revalidatePath("/", "layout");
+  redirect(`/jogadores/${playerId}`);
+}
+
+export async function playerLogoutAction() {
+  await endPlayerSession();
+  redirect("/");
 }
 
 export async function deletePlayerAction(_prev: ActionState, fd: FormData) {

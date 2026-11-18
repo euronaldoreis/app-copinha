@@ -16,9 +16,14 @@ export const players = sqliteTable(
     photoUrl: text("photo_url"),
     /** Aparência escolhida para o avatar em pixel art; null = automática. */
     avatar: text("avatar", { mode: "json" }).$type<AvatarLook | null>(),
+    /** Hash (sha256) do link de acesso do jogador; null = sem acesso. Nunca guarda o link em si. */
+    accessHash: text("access_hash"),
     createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   },
-  (t) => [uniqueIndex("players_name_idx").on(t.name)],
+  (t) => [
+    uniqueIndex("players_name_idx").on(t.name),
+    uniqueIndex("players_access_hash_idx").on(t.accessHash),
+  ],
 );
 
 /** Foto enviada de um jogador (imagem em base64). Fora do players para não pesar nas listas. */
@@ -131,7 +136,8 @@ export const matches = sqliteTable(
   (t) => [index("matches_edition_idx").on(t.editionId)],
 );
 
-export type Player = typeof players.$inferSelect;
+/** Jogador como o site o usa: sem o hash de acesso, que não deve sair do servidor. */
+export type Player = Omit<typeof players.$inferSelect, "accessHash">;
 export type Team = typeof teams.$inferSelect;
 export type Edition = typeof editions.$inferSelect;
 export type Entry = typeof entries.$inferSelect;

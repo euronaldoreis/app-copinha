@@ -4,6 +4,7 @@ import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { cookies, headers } from "next/headers";
 import { getDb } from "@/db";
 import { clearAttempts, countAttempt } from "./loginLimit";
+import { getPlayerAccessHash } from "./services";
 
 const COOKIE = "copinha_admin";
 const MAX_AGE = 60 * 60 * 24 * 30; // 30 dias
@@ -88,4 +89,56 @@ export async function login(attempt: string): Promise<LoginResult> {
 
 export async function logout() {
   (await cookies()).delete(COOKIE);
+}
+
+// --- Sessão do jogador -----------------------------------------------------
+// Quem abre o link de acesso do jogador ganha um cookie que só vale para editar
+// o próprio perfil. O cookie é amarrado ao hash do acesso: gerar outro link ou
+// desativar o acesso derruba as sessões abertas.
+
+const PLAYER_COOKIE = "copinha_jogador";
+
+/** Sem segredo configurado a assinatura seria previsível: sessão de jogador desligada. */
+function playerSessionsEnabled() {
+  return Boolean(process.env.AUTH_SECRET || password());
+}
+
+function playerSignature(payload: string) {
+  return sign(`jogador:${payload}`);
+}
+
+export async function startPlayerSession(playerId: number, accessHash: string) {
+  if (!playerSessionsEnabled()) return false;
+  const expires = Date.now() + MAX_AGE * 1000;
+  const payload = `${playerId}.${expires}.${accessHash.slice(0, 16)}`;
+  (await cookies()).set(PLAYER_COOKIE, `${payload}.${playerSignature(payload)}`, {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    maxAge: MAX_AGE,
+    path: "/",
+  });
+  return true;
+}
+
+export async function endPlayerSession() {
+  (await cookies()).delete(PLAYER_COOKIE);
+}
+
+/** Id do jogador da sessão atual, ou null se não há sessão válida. */
+export async function currentPlayerId(): Promise<number | null> {
+  if (!playerSessionsEnabled()) return null;
+  const token = (await cookies()).get(PLAYER_COOKIE)?.value;
+  if (!token) return null;
+  const parts = token.split(".");
+  if (parts.length !== 4) return null;
+  const [rawId, expires, hashPrefix, signature] = parts;
+  const payload = `${rawId}.${expires}.${hashPrefix}`;
+  if (!safeEqual(signature, playerSignature(payload))) return null;
+  if (!(Number(expires) > Date.now())) return null;
+  const playerId = Number(rawId);
+  if (!Number.isInteger(playerId)) return null;
+  const current = await getPlayerAccessHash(getDb(), playerId);
+  if (!current || current.slice(0, 16) !== hashPrefix) return null;
+  return playerId;
 }

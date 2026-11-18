@@ -8,6 +8,12 @@ import { createDb } from "@/db";
 import { entries, matches, players } from "@/db/schema";
 import {
   UserError,
+  createPlayerAccess,
+  findPlayerByAccessToken,
+  getPlayerAccessHash,
+  playerHasAccess,
+  revokePlayerAccess,
+  updatePlayerProfile,
   regenerateMatches,
   removeEntry,
   getPlayerPhoto,
@@ -891,5 +897,65 @@ describe("foto enviada do jogador", () => {
     const player = await createPlayer(db, "Jogador Temporário", "", PNG);
     await deletePlayer(db, player.id);
     expect(await getPlayerPhoto(db, player.id)).toBeNull();
+  });
+});
+
+describe("acesso do jogador ao próprio perfil", () => {
+  it("o link identifica o jogador; gerar outro invalida o anterior", async () => {
+    const a = await createPlayer(db, "Jogador Acesso A");
+    const b = await createPlayer(db, "Jogador Acesso B");
+    expect(await playerHasAccess(db, a.id)).toBe(false);
+
+    const first = await createPlayerAccess(db, a.id);
+    const other = await createPlayerAccess(db, b.id);
+    expect(first).not.toBe(other);
+    expect(first.length).toBeGreaterThanOrEqual(32);
+    expect((await findPlayerByAccessToken(db, first))?.id).toBe(a.id);
+    expect((await findPlayerByAccessToken(db, other))?.id).toBe(b.id);
+    expect(await playerHasAccess(db, a.id)).toBe(true);
+
+    const second = await createPlayerAccess(db, a.id);
+    expect(await findPlayerByAccessToken(db, first)).toBeUndefined();
+    expect((await findPlayerByAccessToken(db, second))?.id).toBe(a.id);
+    expect((await findPlayerByAccessToken(db, other))?.id).toBe(b.id);
+  });
+
+  it("não guarda o link em si e não o expõe nas listas", async () => {
+    const p = await createPlayer(db, "Jogador Acesso Hash");
+    const token = await createPlayerAccess(db, p.id);
+    const hash = await getPlayerAccessHash(db, p.id);
+    expect(hash).toMatch(/^[0-9a-f]{64}$/);
+    expect(hash).not.toContain(token);
+    const listed = (await loadAll(db)).players.find((x) => x.id === p.id)!;
+    expect(listed).not.toHaveProperty("accessHash");
+  });
+
+  it("desativar o acesso derruba o link; código inválido não acha ninguém", async () => {
+    const p = await createPlayer(db, "Jogador Acesso Revogado");
+    const token = await createPlayerAccess(db, p.id);
+    await revokePlayerAccess(db, p.id);
+    expect(await findPlayerByAccessToken(db, token)).toBeUndefined();
+    expect(await playerHasAccess(db, p.id)).toBe(false);
+    expect(await getPlayerAccessHash(db, p.id)).toBeNull();
+    for (const bad of ["", "abc", "x".repeat(200)]) {
+      expect(await findPlayerByAccessToken(db, bad)).toBeUndefined();
+    }
+    await expect(createPlayerAccess(db, 999999)).rejects.toBeInstanceOf(UserError);
+  });
+
+  it("o jogador troca foto e avatar, mas não o nome", async () => {
+    const p = await createPlayer(db, "Jogador Perfil Próprio");
+    const look = { skin: 1, hair: 2, style: 0, shirt: 3 };
+    await updatePlayerProfile(db, p.id, { photoUrl: "", avatar: look });
+    const saved = (await loadAll(db)).players.find((x) => x.id === p.id)!;
+    expect(saved.name).toBe("Jogador Perfil Próprio");
+    expect(saved.avatar).toEqual(look);
+
+    await expect(
+      updatePlayerProfile(db, p.id, { photoUrl: "", avatar: { skin: 99 } }),
+    ).rejects.toBeInstanceOf(UserError);
+    await expect(
+      updatePlayerProfile(db, 999999, { photoUrl: "" }),
+    ).rejects.toBeInstanceOf(UserError);
   });
 });

@@ -1619,3 +1619,21 @@ fieldset label:has(input[type="radio"]:checked) {
     display: none;
   }
 }
+
+/* Barra de salvar da edição de perfil: fixa logo acima do menu de baixo. */
+@layer components {
+  .save-bar {
+    position: fixed;
+    inset-inline: 0;
+    bottom: calc(76px + env(safe-area-inset-bottom));
+    z-index: 35;
+    padding: 12px 0;
+    background: linear-gradient(to top, rgb(10 26 82 / 0.95) 60%, transparent);
+  }
+  /* Palco da carta: luz dourada atrás, como a tela de personagem de um jogo. */
+  .arena-stage {
+    background:
+      radial-gradient(ellipse 60% 55% at 50% 38%, rgb(255 200 61 / 0.28), transparent 70%),
+      linear-gradient(180deg, #2557c4 0%, #1b43a6 100%);
+  }
+}

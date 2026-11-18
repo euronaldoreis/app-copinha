@@ -1,20 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { deletePlayerAction, updatePlayerAction } from "@/app/actions";
+import { deletePlayerAction } from "@/app/actions";
 import { Arcade } from "@/components/Arcade";
 import { Avatar } from "@/components/Avatar";
-import { AvatarEditor } from "@/components/AvatarEditor";
-import { PhotoField } from "@/components/PhotoField";
-import { isUploadedPhoto } from "@/lib/photo";
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { Disclosure, Empty, Section } from "@/components/ui";
-import { SwordsIcon, TrophyIcon } from "@/components/icons";
+import { PencilIcon, SwordsIcon, TrophyIcon } from "@/components/icons";
 import { Ball3D, Podium3D, Star3D, Trophy3D } from "@/components/icons3d";
 import { TIER_LABELS, tierOf } from "@/lib/tier";
 import type { Edition, Entry, Team } from "@/db/schema";
 import type { ReactNode } from "react";
-import { isAdmin } from "@/lib/auth";
+import { currentPlayerId, isAdmin } from "@/lib/auth";
+import { getDb } from "@/db";
+import { AccessLinkPanel } from "@/components/AccessLinkPanel";
+import { playerHasAccess } from "@/lib/services";
 import { getData } from "@/lib/data";
 import { formatDate, plural, resultLabel } from "@/lib/labels";
 import { sortEditions } from "@/lib/services";
@@ -35,7 +35,9 @@ function StatTile({
   return (
     <div className="card flex flex-col items-center gap-1 px-1 py-3 text-center">
       <span className="[&_svg]:size-7">{icon}</span>
-      <span className="num text-outline font-pixel text-[26px] leading-none">{value}</span>
+      <span className="num text-outline font-pixel text-[26px] leading-none">
+        {value}
+      </span>
       <span className="text-[12px] font-bold text-muted">{label}</span>
     </div>
   );
@@ -104,11 +106,14 @@ export async function generateMetadata(
 }
 
 export default async function PlayerPage(props: PageProps<"/jogadores/[id]">) {
-  const [{ data, player }, admin] = await Promise.all([
+  const [{ data, player }, admin, myId] = await Promise.all([
     load(props.params),
     isAdmin(),
+    currentPlayerId(),
   ]);
   if (!player) notFound();
+  const isMe = myId === player.id;
+  const hasAccess = admin ? await playerHasAccess(getDb(), player.id) : false;
 
   const ranking = computeRanking(data);
   const stats = ranking.find((r) => r.player.id === player.id)!;
@@ -137,30 +142,41 @@ export default async function PlayerPage(props: PageProps<"/jogadores/[id]">) {
       {/* Carta do jogador e resumo, como a tela de um personagem. */}
       <header className="grid grid-cols-[minmax(0,148px)_minmax(0,1fr)] items-start gap-4 sm:grid-cols-[180px_minmax(0,1fr)]">
         {/* Mesma carta da lista de jogadores, maior. */}
-        <div className={`player-card profile-card tier-${tier}`}>
-          <span className="flex w-full items-center justify-between gap-1">
-            <span className="player-badge" title="Nível: edições disputadas">
-              Nv {stats.participations}
+        <div className="flex flex-col gap-3">
+          <div className={`player-card profile-card tier-${tier}`}>
+            <span className="flex w-full items-center justify-between gap-1">
+              <span className="player-badge" title="Nível: edições disputadas">
+                Nv {stats.participations}
+              </span>
+              <span
+                className="player-badge !px-1.5"
+                title={plural(stats.titles, "título", "títulos")}
+              >
+                <Trophy3D width={16} height={16} />
+                <span className="num">{stats.titles}</span>
+              </span>
             </span>
-            <span
-              className="player-badge !px-1.5"
-              title={plural(stats.titles, "título", "títulos")}
+            <span className="profile-card-photo">
+              <Avatar
+                name={player.name}
+                photoUrl={player.photoUrl}
+                avatar={player.avatar}
+                size={104}
+              />
+            </span>
+            <span className="player-plate whitespace-nowrap text-[12px] font-black uppercase tracking-wide text-accent">
+              {stats.participations ? TIER_LABELS[tier] : "Estreante"}
+            </span>
+          </div>
+          {(admin || isMe) && (
+            <Link
+              href={`/jogadores/${player.id}/editar`}
+              className="btn btn-primary w-full justify-center !px-2"
             >
-              <Trophy3D width={16} height={16} />
-              <span className="num">{stats.titles}</span>
-            </span>
-          </span>
-          <span className="profile-card-photo">
-            <Avatar
-              name={player.name}
-              photoUrl={player.photoUrl}
-              avatar={player.avatar}
-              size={104}
-            />
-          </span>
-          <span className="player-plate whitespace-nowrap text-[12px] font-black uppercase tracking-wide text-accent">
-            {stats.participations ? TIER_LABELS[tier] : "Estreante"}
-          </span>
+              <PencilIcon width={18} height={18} />
+              {isMe && !admin ? "Meu visual" : "Editar"}
+            </Link>
+          )}
         </div>
 
         <div className="min-w-0 pt-1">
@@ -340,47 +356,12 @@ export default async function PlayerPage(props: PageProps<"/jogadores/[id]">) {
 
       {admin && (
         <Section title="Administração">
-          <Disclosure title="Editar jogador">
-            <ActionForm
-              key={`${player.name}|${player.photoUrl}|${JSON.stringify(player.avatar)}`}
-              action={updatePlayerAction}
-              className="flex flex-col gap-3"
-            >
-              <input type="hidden" name="playerId" value={player.id} />
-              <label>
-                <span className="label">Nome</span>
-                <input
-                  name="name"
-                  className="field"
-                  defaultValue={player.name}
-                  required
-                  maxLength={40}
-                />
-              </label>
-              <AvatarEditor
-                name={player.name}
-                photoUrl={player.photoUrl}
-                initial={player.avatar}
-              />
-              <PhotoField currentUrl={player.photoUrl} />
-              <label>
-                <span className="label">Ou um link de foto</span>
-                <input
-                  name="photoUrl"
-                  type="url"
-                  className="field"
-                  defaultValue={
-                    isUploadedPhoto(player.photoUrl)
-                      ? ""
-                      : (player.photoUrl ?? "")
-                  }
-                  placeholder="https://..."
-                />
-              </label>
-              <div>
-                <SubmitButton className="btn">Salvar</SubmitButton>
-              </div>
-            </ActionForm>
+          <Disclosure title="Acesso do jogador">
+            <AccessLinkPanel
+              playerId={player.id}
+              playerName={player.name}
+              hasAccess={hasAccess}
+            />
           </Disclosure>
           {!hasHistory && (
             <ActionForm action={deletePlayerAction} className="mt-2">
