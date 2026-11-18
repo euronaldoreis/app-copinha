@@ -145,9 +145,11 @@ export function computeRanking(data: AllData): PlayerStats[] {
  * quem ganhou 7 de 10. Empate em pontos: melhor aproveitamento, depois saldo
  * de gols, gols marcados, mais jogos e nome.
  */
-export function sortByGames<T extends Pick<PlayerStats, "points" | "pct" | "gd" | "gf" | "played"> & { player: { name: string } }>(
-  rows: T[],
-): T[] {
+export function sortByGames<
+  T extends Pick<PlayerStats, "points" | "pct" | "gd" | "gf" | "played"> & {
+    player: { name: string };
+  },
+>(rows: T[]): T[] {
   return [...rows].sort(
     (a, b) =>
       b.points - a.points ||
@@ -260,7 +262,12 @@ export interface Records {
     draws: number;
   } | null;
   /** Mais jogos seguidos sem perder (empate conta; vale o placar do jogo). */
-  unbeatenRun: { player: Player; games: number; from: Edition; to: Edition } | null;
+  unbeatenRun: {
+    player: Player;
+    games: number;
+    from: Edition;
+    to: Edition;
+  } | null;
   /** Campeões que não perderam nenhum jogo na edição, do mais recente ao mais antigo. */
   unbeatenChampions: {
     player: Player;
@@ -279,6 +286,54 @@ export interface Records {
   } | null;
   /** Quem mais venceu disputas de pênaltis. */
   penaltyKing: { player: Player; won: number; total: number } | null;
+
+  /** Final mais desequilibrada. */
+  finalRout: MatchRecord | null;
+  /** Final com mais gols. */
+  finalGoals: MatchRecord | null;
+  /** Disputa de pênaltis com mais cobranças convertidas. */
+  longestShootout:
+    (MatchRecord & { homePens: number; awayPens: number }) | null;
+  /** Menos gols sofridos por jogo numa edição (mínimo de 3 jogos). */
+  bestDefense: {
+    player: Player;
+    edition: Edition;
+    played: number;
+    ga: number;
+  } | null;
+  /** Maior saldo de gols numa edição. */
+  bestGoalDiff: {
+    player: Player;
+    edition: Edition;
+    played: number;
+    gd: number;
+  } | null;
+  /** Mais vitórias seguidas (mínimo de 2). */
+  winStreak: Streak | null;
+  /** Mais jogos seguidos sem vencer (mínimo de 2). */
+  drought: Streak | null;
+  /** Títulos em edições seguidas (mínimo de 2). */
+  titleStreak: Streak | null;
+  /** Finais em edições seguidas (mínimo de 2). */
+  finalsStreak: Streak | null;
+  /** Dupla que mais se enfrentou (mínimo de 2 jogos). */
+  classic: {
+    a: Player;
+    b: Player;
+    aWins: number;
+    bWins: number;
+    draws: number;
+  } | null;
+  /** Edição com a maior média de gols por jogo (mínimo de 3 jogos). */
+  goalFest: { edition: Edition; games: number; goals: number } | null;
+}
+
+/** Sequência de um jogador, de uma edição a outra. */
+export interface Streak {
+  player: Player;
+  count: number;
+  from: Edition;
+  to: Edition;
 }
 
 export function computeRecords(data: AllData): Records {
@@ -342,10 +397,68 @@ export function computeRecords(data: AllData): Records {
     if (player && edition) bestAttack = { player, edition, goals };
   }
 
+  // Finais: o jogo do mata-mata com a maior rodada de cada edição.
+  const lastRound = new Map<number, number>();
+  for (const m of data.matches)
+    if (m.stage === "mata")
+      lastRound.set(
+        m.editionId,
+        Math.max(lastRound.get(m.editionId) ?? 0, m.round),
+      );
+  let finalRout: Match | null = null;
+  let finalGoals: Match | null = null;
+  let longestShootout: Match | null = null;
+  const pens = (m: Match) => (m.homePens ?? 0) + (m.awayPens ?? 0);
+  const goalsByEdition = new Map<number, { games: number; goals: number }>();
+  for (const m of data.matches) {
+    if (!isPlayed(m)) continue;
+    const g = goalsByEdition.get(m.editionId) ?? { games: 0, goals: 0 };
+    g.games++;
+    g.goals += total(m);
+    goalsByEdition.set(m.editionId, g);
+    if (m.homePens != null && m.awayPens != null && m.homePens !== m.awayPens) {
+      if (!longestShootout || pens(m) > pens(longestShootout))
+        longestShootout = m;
+    }
+    if (m.stage !== "mata" || m.round !== lastRound.get(m.editionId)) continue;
+    if (
+      diff(m) > 0 &&
+      (!finalRout ||
+        diff(m) > diff(finalRout) ||
+        (diff(m) === diff(finalRout) && total(m) > total(finalRout)))
+    )
+      finalRout = m;
+    if (total(m) > 0 && (!finalGoals || total(m) > total(finalGoals)))
+      finalGoals = m;
+  }
+
+  let goalFest: Records["goalFest"] = null;
+  for (const [editionId, g] of goalsByEdition) {
+    const edition = editionById.get(editionId);
+    if (!edition || g.games < 3 || g.goals === 0) continue;
+    const best = goalFest as Records["goalFest"];
+    if (!best || g.goals / g.games > best.goals / best.games)
+      goalFest = { edition, ...g };
+  }
+
+  const shootout = longestShootout as Match | null;
+  const shootoutRecord = shootout && describe(shootout);
+
   return {
     biggestWin: describe(biggestWin),
     mostGoals: describe(mostGoals),
     bestAttack,
+    finalRout: describe(finalRout),
+    finalGoals: describe(finalGoals),
+    longestShootout:
+      shootout && shootoutRecord
+        ? {
+            ...shootoutRecord,
+            homePens: shootout.homePens!,
+            awayPens: shootout.awayPens!,
+          }
+        : null,
+    goalFest,
     ...computeRecordsByPlayer(data),
   };
 }
@@ -356,7 +469,8 @@ function playedInOrder(data: AllData) {
     [...data.editions]
       .sort(
         (a, b) =>
-          a.number - b.number || (a.playedOn ?? "").localeCompare(b.playedOn ?? ""),
+          a.number - b.number ||
+          (a.playedOn ?? "").localeCompare(b.playedOn ?? ""),
       )
       .map((e, i) => [e.id, i]),
   );
@@ -370,25 +484,72 @@ function playedInOrder(data: AllData) {
   return data.matches.filter(isPlayed).sort((a, b) => {
     const ka = key(a);
     const kb = key(b);
-    for (let i = 0; i < ka.length; i++) if (ka[i] !== kb[i]) return ka[i] - kb[i];
+    for (let i = 0; i < ka.length; i++)
+      if (ka[i] !== kb[i]) return ka[i] - kb[i];
     return a.id - b.id;
   });
 }
 
 function computeRecordsByPlayer(
   data: AllData,
-): Omit<Records, "biggestWin" | "mostGoals" | "bestAttack"> {
+): Omit<
+  Records,
+  | "biggestWin"
+  | "mostGoals"
+  | "bestAttack"
+  | "finalRout"
+  | "finalGoals"
+  | "longestShootout"
+  | "goalFest"
+> {
   const entryById = new Map(data.entries.map((e) => [e.id, e]));
   const playerById = new Map(data.players.map((p) => [p.id, p]));
   const editionById = new Map(data.editions.map((e) => [e.id, e]));
   const matches = playedInOrder(data);
 
   // Confrontos diretos, campanhas por inscrição e pênaltis.
-  const pairs = new Map<string, { a: number; b: number; aw: number; bw: number; d: number }>();
+  const pairs = new Map<
+    string,
+    { a: number; b: number; aw: number; bw: number; d: number }
+  >();
   const campaigns = new Map<number, Record_>();
   const shootouts = new Map<number, { won: number; total: number }>();
   const runs = new Map<number, { games: number; from: number }>();
   let unbeatenRun: Records["unbeatenRun"] = null;
+  const winRuns = new Map<number, { games: number; from: number }>();
+  const dryRuns = new Map<number, { games: number; from: number }>();
+  let winStreak: Streak | null = null;
+  let drought: Streak | null = null;
+  /** Soma um jogo à sequência (ou zera) e guarda o recorde. */
+  const step = (
+    map: Map<number, { games: number; from: number }>,
+    playerId: number,
+    editionId: number,
+    keep: boolean,
+    best: Streak | null,
+  ): Streak | null => {
+    if (!keep) {
+      map.delete(playerId);
+      return best;
+    }
+    const run = map.get(playerId);
+    const next = run
+      ? { games: run.games + 1, from: run.from }
+      : { games: 1, from: editionId };
+    map.set(playerId, next);
+    const player = playerById.get(playerId);
+    const from = editionById.get(next.from);
+    const to = editionById.get(editionId);
+    if (
+      player &&
+      from &&
+      to &&
+      next.games >= 2 &&
+      (!best || next.games > best.count)
+    )
+      return { player, count: next.games, from, to };
+    return best;
+  };
 
   for (const m of matches) {
     const home = entryById.get(m.homeEntryId!);
@@ -400,7 +561,13 @@ function computeRecordsByPlayer(
     const [a, b] = home.playerId < away.playerId ? [home, away] : [away, home];
     const [sa, sb] = a === home ? [hs, as] : [as, hs];
     const pk = `${a.playerId}:${b.playerId}`;
-    const pair = pairs.get(pk) ?? { a: a.playerId, b: b.playerId, aw: 0, bw: 0, d: 0 };
+    const pair = pairs.get(pk) ?? {
+      a: a.playerId,
+      b: b.playerId,
+      aw: 0,
+      bw: 0,
+      d: 0,
+    };
     if (sa > sb) pair.aw++;
     else if (sb > sa) pair.bw++;
     else pair.d++;
@@ -414,6 +581,15 @@ function computeRecordsByPlayer(
       addGame(rec, gf, ga);
       campaigns.set(entry.id, rec);
 
+      winStreak = step(
+        winRuns,
+        entry.playerId,
+        m.editionId,
+        gf > ga,
+        winStreak,
+      );
+      drought = step(dryRuns, entry.playerId, m.editionId, gf <= ga, drought);
+
       // Sequência sem perder, atravessando as edições.
       const run = runs.get(entry.playerId);
       if (gf < ga) runs.delete(entry.playerId);
@@ -425,12 +601,22 @@ function computeRecordsByPlayer(
         const player = playerById.get(entry.playerId);
         const from = editionById.get(next.from);
         const to = editionById.get(m.editionId);
-        if (player && from && to && (!unbeatenRun || next.games > unbeatenRun.games))
+        if (
+          player &&
+          from &&
+          to &&
+          (!unbeatenRun || next.games > unbeatenRun.games)
+        )
           unbeatenRun = { player, games: next.games, from, to };
       }
     }
 
-    if (hs === as && m.homePens != null && m.awayPens != null && m.homePens !== m.awayPens) {
+    if (
+      hs === as &&
+      m.homePens != null &&
+      m.awayPens != null &&
+      m.homePens !== m.awayPens
+    ) {
       for (const [entry, won] of [
         [home, m.homePens > m.awayPens],
         [away, m.awayPens > m.homePens],
@@ -472,7 +658,12 @@ function computeRecordsByPlayer(
     const edition = entry && editionById.get(entry.editionId);
     if (!entry || !player || !edition) continue;
     if (entry.result === "campeao" && rec.losses === 0)
-      unbeatenChampions.push({ player, edition, wins: rec.wins, draws: rec.draws });
+      unbeatenChampions.push({
+        player,
+        edition,
+        wins: rec.wins,
+        draws: rec.draws,
+      });
     if (rec.played < 2) continue;
     const points = rec.wins * 3 + rec.draws;
     const w = worstCampaign as Records["worstCampaign"];
@@ -483,7 +674,14 @@ function computeRecordsByPlayer(
         (rec.gf - rec.ga < w.gf - w.ga ||
           (rec.gf - rec.ga === w.gf - w.ga && rec.ga > w.ga)));
     if (worse)
-      worstCampaign = { player, edition, played: rec.played, points, gf: rec.gf, ga: rec.ga };
+      worstCampaign = {
+        player,
+        edition,
+        played: rec.played,
+        points,
+        gf: rec.gf,
+        ga: rec.ga,
+      };
   }
   unbeatenChampions.sort(
     (a, b) =>
@@ -495,10 +693,94 @@ function computeRecordsByPlayer(
   for (const [playerId, rec] of shootouts) {
     if (rec.won === 0) continue;
     const k = penaltyKing as Records["penaltyKing"];
-    if (k && (rec.won < k.won || (rec.won === k.won && rec.total >= k.total))) continue;
+    if (k && (rec.won < k.won || (rec.won === k.won && rec.total >= k.total)))
+      continue;
     const player = playerById.get(playerId);
     if (player) penaltyKing = { player, ...rec };
   }
 
-  return { rivalry, unbeatenRun, unbeatenChampions, worstCampaign, penaltyKing };
+  let classic: Records["classic"] = null;
+  let classicGames = 0;
+  for (const p of pairs.values()) {
+    const games = p.aw + p.bw + p.d;
+    if (games < 2 || games <= classicGames) continue;
+    const a = playerById.get(p.a);
+    const b = playerById.get(p.b);
+    if (!a || !b) continue;
+    classicGames = games;
+    // Quem venceu mais aparece primeiro.
+    classic =
+      p.aw >= p.bw
+        ? { a, b, aWins: p.aw, bWins: p.bw, draws: p.d }
+        : { a: b, b: a, aWins: p.bw, bWins: p.aw, draws: p.d };
+  }
+
+  let bestDefense: Records["bestDefense"] = null;
+  let bestGoalDiff: Records["bestGoalDiff"] = null;
+  for (const [entryId, rec] of campaigns) {
+    const entry = entryById.get(entryId);
+    const player = entry && playerById.get(entry.playerId);
+    const edition = entry && editionById.get(entry.editionId);
+    if (!entry || !player || !edition) continue;
+    const gd = rec.gf - rec.ga;
+    const g = bestGoalDiff as Records["bestGoalDiff"];
+    if (gd > 0 && (!g || gd > g.gd || (gd === g.gd && rec.played < g.played)))
+      bestGoalDiff = { player, edition, played: rec.played, gd };
+    if (rec.played < 3) continue;
+    const d = bestDefense as Records["bestDefense"];
+    const rate = rec.ga / rec.played;
+    if (
+      !d ||
+      rate < d.ga / d.played ||
+      (rate === d.ga / d.played && rec.played > d.played)
+    )
+      bestDefense = { player, edition, played: rec.played, ga: rec.ga };
+  }
+
+  // Títulos e finais em edições seguidas (só as edições que já têm campeão).
+  const decided = [...data.editions]
+    .filter((e) =>
+      data.entries.some((x) => x.editionId === e.id && x.result === "campeao"),
+    )
+    .sort(
+      (a, b) =>
+        a.number - b.number ||
+        (a.playedOn ?? "").localeCompare(b.playedOn ?? ""),
+    );
+  const editionStreak = (codes: string[]): Streak | null => {
+    let best: Streak | null = null;
+    let current = new Map<number, { count: number; from: Edition }>();
+    for (const edition of decided) {
+      const next = new Map<number, { count: number; from: Edition }>();
+      for (const x of data.entries) {
+        if (x.editionId !== edition.id || !codes.includes(x.result ?? ""))
+          continue;
+        const prev = current.get(x.playerId);
+        const run = prev
+          ? { count: prev.count + 1, from: prev.from }
+          : { count: 1, from: edition };
+        next.set(x.playerId, run);
+        const player = playerById.get(x.playerId);
+        if (player && run.count >= 2 && (!best || run.count > best.count))
+          best = { player, count: run.count, from: run.from, to: edition };
+      }
+      current = next;
+    }
+    return best;
+  };
+
+  return {
+    rivalry,
+    unbeatenRun,
+    unbeatenChampions,
+    worstCampaign,
+    penaltyKing,
+    bestDefense,
+    bestGoalDiff,
+    winStreak,
+    drought,
+    titleStreak: editionStreak(["campeao"]),
+    finalsStreak: editionStreak(["campeao", "vice"]),
+    classic,
+  };
 }

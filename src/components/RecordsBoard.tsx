@@ -21,7 +21,14 @@ export interface RecordItem {
   /** Frase de resenha embaixo do título. */
   tagline: string;
   layout:
-    | { type: "single"; person: RecordPerson; value: number; unit: string }
+    | {
+        type: "single";
+        person: RecordPerson;
+        value: number;
+        unit: string;
+        /** Antes do número (ex.: "+" no saldo). */
+        prefix?: string;
+      }
     | {
         type: "versus";
         left: RecordPerson;
@@ -35,6 +42,14 @@ export interface RecordItem {
         type: "list";
         people: { person: RecordPerson; text: string }[];
         more: number;
+      }
+    | {
+        type: "stat";
+        value: number;
+        /** Casas decimais do número (ex.: média de gols). */
+        decimals?: number;
+        unit: string;
+        caption: string;
       };
   detail: string;
   /** Texto para mandar no grupo. */
@@ -53,25 +68,46 @@ const reducedMotion = () =>
   window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /** Número que sobe de 0 até o valor quando `run` liga. */
-function CountUp({ value, run }: { value: number; run: boolean }) {
+function CountUp({
+  value,
+  run,
+  decimals = 0,
+  prefix = "",
+}: {
+  value: number;
+  run: boolean;
+  decimals?: number;
+  prefix?: string;
+}) {
   const [shown, setShown] = useState(0);
+  const scale = 10 ** decimals;
   useEffect(() => {
     if (!run) return;
     // Sem animação (ou número pequeno): o primeiro quadro já mostra o valor.
     const duration =
       reducedMotion() || value <= 1 ? 0 : Math.min(1400, 500 + value * 40);
+    const target = Math.round(value * scale);
     const start = performance.now();
     let frame = 0;
     const tick = (now: number) => {
       const t = duration ? Math.min(1, (now - start) / duration) : 1;
       const eased = 1 - Math.pow(1 - t, 3);
-      setShown(Math.round(eased * value));
+      setShown(Math.round(eased * target) / scale);
       if (t < 1) frame = requestAnimationFrame(tick);
     };
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
-  }, [value, run]);
-  return <span className="num">{run ? shown : 0}</span>;
+  }, [value, run, scale]);
+  const n = run ? shown : 0;
+  return (
+    <span className="num">
+      {n > 0 ? prefix : ""}
+      {n.toLocaleString("pt-BR", {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals,
+      })}
+    </span>
+  );
 }
 
 /** Liga quando o elemento aparece na tela (uma vez só). */
@@ -262,7 +298,7 @@ function RecordBody({ item, run }: { item: RecordItem; run: boolean }) {
         <PersonLink person={l.person} size={84} dim={item.kind === "vexame"} />
         <div className="min-w-0 flex-1 text-center">
           <p className="rec-number">
-            <CountUp value={l.value} run={run} />
+            <CountUp value={l.value} run={run} prefix={l.prefix} />
           </p>
           <p className="text-[13px] font-black uppercase tracking-wider opacity-85">
             {l.unit}
@@ -284,6 +320,21 @@ function RecordBody({ item, run }: { item: RecordItem; run: boolean }) {
           <PersonLink person={l.right} size={68} dim={!!l.loserLabel} />
           {l.loserLabel && <span className="rec-loser">{l.loserLabel}</span>}
         </div>
+      </div>
+    );
+  }
+  if (l.type === "stat") {
+    return (
+      <div className="flex flex-col items-center gap-1 py-1 text-center">
+        <p className="rec-number !text-[64px]">
+          <CountUp value={l.value} run={run} decimals={l.decimals} />
+        </p>
+        <p className="text-[13px] font-black uppercase tracking-wider opacity-85">
+          {l.unit}
+        </p>
+        <p className="mt-1 rounded-full border-2 border-night bg-night/70 px-3 py-0.5 text-body font-black text-white">
+          {l.caption}
+        </p>
       </div>
     );
   }
