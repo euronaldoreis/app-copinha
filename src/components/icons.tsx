@@ -174,10 +174,7 @@ export const TrashIcon = icon(
 
 /** Camisa de futebol: jogadores. */
 export const ShirtIcon = icon(
-  <>
-    <path d="M8.5 3 3 6.2l2.2 4.6 2.3-1V21h9V9.8l2.3 1L21 6.2 15.5 3c-.4 1.6-1.8 2.7-3.5 2.7S8.9 4.6 8.5 3Z" />
-    <path d="M10 12.5h4M12 12.5V17" />
-  </>,
+  <path d="M8.5 3 3 6.2l2.2 4.6 2.3-1V21h9V9.8l2.3 1L21 6.2 15.5 3c-.4 1.6-1.8 2.7-3.5 2.7S8.9 4.6 8.5 3Z" />,
 );
 
 /** Estrela: finais disputadas. */
