@@ -4,6 +4,7 @@ import { useState } from "react";
 import { removeEntryAction, saveEntryAction } from "@/app/actions";
 import { RESULT_LABELS, RESULT_ORDER } from "@/lib/labels";
 import { ActionForm, SubmitButton } from "./forms";
+import { TeamAutocomplete } from "./TeamAutocomplete";
 import { CheckIcon, SaveIcon, TrashIcon } from "./icons";
 
 /**
@@ -21,6 +22,8 @@ export function EntryControls({
   result,
   manual,
   useTeams,
+  knownTeams = [],
+  takenTeams = [],
 }: {
   entryId: number;
   playerName: string;
@@ -30,6 +33,10 @@ export function EntryControls({
   manual: boolean;
   /** Falso = edição só com os jogadores: sem campo de time. */
   useTeams: boolean;
+  /** Times já cadastrados, para o auto complete. */
+  knownTeams?: string[];
+  /** Times de outros participantes desta edição. */
+  takenTeams?: string[];
 }) {
   const [teamValue, setTeamValue] = useState(team ?? "");
   const [resultValue, setResultValue] = useState(result ?? "");
@@ -45,48 +52,48 @@ export function EntryControls({
     // Começa na borda esquerda da foto e ocupa a largura toda no celular.
     <div className={`flex items-center gap-2 ${hasForm ? "pb-3 sm:pb-0" : ""}`}>
       {hasForm && (
-      <ActionForm
-        action={saveEntryAction}
-        className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:flex-none"
-      >
-        <input type="hidden" name="entryId" value={entryId} />
-        {useTeams && (
-          <input
-            name="team"
-            list="known-teams"
-            value={teamValue}
-            onChange={(e) => setTeamValue(e.target.value)}
-            placeholder="Time"
-            aria-label={`Time de ${playerName}`}
-            className="field min-w-0 flex-1 sm:w-40 sm:flex-none"
-          />
-        )}
-        {manual && (
-          <select
-            name="result"
-            value={resultValue}
-            onChange={(e) => setResultValue(e.target.value)}
-            aria-label={`Colocação de ${playerName}`}
-            className="field w-full sm:w-44"
-          >
-            <option value="">Só participou</option>
-            {RESULT_ORDER.filter(
-              (r) => r !== "participou" && r !== "eliminado",
-            ).map((r) => (
-              <option key={r} value={r}>
-                {RESULT_LABELS[r]}
-              </option>
-            ))}
-          </select>
-        )}
-        <SubmitButton
-          className={saved ? "btn btn-icon btn-primary" : "btn btn-icon"}
-          title={saved ? "Time salvo" : "Salvar"}
+        <ActionForm
+          action={saveEntryAction}
+          className="flex min-w-0 flex-1 flex-wrap items-center gap-2 sm:flex-none"
         >
-          {saved ? <CheckIcon /> : <SaveIcon />}
-          <span className="sr-only">{saved ? "Time salvo" : "Salvar"}</span>
-        </SubmitButton>
-      </ActionForm>
+          <input type="hidden" name="entryId" value={entryId} />
+          {useTeams && (
+            <TeamAutocomplete
+              name="team"
+              value={teamValue}
+              onChange={setTeamValue}
+              options={knownTeams}
+              taken={takenTeams}
+              ariaLabel={`Time de ${playerName}`}
+              className="min-w-0 flex-1 sm:w-48 sm:flex-none"
+            />
+          )}
+          {manual && (
+            <select
+              name="result"
+              value={resultValue}
+              onChange={(e) => setResultValue(e.target.value)}
+              aria-label={`Colocação de ${playerName}`}
+              className="field w-full sm:w-44"
+            >
+              <option value="">Só participou</option>
+              {RESULT_ORDER.filter(
+                (r) => r !== "participou" && r !== "eliminado",
+              ).map((r) => (
+                <option key={r} value={r}>
+                  {RESULT_LABELS[r]}
+                </option>
+              ))}
+            </select>
+          )}
+          <SubmitButton
+            className={saved ? "btn btn-icon btn-primary" : "btn btn-icon"}
+            title={saved ? "Time salvo" : "Salvar"}
+          >
+            {saved ? <CheckIcon /> : <SaveIcon />}
+            <span className="sr-only">{saved ? "Time salvo" : "Salvar"}</span>
+          </SubmitButton>
+        </ActionForm>
       )}
       {/* Formulário à parte: formulários não podem ficar um dentro do outro. */}
       <ActionForm action={removeEntryAction}>

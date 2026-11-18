@@ -329,10 +329,13 @@ function Participants({
   view,
   admin,
   editable,
+  knownTeams = [],
 }: {
   view: EditionView;
   admin: boolean;
   editable: boolean;
+  /** Times já cadastrados, para o auto complete do campo de time. */
+  knownTeams?: string[];
 }) {
   const manual = view.edition.format === "manual";
   const list = manual
@@ -386,6 +389,10 @@ function Participants({
               result={e.result}
               manual={manual}
               useTeams={view.edition.useTeams}
+              knownTeams={knownTeams}
+              takenTeams={view.entries
+                .filter((x) => x.id !== e.id && x.team)
+                .map((x) => x.team!.name)}
             />
           )}
         </div>
@@ -484,14 +491,12 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
               : ""
           }
         >
-          <Participants view={view} admin={admin} editable />
-          {edition.useTeams && (
-            <datalist id="known-teams">
-              {knownTeams.map((t) => (
-                <option key={t} value={t} />
-              ))}
-            </datalist>
-          )}
+          <Participants
+            view={view}
+            admin={admin}
+            editable
+            knownTeams={edition.useTeams ? knownTeams : []}
+          />
         </Section>
       )}
 
