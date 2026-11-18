@@ -3,7 +3,7 @@
 import { useState } from "react";
 
 /** Reduz a foto para um quadrado de `size` pixels (recorte central) em JPEG. */
-async function toSquareJpeg(file: File, size = 256) {
+export async function toSquareJpeg(file: File, size = 256) {
   const bitmap = await createImageBitmap(file);
   const side = Math.min(bitmap.width, bitmap.height);
   const canvas = document.createElement("canvas");

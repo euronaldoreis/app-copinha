@@ -6,6 +6,7 @@ import { getDb } from "@/db";
 import {
   currentPlayerId,
   endPlayerSession,
+  isAdmin,
   login,
   logout,
   requireAdmin,
@@ -91,18 +92,6 @@ function parseAvatarField(value: FormDataEntryValue | null): unknown {
   }
 }
 
-export async function updatePlayerAction(_prev: ActionState, fd: FormData) {
-  return run(() =>
-    svc.updatePlayer(getDb(), id(fd, "playerId"), {
-      name: fd.get("name"),
-      photoUrl: fd.get("photoUrl"),
-      avatar: parseAvatarField(fd.get("avatar")),
-      photoData: fd.get("photoData"),
-      removePhoto: fd.get("removePhoto") === "1",
-    }),
-  );
-}
-
 // --- Acesso do jogador ao próprio perfil -----------------------------------
 
 export type AccessLinkState = { error?: string; path?: string; ok?: boolean } | null;
@@ -127,26 +116,38 @@ export async function revokeAccessAction(_prev: ActionState, fd: FormData) {
   return run(() => svc.revokePlayerAccess(getDb(), id(fd, "playerId")));
 }
 
-/** Jogador com sessão: edita foto e avatar do próprio perfil (nunca de outro). */
-export async function updateMyProfileAction(
+/**
+ * Tela de edição do perfil. O organizador muda tudo (inclusive o nome); o
+ * jogador com sessão muda só a foto e o avatar, e só do próprio perfil.
+ */
+export async function saveProfileAction(
   _prev: ActionState,
   fd: FormData,
 ): Promise<ActionState> {
-  const playerId = await currentPlayerId();
-  if (playerId == null) return { error: "Sua sessão expirou. Abra o seu link de acesso de novo." };
+  const playerId = id(fd, "playerId");
+  const admin = await isAdmin();
+  if (!admin && (await currentPlayerId()) !== playerId) {
+    return {
+      error:
+        "Você só pode editar o seu próprio perfil. Se a sessão expirou, abra o seu link de acesso de novo.",
+    };
+  }
+  const look = {
+    photoUrl: fd.get("photoUrl"),
+    avatar: parseAvatarField(fd.get("avatar")),
+    photoData: fd.get("photoData"),
+    removePhoto: fd.get("removePhoto") === "1",
+  };
   try {
-    await svc.updatePlayerProfile(getDb(), playerId, {
-      photoUrl: fd.get("photoUrl"),
-      avatar: parseAvatarField(fd.get("avatar")),
-      photoData: fd.get("photoData"),
-      removePhoto: fd.get("removePhoto") === "1",
-    });
+    if (admin)
+      await svc.updatePlayer(getDb(), playerId, { ...look, name: fd.get("name") });
+    else await svc.updatePlayerProfile(getDb(), playerId, look);
   } catch (err) {
     if (err instanceof svc.UserError) return { error: err.message };
     throw err;
   }
   revalidatePath("/", "layout");
-  return { ok: true };
+  redirect(`/jogadores/${playerId}`);
 }
 
 export async function playerLogoutAction() {
