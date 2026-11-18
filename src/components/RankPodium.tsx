@@ -27,10 +27,12 @@ function Step({
 }) {
   const step = STEPS[place];
   return (
-    <li className="flex min-w-0 max-w-[132px] flex-1 flex-col items-center">
+    <li
+      className={`rp-${place} flex min-w-0 max-w-[132px] flex-1 flex-col items-center`}
+    >
       {/* Sem ninguém nesse lugar o espaço fica reservado, para o pódio não desmontar. */}
       <div
-        className={`flex w-full flex-col items-center gap-1.5 pb-2 ${entry ? "" : "invisible"}`}
+        className={`rp-who flex w-full flex-col items-center gap-1.5 pb-2 ${entry ? "" : "invisible"}`}
         aria-hidden={entry ? undefined : true}
       >
         {place === 1 ? (

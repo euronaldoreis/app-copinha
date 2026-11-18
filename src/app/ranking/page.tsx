@@ -1,11 +1,24 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode, SVGProps } from "react";
 import { Avatar } from "@/components/Avatar";
+import { LeaderRow } from "@/components/Leaderboard";
+import { TeamShield } from "@/components/TeamShield";
+import {
+  BallIcon,
+  CalendarIcon,
+  ChartIcon,
+  StarIcon,
+  SwordsIcon,
+  TrophyIcon,
+} from "@/components/icons";
+import { currentPlayerId } from "@/lib/auth";
+import { tierOf } from "@/lib/tier";
 import { RankPodium } from "@/components/RankPodium";
 import { Empty, PageTitle } from "@/components/ui";
 import { getData } from "@/lib/data";
 import { plural, resultLabel } from "@/lib/labels";
+import type { RankFilter } from "@/lib/ranking";
 import {
   RANK_FILTERS,
   eligible,
@@ -19,261 +32,185 @@ import {
   type PlayerStats,
 } from "@/lib/stats";
 import { RecordsBoard } from "@/components/RecordsBoard";
-import { RecordsTeaser } from "@/components/RecordsTeaser";
 import { recordItems } from "@/lib/recordItems";
 
 export const metadata: Metadata = { title: "Ranking" };
 
-// Os seis filtros do ranking de jogadores, depois as duas visões à parte.
-const TABS = [
-  ...RANK_FILTERS.map((f) => ({ id: String(f.id), label: f.label })),
-  { id: "times", label: "Times" },
-  { id: "recordes", label: "Recordes" },
-];
 
-interface Column {
-  /** Filtro que esta coluna mede (ela fica em destaque quando ele está ativo). */
-  key?: string;
-  head: string;
-  title: string;
-  value: (r: PlayerStats) => ReactNode;
-  /** Some no celular para a tabela caber. */
-  wide?: boolean;
-  strong?: boolean;
+/** Botões de critério do ranking de jogadores: nome curto, ícone e unidade. */
+const METRICS: Record<
+  RankFilter,
+  {
+    short: string;
+    unit: [string, string];
+    icon: ComponentType<SVGProps<SVGSVGElement>>;
+  }
+> = {
+  titulos: { short: "Títulos", unit: ["título", "títulos"], icon: TrophyIcon },
+  finais: { short: "Finais", unit: ["final", "finais"], icon: StarIcon },
+  participacoes: {
+    short: "Edições",
+    unit: ["edição", "edições"],
+    icon: CalendarIcon,
+  },
+  vitorias: {
+    short: "Vitórias",
+    unit: ["vitória", "vitórias"],
+    icon: SwordsIcon,
+  },
+  gols: { short: "Gols", unit: ["gol", "gols"], icon: BallIcon },
+  pontos: { short: "Pontos", unit: ["ponto", "pontos"], icon: ChartIcon },
+};
+
+const signed = (n: number) => (n > 0 ? `+${n}` : String(n));
+
+/** Resumo embaixo do nome, conforme o critério. */
+function summary(filter: RankFilter, r: PlayerStats) {
+  switch (filter) {
+    case "titulos":
+      return [
+        r.finals ? plural(r.finals, "final", "finais") : "",
+        r.podiums ? plural(r.podiums, "pódio", "pódios") : "",
+        plural(r.participations, "edição", "edições"),
+      ]
+        .filter(Boolean)
+        .join(" · ");
+    case "finais":
+      return `${plural(r.titles, "título", "títulos")} · ${plural(r.participations, "edição", "edições")}`;
+    case "participacoes":
+      return r.bestResult
+        ? `Melhor: ${resultLabel(r.bestResult)}`
+        : "Estreante";
+    case "gols":
+      return `${plural(r.played, "jogo", "jogos")} · saldo ${signed(r.gd)}`;
+    default:
+      return `${r.wins}V ${r.draws}E ${r.losses}D · ${r.pct ?? 0}% · SG ${signed(r.gd)}`;
+  }
 }
 
-const TITLE_COLUMNS: Column[] = [
-  { key: "titulos", head: "Tit.", title: "Títulos", value: (r) => r.titles },
-  {
-    key: "finais",
-    head: "Fin.",
-    title: "Finais disputadas",
-    value: (r) => r.finals,
-  },
-  {
-    head: "Pod.",
-    title: "Pódios (1º, 2º ou 3º)",
-    value: (r) => r.podiums,
-    wide: true,
-  },
-  {
-    head: "Semi",
-    title: "Vezes entre os 4 melhores",
-    value: (r) => r.top4,
-    wide: true,
-  },
-  {
-    key: "participacoes",
-    head: "Part.",
-    title: "Participações",
-    value: (r) => r.participations,
-  },
-];
-
-const signed = (n: number) => (n > 0 ? `+${n}` : n);
-
-const GAME_COLUMNS: Column[] = [
-  {
-    key: "pontos",
-    head: "Pts",
-    title: "Pontos (vitória 3, empate 1)",
-    value: (r) => r.points,
-  },
-  { head: "%", title: "Aproveitamento", value: (r) => `${r.pct}%` },
-  { head: "J", title: "Jogos", value: (r) => r.played },
-  { key: "vitorias", head: "V", title: "Vitórias", value: (r) => r.wins },
-  { head: "E", title: "Empates", value: (r) => r.draws, wide: true },
-  { head: "D", title: "Derrotas", value: (r) => r.losses, wide: true },
-  { key: "gols", head: "GP", title: "Gols pró", value: (r) => r.gf },
-  { head: "GC", title: "Gols contra", value: (r) => r.ga, wide: true },
-  { head: "SG", title: "Saldo de gols", value: (r) => signed(r.gd) },
-];
-
-function RankTable({
-  rows,
-  columns,
-  detail,
-}: {
-  rows: PlayerStats[];
-  columns: Column[];
-  detail: (r: PlayerStats) => string;
-}) {
-  const hide = (c: Column) => (c.wide ? "hidden sm:table-cell" : "");
-  return (
-    <div className="card px-3 pb-2 pt-3">
-      <table className="w-full text-body">
-        <thead className="text-muted">
-          <tr>
-            <th className="w-12 pb-2 text-left font-normal">
-              <span className="sr-only">Posição</span>
-            </th>
-            <th className="pb-2 text-left font-normal">Jogador</th>
-            {columns.map((c) => (
-              <th
-                key={c.head}
-                title={c.title}
-                className={`px-1.5 pb-2 text-right font-normal ${hide(c)}`}
-              >
-                {c.head}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={r.player.id} className="h-[68px]">
-              <td className="num pl-4 pr-3 text-muted">{i + 1}</td>
-              <td className="w-full max-w-0">
-                <Link
-                  href={`/jogadores/${r.player.id}`}
-                  className="flex items-center gap-3"
-                >
-                  {/* No celular o retrato sai para o nome caber inteiro. */}
-                  <span className="hidden sm:block">
-                    <Avatar
-                      name={r.player.name}
-                      photoUrl={r.player.photoUrl}
-                      avatar={r.player.avatar}
-                      size={40}
-                    />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block truncate text-name font-semibold">
-                      {r.player.name}
-                    </span>
-                    <span className="block truncate text-muted">
-                      {detail(r)}
-                    </span>
-                  </span>
-                </Link>
-              </td>
-              {columns.map((c) => (
-                <td
-                  key={c.head}
-                  className={`num px-1.5 text-right ${hide(c)} ${
-                    c.strong ? "text-name font-semibold" : ""
-                  }`}
-                >
-                  {c.value(r)}
-                </td>
-              ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-function Legend({ columns, note }: { columns: Column[]; note?: string }) {
-  return (
-    <p className="mt-3 px-1 text-body text-muted">
-      {columns.map((c, i) => (
-        <span key={c.head} className={c.wide ? "hidden sm:inline" : ""}>
-          {i > 0 && " · "}
-          {c.head} {c.title.toLowerCase()}
-        </span>
-      ))}
-      {note && `. ${note}.`}
-    </p>
-  );
-}
+const NOTES: Partial<Record<RankFilter, string>> = {
+  pontos:
+    "Vitória vale 3 pontos e empate 1. Desempate por aproveitamento, saldo e gols marcados. Jogo decidido nos pênaltis conta como empate.",
+  vitorias: "Jogo decidido nos pênaltis conta como empate.",
+  gols: "Gols marcados em todos os jogos, sem contar os pênaltis.",
+  titulos: "Desempate por finais, pódios, semifinais e participações.",
+};
 
 export default async function RankingPage(props: PageProps<"/ranking">) {
   const { aba } = await props.searchParams;
   // "jogos" era o nome antigo da aba de pontos: links salvos continuam valendo.
-  const wanted = aba === "jogos" ? "pontos" : aba;
-  const tab = TABS.find((t) => t.id === wanted)?.id ?? "titulos";
-  const data = await getData();
-  const teaser = tab === "recordes" ? [] : recordItems(computeRecords(data));
+  const raw = Array.isArray(aba) ? aba[0] : aba;
+  const wanted = raw === "jogos" ? "pontos" : raw;
+  const filter =
+    wanted === "times" || wanted === "recordes"
+      ? undefined
+      : (rankFilter(wanted) ?? rankFilter("titulos")!);
+  const view = filter ? "jogadores" : (wanted as "times" | "recordes");
+  const [data, myId] = await Promise.all([getData(), currentPlayerId()]);
   const ranking = computeRanking(data).filter((r) => r.participations > 0);
-  const filter = rankFilter(tab);
 
-  let podium: ReactNode = null;
+  let header: ReactNode = null;
   let content: ReactNode;
-  if (ranking.length === 0) {
-    content = (
-      <Empty>O ranking aparece quando a primeira edição começar.</Empty>
+  if (view === "jogadores" && filter) {
+    const metric = METRICS[filter.id];
+    header = (
+      <nav aria-label="Critério do ranking" className="metric-grid mb-6">
+        {RANK_FILTERS.map((f) => {
+          const m = METRICS[f.id];
+          const Icon = m.icon;
+          const on = f.id === filter.id;
+          return (
+            <Link
+              key={`${f.id}:${on}`}
+              href={f.id === "titulos" ? "/ranking" : `/ranking?aba=${f.id}`}
+              className="metric-tile"
+              aria-current={on ? "page" : undefined}
+              scroll={false}
+            >
+              <Icon width={22} height={22} />
+              {m.short}
+            </Link>
+          );
+        })}
+      </nav>
     );
-  } else if (filter) {
-    const rows = sortByFilter(filter.id, eligible(filter, ranking));
-    // Pódio: os três primeiros que realmente têm o que o filtro mede.
-    const top = rows
-      .filter((r) => filter.value(r) > 0)
-      .slice(0, 3)
-      .map((r) => ({
-        playerId: r.player.id,
-        name: r.player.name,
-        photoUrl: r.player.photoUrl,
-        avatar: r.player.avatar,
-        value: filter.describe(filter.value(r)),
-      }));
-    if (top.length > 0) podium = <RankPodium top={top} />;
 
-    const gameFilter = filter.needsGames;
-    const columns = (gameFilter ? GAME_COLUMNS : TITLE_COLUMNS).map((c) => ({
-      ...c,
-      // A coluna do filtro escolhido sempre aparece (inclusive no celular) e em destaque.
-      strong: c.key === filter.id,
-      wide: c.key === filter.id ? false : c.wide,
-    }));
-    content = rows.length ? (
-      <>
-        <RankTable
-          rows={rows}
-          columns={columns}
-          detail={(r) =>
-            gameFilter
-              ? `${r.wins}V ${r.draws}E ${r.losses}D`
-              : r.bestResult
-                ? resultLabel(r.bestResult)
-                : "Estreante"
-          }
-        />
-        <Legend
-          columns={columns}
-          note={
-            filter.id === "pontos"
-              ? "Pontuação geral: vitória vale 3 pontos e empate 1. Desempate por aproveitamento, saldo de gols e gols marcados. Jogo decidido nos pênaltis conta como empate"
-              : gameFilter
-                ? "Jogo decidido nos pênaltis conta como empate"
-                : undefined
-          }
-        />
-      </>
-    ) : (
-      <Empty>Nenhum placar lançado ainda.</Empty>
-    );
-  } else if (tab === "times") {
+    if (ranking.length === 0) {
+      content = (
+        <Empty>O ranking aparece quando a primeira edição começar.</Empty>
+      );
+    } else {
+      const rows = sortByFilter(filter.id, eligible(filter, ranking));
+      const top = rows
+        .filter((r) => filter.value(r) > 0)
+        .slice(0, 3)
+        .map((r) => ({
+          playerId: r.player.id,
+          name: r.player.name,
+          photoUrl: r.player.photoUrl,
+          avatar: r.player.avatar,
+          value: filter.describe(filter.value(r)),
+        }));
+      content = rows.length ? (
+        <>
+          {top.length > 0 && <RankPodium key={filter.id} top={top} />}
+          <div key={`lista-${filter.id}`} className="lb-list">
+            {rows.map((r, i) => {
+              const v = filter.value(r);
+              return (
+                <LeaderRow
+                  key={r.player.id}
+                  index={i}
+                  place={i + 1}
+                  href={`/jogadores/${r.player.id}`}
+                  me={myId === r.player.id}
+                  media={
+                    <span
+                      className={`lb-avatar lb-ring-${tierOf(r.bestResult, r.titles)}`}
+                    >
+                      <Avatar
+                        name={r.player.name}
+                        photoUrl={r.player.photoUrl}
+                        avatar={r.player.avatar}
+                        size={44}
+                      />
+                    </span>
+                  }
+                  name={r.player.name}
+                  sub={summary(filter.id, r)}
+                  value={<span className="num">{v}</span>}
+                  unit={v === 1 ? metric.unit[0] : metric.unit[1]}
+                />
+              );
+            })}
+          </div>
+          {NOTES[filter.id] && (
+            <p className="mt-4 px-1 text-body text-muted">{NOTES[filter.id]}</p>
+          )}
+        </>
+      ) : (
+        <Empty>Nenhum placar lançado ainda.</Empty>
+      );
+    }
+  } else if (view === "times") {
     const teams = computeTeamRanking(data);
     content = teams.length ? (
-      <div className="card px-5 py-1.5">
-        {teams.map((t) => (
-          <div
+      <div className="lb-list">
+        {teams.map((t, i) => (
+          <LeaderRow
             key={t.team.id}
-            className="flex min-h-[68px] items-center gap-3.5"
-          >
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-name font-semibold">
-                {t.team.name}
-              </span>
-              <span className="block truncate text-body text-muted">
-                {[
-                  `Sorteado ${plural(t.uses, "vez", "vezes")}`,
-                  t.champions.length
-                    ? `campeão com ${t.champions.join(", ")}`
-                    : "",
-                ]
-                  .filter(Boolean)
-                  .join(" · ")}
-              </span>
-            </span>
-            {t.titles > 0 && (
-              <span className="num text-name font-semibold text-accent">
-                {plural(t.titles, "título", "títulos")}
-              </span>
-            )}
-          </div>
+            index={i}
+            place={i + 1}
+            media={<TeamShield team={t.team.name} size={40} />}
+            name={t.team.name}
+            sub={
+              t.champions.length
+                ? `Campeão com ${t.champions.join(", ")}`
+                : `Sorteado ${plural(t.uses, "vez", "vezes")}`
+            }
+            value={<span className="num">{t.titles}</span>}
+            unit={t.titles === 1 ? "título" : "títulos"}
+          />
         ))}
       </div>
     ) : (
@@ -288,33 +225,29 @@ export default async function RankingPage(props: PageProps<"/ranking">) {
     );
   }
 
+  const VIEWS = [
+    { id: "jogadores", label: "Jogadores", href: "/ranking" },
+    { id: "times", label: "Times", href: "/ranking?aba=times" },
+    { id: "recordes", label: "Recordes", href: "/ranking?aba=recordes" },
+  ];
+
   return (
     <>
       <PageTitle title="Ranking" />
-      {podium}
-      {tab !== "recordes" && teaser.length > 0 && (
-        <div className="mb-5">
-          <RecordsTeaser items={teaser} />
-        </div>
-      )}
-      <nav
-        aria-label="Filtros do ranking"
-        className="-mx-1 mb-6 flex gap-2 overflow-x-auto px-1 pb-2"
-      >
-        {TABS.map((t) => (
+      <nav aria-label="O que ver no ranking" className="rank-tabs mb-4">
+        {VIEWS.map((v) => (
           <Link
-            // A chave muda com o estado: o botão é recriado (e repintado
-            // inteiro) quando entra ou sai de ativo.
-            key={`${t.id}:${tab === t.id}`}
-            href={t.id === "titulos" ? "/ranking" : `/ranking?aba=${t.id}`}
-            className="chip"
-            aria-current={tab === t.id ? "page" : undefined}
+            key={`${v.id}:${view === v.id}`}
+            href={v.href}
+            className="rank-tab"
+            aria-current={view === v.id ? "page" : undefined}
             scroll={false}
           >
-            {t.label}
+            {v.label}
           </Link>
         ))}
       </nav>
+      {header}
       {content}
     </>
   );
