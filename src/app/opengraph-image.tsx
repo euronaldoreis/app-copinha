@@ -3,82 +3,43 @@ import { join } from "node:path";
 import { ImageResponse } from "next/og";
 
 // Imagem de pré-visualização do link (WhatsApp, Telegram, redes sociais):
-// 1200x630, no mesmo estilo de jogo 16 bits do site.
+// 1200x630, no mesmo estilo de jogo do app (arena azul, dourado e contorno marinho).
 export const alt = "Copinha dos Lixos: o torneio de FIFA e Bomba Patch da galera";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-const font = await readFile(
-  join(
-    process.cwd(),
-    "node_modules/@fontsource/press-start-2p/files/press-start-2p-latin-400-normal.woff",
+const [font, brasao] = await Promise.all([
+  readFile(
+    join(
+      process.cwd(),
+      "node_modules/@fontsource/lilita-one/files/lilita-one-latin-400-normal.woff",
+    ),
   ),
-);
+  readFile(join(process.cwd(), "public/brasao.png")),
+]);
+const BRASAO_SRC = `data:image/png;base64,${brasao.toString("base64")}`;
 
-const NIGHT = "#04051a";
-const YELLOW = "#ffd42a";
-const WHITE = "#f6f6fa";
-const GREEN = "#1c9440";
+const NIGHT = "#0a1a52";
+const ROYAL = "#1c47ad";
+const GOLD = "#ffc83d";
+const WHITE = "#ffffff";
+const BORDER = "#6ea0f5";
+const GREEN = "#37a845";
 
-const BALL = [
-  "....####....",
-  "..##....##..",
-  ".#..####..#.",
-  ".#.######.#.",
-  "#..######..#",
-  "#...####...#",
-  "#.#......#.#",
-  "###......###",
-  ".##..##..##.",
-  ".#..####..#.",
-  "..##.##.##..",
-  "....####....",
-];
-
-const TROPHY = [
-  "............",
-  ".##########.",
-  ".#.######.#.",
-  ".#.######.#.",
-  ".##.####.##.",
-  "...######...",
-  "....####....",
-  ".....##.....",
-  ".....##.....",
-  "....####....",
-  "...######...",
-  "............",
-];
-
-/** Desenho em pixels: cada "#" vira um quadrado de `px` pixels. */
-function Pixels({
-  rows,
-  px,
-  color,
-}: {
-  rows: string[];
-  px: number;
-  color: string;
-}) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column" }}>
-      {rows.map((row, y) => (
-        <div key={y} style={{ display: "flex" }}>
-          {[...row].map((c, x) => (
-            <div
-              key={x}
-              style={{
-                width: px,
-                height: px,
-                background: c === "#" ? color : "transparent",
-              }}
-            />
-          ))}
-        </div>
-      ))}
-    </div>
-  );
-}
+/** Contorno marinho dos títulos, como no `.text-title` do app. */
+const OUTLINE = (w: number) =>
+  [
+    [-w, 0],
+    [w, 0],
+    [0, -w],
+    [0, w],
+    [-w, -w],
+    [w, -w],
+    [-w, w],
+    [w, w],
+  ]
+    .map(([x, y]) => `${x}px ${y}px 0 ${NIGHT}`)
+    .join(", ");
 
 export default async function Image() {
   return new ImageResponse(
@@ -89,53 +50,47 @@ export default async function Image() {
           height: "100%",
           display: "flex",
           flexDirection: "column",
-          justifyContent: "center",
-          background: NIGHT,
-          fontFamily: "Press Start 2P",
+          background: `repeating-linear-gradient(135deg, ${ROYAL} 0px, ${ROYAL} 46px, #2150b8 46px, #2150b8 92px)`,
+          fontFamily: "Lilita One",
           color: WHITE,
         }}
       >
-        {/* Gramado listrado com as linhas do campo */}
+        {/* Moldura azul clara de painel, com sombra marinha */}
         <div
           style={{
             display: "flex",
-            height: 420,
-            borderTop: `10px solid ${WHITE}`,
-            borderBottom: `10px solid ${WHITE}`,
-            background: `repeating-linear-gradient(90deg, ${GREEN} 0px, ${GREEN} 70px, #178038 70px, #178038 140px)`,
+            flex: 1,
+            margin: 34,
+            border: `6px solid ${BORDER}`,
+            borderRadius: 36,
+            boxShadow: `0 0 0 6px ${NIGHT}, 0 14px 0 6px ${NIGHT}`,
+            background: "rgba(16,40,110,0.55)",
             alignItems: "center",
-            justifyContent: "space-between",
-            padding: "0 80px",
+            justifyContent: "center",
+            padding: "0 70px",
+            gap: 64,
           }}
         >
-          <Pixels rows={BALL} px={16} color={WHITE} />
+          <img
+            src={BRASAO_SRC}
+            width={Math.round((380 * 147) / 192)}
+            height={380}
+            alt=""
+          />
           <div
             style={{
               display: "flex",
               flexDirection: "column",
-              alignItems: "center",
-              textAlign: "center",
+              alignItems: "flex-start",
             }}
           >
-            <div style={{ display: "flex", marginBottom: 24 }}>
-              {/* Setas vetoriais: o desenho em pixels perde a forma em tamanho grande. */}
-              <svg width={150} height={150} viewBox="4 6 92 92">
-                {[0, 120, 240].map((angle) => (
-                  <path
-                    key={angle}
-                    d="M73 73 H47 V63 L26 79 L47 95 V85 H73 Z"
-                    fill={WHITE}
-                    transform={`rotate(${angle} 50 56)`}
-                  />
-                ))}
-              </svg>
-            </div>
             <div
               style={{
                 display: "flex",
-                fontSize: 62,
-                lineHeight: 1.2,
-                textShadow: `6px 6px 0 ${NIGHT}`,
+                fontSize: 148,
+                lineHeight: 1,
+                letterSpacing: 2,
+                textShadow: `${OUTLINE(5)}, 0 10px 0 ${NIGHT}`,
               }}
             >
               COPINHA
@@ -143,22 +98,37 @@ export default async function Image() {
             <div
               style={{
                 display: "flex",
-                fontSize: 62,
-                lineHeight: 1.2,
-                color: YELLOW,
-                textShadow: `6px 6px 0 ${NIGHT}`,
+                fontSize: 148,
+                lineHeight: 1,
+                letterSpacing: 2,
+                color: GOLD,
+                textShadow: `${OUTLINE(5)}, 0 10px 0 ${NIGHT}`,
               }}
             >
               DOS LIXOS
             </div>
+            <div
+              style={{
+                display: "flex",
+                marginTop: 44,
+                padding: "10px 30px",
+                borderRadius: 999,
+                background: GREEN,
+                border: `5px solid ${NIGHT}`,
+                fontSize: 36,
+                letterSpacing: 1,
+                textShadow: `${OUTLINE(2)}`,
+              }}
+            >
+              FIFA E BOMBA PATCH DA GALERA
+            </div>
           </div>
-          <Pixels rows={TROPHY} px={16} color={YELLOW} />
         </div>
       </div>
     ),
     {
       ...size,
-      fonts: [{ name: "Press Start 2P", data: font, style: "normal", weight: 400 }],
+      fonts: [{ name: "Lilita One", data: font, style: "normal", weight: 400 }],
     },
   );
 }

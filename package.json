@@ -14,6 +14,7 @@
     "db:copy": "node scripts/copy-db.mjs"
   },
   "dependencies": {
+    "@fontsource/lilita-one": "^5.3.0",
     "@fontsource/press-start-2p": "^5.3.0",
     "@libsql/client": "^0.18.0",
     "drizzle-orm": "^0.45.4",
