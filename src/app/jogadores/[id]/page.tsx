@@ -14,7 +14,10 @@ import { Ball3D, Podium3D, Star3D, Trophy3D } from "@/components/icons3d";
 import { TIER_LABELS, tierOf } from "@/lib/tier";
 import type { Edition, Entry, Team } from "@/db/schema";
 import type { ReactNode } from "react";
-import { isAdmin } from "@/lib/auth";
+import { currentPlayerId, isAdmin } from "@/lib/auth";
+import { getDb } from "@/db";
+import { AccessLinkPanel } from "@/components/AccessLinkPanel";
+import { playerHasAccess } from "@/lib/services";
 import { getData } from "@/lib/data";
 import { formatDate, plural, resultLabel } from "@/lib/labels";
 import { sortEditions } from "@/lib/services";
@@ -104,11 +107,14 @@ export async function generateMetadata(
 }
 
 export default async function PlayerPage(props: PageProps<"/jogadores/[id]">) {
-  const [{ data, player }, admin] = await Promise.all([
+  const [{ data, player }, admin, myId] = await Promise.all([
     load(props.params),
     isAdmin(),
+    currentPlayerId(),
   ]);
   if (!player) notFound();
+  const isMe = myId === player.id;
+  const hasAccess = admin ? await playerHasAccess(getDb(), player.id) : false;
 
   const ranking = computeRanking(data);
   const stats = ranking.find((r) => r.player.id === player.id)!;
@@ -134,6 +140,11 @@ export default async function PlayerPage(props: PageProps<"/jogadores/[id]">) {
 
   return (
     <>
+      {isMe && (
+        <Link href="/meu-perfil" className="btn btn-primary mb-3">
+          Editar meu perfil
+        </Link>
+      )}
       {/* Carta do jogador e resumo, como a tela de um personagem. */}
       <header className="grid grid-cols-[minmax(0,148px)_minmax(0,1fr)] items-start gap-4 sm:grid-cols-[180px_minmax(0,1fr)]">
         {/* Mesma carta da lista de jogadores, maior. */}
@@ -381,6 +392,13 @@ export default async function PlayerPage(props: PageProps<"/jogadores/[id]">) {
                 <SubmitButton className="btn">Salvar</SubmitButton>
               </div>
             </ActionForm>
+          </Disclosure>
+          <Disclosure title="Acesso do jogador">
+            <AccessLinkPanel
+              playerId={player.id}
+              playerName={player.name}
+              hasAccess={hasAccess}
+            />
           </Disclosure>
           {!hasHistory && (
             <ActionForm action={deletePlayerAction} className="mt-2">

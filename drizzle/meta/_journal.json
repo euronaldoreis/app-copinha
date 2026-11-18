@@ -50,6 +50,13 @@
       "when": 1794723275360,
       "tag": "0006_login_limite",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1795029858273,
+      "tag": "0007_acesso_jogador",
+      "breakpoints": true
     }
   ]
 }

@@ -1,6 +1,6 @@
 // Operações de leitura e escrita no banco. Não dependem do Next.js, então
 // podem ser exercitadas direto nos testes.
-import { randomInt } from "node:crypto";
+import { createHash, randomBytes, randomInt } from "node:crypto";
 import { and, eq, inArray, ne, sql } from "drizzle-orm";
 import type { Db } from "@/db";
 import {
@@ -73,8 +73,17 @@ export function configOf(edition: Edition): FormatConfig {
 // ---------------------------------------------------------------------------
 // Jogadores
 
+/** Colunas públicas do jogador: tudo menos o hash do link de acesso. */
+export const playerColumns = {
+  id: players.id,
+  name: players.name,
+  photoUrl: players.photoUrl,
+  avatar: players.avatar,
+  createdAt: players.createdAt,
+};
+
 export async function listPlayers(db: Db) {
-  const rows = await db.select().from(players);
+  const rows = await db.select(playerColumns).from(players);
   return rows.sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
 }
 
@@ -215,6 +224,77 @@ export async function updatePlayer(
     .update(players)
     .set({ name, photoUrl, ...avatar })
     .where(eq(players.id, id));
+}
+
+/**
+ * Atualiza só o que o próprio jogador pode mudar: foto e avatar. O nome (que
+ * aparece no histórico e no ranking) continua só com o organizador.
+ */
+export async function updatePlayerProfile(
+  db: Db,
+  id: number,
+  input: {
+    photoUrl: unknown;
+    avatar?: unknown;
+    photoData?: unknown;
+    removePhoto?: boolean;
+  },
+) {
+  const [current] = await db.select().from(players).where(eq(players.id, id));
+  if (!current) throw new UserError("Jogador não encontrado.");
+  await updatePlayer(db, id, { ...input, name: current.name });
+}
+
+// --- Acesso do jogador ao próprio perfil -----------------------------------
+
+const hashToken = (token: string) =>
+  createHash("sha256").update(token).digest("hex");
+
+/**
+ * Gera um link de acesso novo para o jogador (o anterior deixa de valer).
+ * Devolve o código em si, que só existe neste momento: no banco fica o hash.
+ */
+export async function createPlayerAccess(db: Db, playerId: number) {
+  const token = randomBytes(24).toString("base64url");
+  const updated = await db
+    .update(players)
+    .set({ accessHash: hashToken(token) })
+    .where(eq(players.id, playerId))
+    .returning({ id: players.id });
+  if (updated.length === 0) throw new UserError("Jogador não encontrado.");
+  return token;
+}
+
+/** Desativa o acesso: o link e as sessões abertas deixam de valer. */
+export async function revokePlayerAccess(db: Db, playerId: number) {
+  await db.update(players).set({ accessHash: null }).where(eq(players.id, playerId));
+}
+
+export async function playerHasAccess(db: Db, playerId: number) {
+  const [row] = await db
+    .select({ accessHash: players.accessHash })
+    .from(players)
+    .where(eq(players.id, playerId));
+  return row?.accessHash != null;
+}
+
+/** Jogador dono de um link de acesso (ou undefined se o código não vale). */
+export async function findPlayerByAccessToken(db: Db, token: string) {
+  if (!token || token.length > 100) return undefined;
+  const [row] = await db
+    .select({ id: players.id, accessHash: players.accessHash })
+    .from(players)
+    .where(eq(players.accessHash, hashToken(token)));
+  return row;
+}
+
+/** Hash atual do acesso do jogador, para conferir se uma sessão ainda vale. */
+export async function getPlayerAccessHash(db: Db, playerId: number) {
+  const [row] = await db
+    .select({ accessHash: players.accessHash })
+    .from(players)
+    .where(eq(players.id, playerId));
+  return row?.accessHash ?? null;
 }
 
 function requireAvatar(value: unknown): AvatarLook {
@@ -1085,7 +1165,7 @@ export interface EditionView {
 
 export async function loadAll(db: Db): Promise<AllData> {
   const [p, t, ed, en, m] = await Promise.all([
-    db.select().from(players),
+    db.select(playerColumns).from(players),
     db.select().from(teams),
     db.select().from(editions),
     db.select().from(entries),
