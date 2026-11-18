@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { logoutAction } from "@/app/actions";
 import { LoginForm } from "@/components/LoginForm";
+import { LogoutIcon } from "@/components/icons";
 import { PageTitle } from "@/components/ui";
 import { adminConfigured, isAdmin } from "@/lib/auth";
 
@@ -25,6 +27,12 @@ export default async function AdminPage() {
             Gerenciar times
           </Link>
         </div>
+        <form action={logoutAction} className="mt-10">
+          <button type="submit" className="btn btn-quiet">
+            <LogoutIcon width={20} height={20} />
+            Sair do modo admin
+          </button>
+        </form>
       </>
     );
   }

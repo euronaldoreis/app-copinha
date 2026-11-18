@@ -1,12 +1,11 @@
 import type { Metadata, Viewport } from "next";
 import { Barlow_Condensed, Lilita_One, Nunito } from "next/font/google";
 import Link from "next/link";
-import { logoutAction } from "./actions";
 import { NavBar } from "@/components/NavBar";
 import { RegisterServiceWorker } from "@/components/RegisterServiceWorker";
 import { Splash } from "@/components/Splash";
 import { TopBarBrand } from "@/components/TopBarBrand";
-import { LockIcon, LogoutIcon } from "@/components/icons";
+import { LockIcon, SettingsIcon } from "@/components/icons";
 import { Ball3D, Trophy3D } from "@/components/icons3d";
 import { isAdmin } from "@/lib/auth";
 import { getData } from "@/lib/data";
@@ -60,7 +59,11 @@ export const metadata: Metadata = {
     type: "website",
   },
   twitter: { card: "summary_large_image" },
-  appleWebApp: { capable: true, title: "Copinha", statusBarStyle: "black-translucent" },
+  appleWebApp: {
+    capable: true,
+    title: "Copinha",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 export const viewport: Viewport = {
@@ -72,7 +75,9 @@ export const viewport: Viewport = {
 
 export default async function RootLayout({ children }: LayoutProps<"/">) {
   const [admin, data] = await Promise.all([isAdmin(), getData()]);
-  const editions = data.editions.filter((e) => e.status !== "inscricoes").length;
+  const editions = data.editions.filter(
+    (e) => e.status !== "inscricoes",
+  ).length;
   const games = data.matches.filter((m) => m.homeScore != null).length;
   return (
     <html
@@ -96,13 +101,19 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
                 <span className="num">{games}</span>
               </span>
               {admin ? (
-                <form action={logoutAction}>
-                  <button type="submit" className="btn-hud" aria-label="Sair">
-                    <LogoutIcon width={20} height={20} />
-                  </button>
-                </form>
+                <Link
+                  href="/admin"
+                  className="btn-hud"
+                  aria-label="Painel do organizador"
+                >
+                  <SettingsIcon width={20} height={20} />
+                </Link>
               ) : (
-                <Link href="/admin" className="btn-hud" aria-label="Entrar como organizador">
+                <Link
+                  href="/admin"
+                  className="btn-hud"
+                  aria-label="Entrar como organizador"
+                >
                   <LockIcon width={20} height={20} />
                 </Link>
               )}
