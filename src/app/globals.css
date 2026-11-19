@@ -2246,3 +2246,22 @@ fieldset label:has(input[type="radio"]:checked) {
     background: #2468dd;
   }
 }
+
+/* Card com conteúdo extra embaixo (ex.: controles do organizador). */
+@layer components {
+  .lb-row-stack {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .lb-row-main {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: 10px;
+  }
+  .lb-row-extra {
+    padding-left: 2px;
+  }
+}
+

@@ -18,9 +18,13 @@ import {
   SwordsIcon,
   TrophyIcon,
 } from "@/components/icons";
-import { Empty, PageTitle, PersonRow, Section } from "@/components/ui";
+import { Empty, PageTitle, Section } from "@/components/ui";
+import { LeaderRow, PlayerMedia } from "@/components/Leaderboard";
+import { TeamShield } from "@/components/TeamShield";
 import type { Match } from "@/db/schema";
-import { isAdmin } from "@/lib/auth";
+import { currentPlayerId, isAdmin } from "@/lib/auth";
+import { tierOf } from "@/lib/tier";
+import { computeRanking } from "@/lib/stats";
 import { getData } from "@/lib/data";
 import {
   FORMAT_LABELS,
@@ -330,10 +334,16 @@ function Participants({
   admin,
   editable,
   knownTeams = [],
+  tiers,
+  myId,
 }: {
   view: EditionView;
   admin: boolean;
   editable: boolean;
+  /** Categoria de cada jogador (moldura do retrato). */
+  tiers: Map<number, string>;
+  /** Jogador com sessão (aparece como "Você"). */
+  myId: number | null;
   /** Times já cadastrados, para o auto complete do campo de time. */
   knownTeams?: string[];
 }) {
@@ -351,52 +361,56 @@ function Participants({
     return <Empty>Ninguém inscrito ainda.</Empty>;
   }
   return (
-    <div className="card px-5 py-1.5">
-      {list.map((e) => (
-        <div
-          key={e.id}
-          className={
-            admin && editable
-              ? view.edition.useTeams || manual
-                ? "sm:flex sm:items-center sm:gap-3"
-                : // só a lixeira: fica na mesma linha, à direita do nome
-                  "flex items-center gap-3"
-              : ""
-          }
-        >
-          <div className="min-w-0 flex-1">
-            <PersonRow
-              href={`/jogadores/${e.playerId}`}
-              name={e.player.name}
-              photoUrl={e.player.photoUrl}
-              avatar={e.player.avatar}
-              detail={[
-                view.edition.useTeams ? (e.team?.name ?? "Sem time") : "",
-                e.groupLabel ? `Grupo ${e.groupLabel}` : "",
-                manual ? resultLabel(e.result) : "",
-              ]
-                .filter(Boolean)
-                .join(" · ")}
-            />
-          </div>
-          {admin && editable && (
-            <EntryControls
-              // recria o estado quando o time ou a colocação mudam no servidor
-              key={`${e.id}:${e.teamId}:${e.result}`}
-              entryId={e.id}
-              playerName={e.player.name}
-              team={e.team?.name ?? null}
-              result={e.result}
-              manual={manual}
-              useTeams={view.edition.useTeams}
-              knownTeams={knownTeams}
-              takenTeams={view.entries
-                .filter((x) => x.id !== e.id && x.team)
-                .map((x) => x.team!.name)}
-            />
-          )}
-        </div>
-      ))}
+    <div className="lb-list">
+      {list.map((e, i) => {
+        const controls = admin && editable && (
+          <EntryControls
+            // recria o estado quando o time ou a colocação mudam no servidor
+            key={`${e.id}:${e.teamId}:${e.result}`}
+            entryId={e.id}
+            playerName={e.player.name}
+            team={e.team?.name ?? null}
+            result={e.result}
+            manual={manual}
+            useTeams={view.edition.useTeams}
+            knownTeams={knownTeams}
+            takenTeams={view.entries
+              .filter((x) => x.id !== e.id && x.team)
+              .map((x) => x.team!.name)}
+          />
+        );
+        return (
+          <LeaderRow
+            key={e.id}
+            index={i}
+            href={`/jogadores/${e.playerId}`}
+            me={myId === e.playerId}
+            media={
+              <PlayerMedia
+                name={e.player.name}
+                photoUrl={e.player.photoUrl}
+                avatar={e.player.avatar}
+                tier={tiers.get(e.playerId) ?? "participou"}
+              />
+            }
+            name={e.player.name}
+            sub={[
+              view.edition.useTeams ? (e.team?.name ?? "Sem time") : "",
+              e.groupLabel ? `Grupo ${e.groupLabel}` : "",
+              manual ? resultLabel(e.result) : "",
+            ]
+              .filter(Boolean)
+              .join(" · ")}
+            trailing={
+              view.edition.useTeams && e.team && !controls ? (
+                <TeamShield team={e.team.name} size={34} />
+              ) : undefined
+            }
+          >
+            {controls || undefined}
+          </LeaderRow>
+        );
+      })}
     </div>
   );
 }
@@ -404,11 +418,18 @@ function Participants({
 // ---------------------------------------------------------------------------
 
 export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
-  const [{ data, view }, admin] = await Promise.all([
+  const [{ data, view }, admin, myId] = await Promise.all([
     load(props.params),
     isAdmin(),
+    currentPlayerId(),
   ]);
   if (!view) notFound();
+  const tiers = new Map(
+    computeRanking(data).map((r) => [
+      r.player.id,
+      tierOf(r.bestResult, r.titles),
+    ]),
+  );
   const { edition, entries, matches } = view;
   const format = edition.format as Format;
   const manual = format === "manual";
@@ -496,6 +517,8 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
             admin={admin}
             editable
             knownTeams={edition.useTeams ? knownTeams : []}
+            tiers={tiers}
+            myId={myId}
           />
         </Section>
       )}

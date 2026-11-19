@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { Arcade } from "@/components/Arcade";
 import { Avatar } from "@/components/Avatar";
-import { ChevronIcon, SwordsIcon, TrophyIcon } from "@/components/icons";
-import { Empty, PageTitle, PersonRow, Section } from "@/components/ui";
+import { ChevronIcon, SwordsIcon } from "@/components/icons";
+import { Empty, PageTitle, Section } from "@/components/ui";
+import { LeaderRow, PlayerMedia } from "@/components/Leaderboard";
+import { currentPlayerId } from "@/lib/auth";
 import { isAdmin } from "@/lib/auth";
 import { getData } from "@/lib/data";
 import { STATUS_LABELS, plural } from "@/lib/labels";
@@ -118,7 +120,11 @@ function LiveEdition({ view }: { view: EditionView }) {
 }
 
 export default async function HomePage() {
-  const [data, admin] = await Promise.all([getData(), isAdmin()]);
+  const [data, admin, myId] = await Promise.all([
+    getData(),
+    isAdmin(),
+    currentPlayerId(),
+  ]);
   const views = allEditionViews(data);
   const open =
     views.find((v) => v.edition.status === "andamento") ??
@@ -217,31 +223,31 @@ export default async function HomePage() {
             </Link>
           }
         >
-          <div className="card px-5 py-1.5">
-            {ranking.slice(0, 5).map((r) => (
-              <PersonRow
+          <div className="lb-list">
+            {ranking.slice(0, 5).map((r, i) => (
+              <LeaderRow
                 key={r.player.id}
+                index={i}
+                place={i + 1}
                 href={`/jogadores/${r.player.id}`}
+                me={myId === r.player.id}
+                media={
+                  <PlayerMedia
+                    name={r.player.name}
+                    photoUrl={r.player.photoUrl}
+                    avatar={r.player.avatar}
+                    tier={tierOf(r.bestResult, r.titles)}
+                  />
+                }
                 name={r.player.name}
-                photoUrl={r.player.photoUrl}
-                avatar={r.player.avatar}
-                detail={[
+                sub={[
                   r.finals ? plural(r.finals, "final", "finais") : "",
-                  plural(r.participations, "participação", "participações"),
+                  plural(r.participations, "edição", "edições"),
                 ]
                   .filter(Boolean)
                   .join(" · ")}
-                trailing={
-                  r.titles > 0 ? (
-                    <span
-                      className="num flex items-center gap-1 text-name font-semibold text-accent"
-                      title={plural(r.titles, "título", "títulos")}
-                    >
-                      {r.titles}
-                      <TrophyIcon width={18} height={18} />
-                    </span>
-                  ) : null
-                }
+                value={<span className="num">{r.titles}</span>}
+                unit={r.titles === 1 ? "título" : "títulos"}
               />
             ))}
           </div>

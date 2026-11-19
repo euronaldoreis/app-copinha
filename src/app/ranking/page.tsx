@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ComponentType, ReactNode, SVGProps } from "react";
-import { Avatar } from "@/components/Avatar";
-import { LeaderRow } from "@/components/Leaderboard";
+import { LeaderRow, PlayerMedia } from "@/components/Leaderboard";
 import { TeamShield } from "@/components/TeamShield";
 import {
   BallIcon,
@@ -35,7 +34,6 @@ import { RecordsBoard } from "@/components/RecordsBoard";
 import { recordItems } from "@/lib/recordItems";
 
 export const metadata: Metadata = { title: "Ranking" };
-
 
 /** Botões de critério do ranking de jogadores: nome curto, ícone e unidade. */
 const METRICS: Record<
@@ -165,16 +163,12 @@ export default async function RankingPage(props: PageProps<"/ranking">) {
                   href={`/jogadores/${r.player.id}`}
                   me={myId === r.player.id}
                   media={
-                    <span
-                      className={`lb-avatar lb-ring-${tierOf(r.bestResult, r.titles)}`}
-                    >
-                      <Avatar
-                        name={r.player.name}
-                        photoUrl={r.player.photoUrl}
-                        avatar={r.player.avatar}
-                        size={44}
-                      />
-                    </span>
+                    <PlayerMedia
+                      name={r.player.name}
+                      photoUrl={r.player.photoUrl}
+                      avatar={r.player.avatar}
+                      tier={tierOf(r.bestResult, r.titles)}
+                    />
                   }
                   name={r.player.name}
                   sub={summary(filter.id, r)}
