@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import Link from "next/link";
 import type { EntryView } from "@/lib/services";
 import type { StandingRow } from "@/lib/tournament";
@@ -25,14 +26,30 @@ export function StandingsTable({
             <span className="sr-only">Posição</span>
           </th>
           <th className="pb-2 text-left font-normal">Jogador</th>
-          <th className={th} title="Pontos">P</th>
-          <th className={th} title="Jogos">J</th>
-          <th className={`${th} ${wide}`} title="Vitórias">V</th>
-          <th className={`${th} ${wide}`} title="Empates">E</th>
-          <th className={`${th} ${wide}`} title="Derrotas">D</th>
-          <th className={`${th} ${wide}`} title="Gols pró">GP</th>
-          <th className={`${th} ${wide}`} title="Gols contra">GC</th>
-          <th className={th} title="Saldo de gols">SG</th>
+          <th className={th} title="Pontos">
+            P
+          </th>
+          <th className={th} title="Jogos">
+            J
+          </th>
+          <th className={`${th} ${wide}`} title="Vitórias">
+            V
+          </th>
+          <th className={`${th} ${wide}`} title="Empates">
+            E
+          </th>
+          <th className={`${th} ${wide}`} title="Derrotas">
+            D
+          </th>
+          <th className={`${th} ${wide}`} title="Gols pró">
+            GP
+          </th>
+          <th className={`${th} ${wide}`} title="Gols contra">
+            GC
+          </th>
+          <th className={th} title="Saldo de gols">
+            SG
+          </th>
         </tr>
       </thead>
       <tbody>
@@ -40,7 +57,11 @@ export function StandingsTable({
           const entry = entries.get(row.entryId);
           if (!entry) return null;
           return (
-            <tr key={row.entryId} className="h-[52px]">
+            <tr
+              key={row.entryId}
+              className="anim-row h-[52px]"
+              style={{ "--i": Math.min(i, 12) } as CSSProperties}
+            >
               <td className="num pl-4 pr-3 text-muted">
                 <span className="flex items-center gap-1.5">
                   {i + 1}

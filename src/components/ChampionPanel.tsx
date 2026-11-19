@@ -18,7 +18,7 @@ export function ChampionPanel({
   vice?: Person | null;
 }) {
   return (
-    <span className="flex items-center gap-3 rounded-[10px] border-2 border-[#f5c542] bg-gradient-to-b from-[#9a6bf0] to-[#5b34b3] p-2.5">
+    <span className="panel-shine relative flex items-center gap-3 overflow-hidden rounded-[10px] border-2 border-[#f5c542] bg-gradient-to-b from-[#9a6bf0] to-[#5b34b3] p-2.5">
       <Avatar
         name={champion.player.name}
         photoUrl={champion.player.photoUrl}
@@ -27,7 +27,7 @@ export function ChampionPanel({
       />
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-accent">
-          <TrophyIcon width={14} height={14} />
+          <TrophyIcon width={14} height={14} className="trophy-wobble" />
           Campeão
         </span>
         <span className="text-title block truncate !text-[20px]">
