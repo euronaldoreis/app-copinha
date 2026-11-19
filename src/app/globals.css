@@ -2439,14 +2439,15 @@ fieldset label:has(input[type="radio"]:checked) {
   }
 }
 
-/* ---- Grupos (classificação) --------------------------------------------- */
+/* ---- Grupos (classificação): card branco, posições em linhas ----------- */
 @layer components {
   .group-card {
     overflow: hidden;
-    border: 3px solid #6ea0f5;
+    border: 3px solid var(--color-night);
     border-radius: 16px;
-    background: linear-gradient(180deg, #2152bd 0%, #1a43a3 100%);
-    box-shadow: 0 0 0 2px var(--color-night), 0 6px 0 2px var(--color-night);
+    background: #ffffff;
+    color: #0a1a52;
+    box-shadow: 0 6px 0 var(--color-night);
   }
   .group-card-head {
     display: flex;
@@ -2454,21 +2455,21 @@ fieldset label:has(input[type="radio"]:checked) {
     justify-content: space-between;
     gap: 12px;
     padding: 11px 14px;
-    border-bottom: 3px solid var(--color-night);
-    background: linear-gradient(180deg, #13307f 0%, #0d235f 100%);
+    background: linear-gradient(180deg, #1d43a8 0%, #13307f 100%);
+    color: #ffffff;
   }
   .group-table {
-    border-collapse: separate;
-    border-spacing: 0 6px;
-    padding: 0 8px 4px;
+    border-collapse: collapse;
   }
   .group-table th {
-    padding: 8px 6px 0;
+    padding: 7px 6px;
+    background: #e6edfb;
+    border-bottom: 2px solid #c9d6f2;
     font-size: 12px;
     font-weight: 900;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: var(--color-accent);
+    color: #3b4f86;
     text-align: right;
   }
   .group-table th:first-child {
@@ -2477,56 +2478,56 @@ fieldset label:has(input[type="radio"]:checked) {
   .group-table th:nth-child(2) {
     text-align: left;
   }
+  .group-table th:last-child,
+  .group-table td:last-child {
+    padding-right: 14px;
+  }
   .group-table td {
     height: 58px;
     padding: 0 6px;
-    background: #2b5fce;
-    border-top: 2px solid #4f82e6;
-    border-bottom: 2px solid #163d99;
+    border-bottom: 2px solid #e3e9f6;
     text-align: right;
     white-space: nowrap;
+    color: #0a1a52;
+  }
+  .group-table tr:last-child td {
+    border-bottom: 0;
   }
   .group-table td:first-child {
-    border-left: 2px solid #4f82e6;
-    border-radius: 12px 0 0 12px;
     text-align: center;
-  }
-  .group-table td:last-child {
-    border-right: 2px solid #163d99;
-    border-radius: 0 12px 12px 0;
-    padding-right: 12px;
   }
   .group-table td:nth-child(2) {
     text-align: left;
   }
-  .group-table tr:hover td {
-    background: #3068d8;
+  .group-table tbody tr:hover td {
+    background: #f3f6fd;
+  }
+  .group-team {
+    color: #6a7aa6;
   }
 
   .group-pos {
     display: inline-flex;
-    width: 30px;
-    height: 30px;
+    width: 28px;
+    height: 28px;
     align-items: center;
     justify-content: center;
-    border: 2px solid #9db8f0;
+    border: 2px solid #0a1a52;
     border-radius: 999px;
-    background: #0f2a73;
+    background: #ffffff;
     font-family: var(--font-pixel);
-    font-size: 15px;
-    color: #dbe7ff;
+    font-size: 14px;
+    color: #0a1a52;
   }
   .group-pos-up {
-    border-color: var(--color-night);
     background: linear-gradient(#8cf06a, #37b93a);
     box-shadow: inset 0 -2px 0 #237a26;
-    color: var(--color-night);
   }
   .group-avatar {
     flex-shrink: 0;
     padding: 2px;
     border-radius: 26%;
-    background: var(--color-night);
+    background: #0a1a52;
   }
 }
 /* Pontos com um respiro antes dos jogos. */
@@ -2534,4 +2535,8 @@ fieldset label:has(input[type="radio"]:checked) {
 .group-table td:nth-child(3) {
   min-width: 34px;
   padding-right: 12px;
+}
+/* Cabeçalho da tabela do grupo em azul-acinzentado (vence a regra global de th). */
+.group-card .group-table th {
+  color: #3b4f86;
 }

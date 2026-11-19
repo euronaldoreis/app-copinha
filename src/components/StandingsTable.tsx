@@ -104,14 +104,14 @@ export function StandingsTable({
                         {entry.player.name}
                       </span>
                       {entry.team && (
-                        <span className="block truncate text-[13px] text-muted">
+                        <span className="group-team block truncate text-[13px]">
                           {entry.team.name}
                         </span>
                       )}
                     </span>
                   </Link>
                 </td>
-                <td className="num font-pixel !text-[20px] text-white">
+                <td className="num font-pixel !text-[20px]">
                   {row.points}
                 </td>
                 <td className="num">{row.played}</td>
