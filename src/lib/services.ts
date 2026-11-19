@@ -67,6 +67,7 @@ export function configOf(edition: Edition): FormatConfig {
     crossGames: edition.crossGames,
     qualifiers: edition.qualifiers,
     thirdPlace: edition.thirdPlace,
+    playoffs: edition.playoffs,
   };
 }
 
@@ -405,6 +406,7 @@ function parseConfig(config: FormatConfig) {
     crossGames: Number(config.crossGames) || 0,
     qualifiers: Number(config.qualifiers) || 0,
     thirdPlace: Boolean(config.thirdPlace),
+    playoffs: Number(config.playoffs) || 0,
   });
 }
 
@@ -989,7 +991,7 @@ export async function regenerateMatches(db: Db, editionId: number) {
 export async function setKnockoutPhases(
   db: Db,
   editionId: number,
-  input: { qualifiers: number; thirdPlace: boolean },
+  input: { qualifiers: number; thirdPlace: boolean; playoffs?: number },
 ) {
   const edition = await getEdition(db, editionId);
   if (edition.format !== "grupos" && edition.format !== "liga")
@@ -1003,11 +1005,12 @@ export async function setKnockoutPhases(
   const qualifiers = Number(input.qualifiers);
   if (!Number.isInteger(qualifiers) || qualifiers < 0)
     throw new UserError("Quantidade de classificados inválida.");
-  const config: FormatConfig = {
+  const config: FormatConfig = normalizeConfig({
     ...configOf(edition),
     qualifiers,
     thirdPlace: Boolean(input.thirdPlace),
-  };
+    playoffs: Number(input.playoffs) || 0,
+  });
 
   const current = await db
     .select()
@@ -1034,7 +1037,11 @@ export async function setKnockoutPhases(
       .where(and(eq(matches.editionId, editionId), ne(matches.stage, "grupo")));
     await tx
       .update(editions)
-      .set({ qualifiers, thirdPlace: config.thirdPlace })
+      .set({
+        qualifiers,
+        thirdPlace: config.thirdPlace,
+        playoffs: config.playoffs ?? 0,
+      })
       .where(eq(editions.id, editionId));
     await tx
       .update(entries)
@@ -1089,7 +1096,7 @@ export async function setKnockoutSlots(
     for (const slot of slots) {
       if (slot.entryId == null) continue;
       const match = matchById.get(slot.matchId);
-      if (!match || match.stage !== "mata")
+      if (!match || (match.stage !== "mata" && match.stage !== "repescagem"))
         throw new UserError("Confronto não encontrado no mata-mata.");
       if (!entryIds.has(slot.entryId))
         throw new UserError("Participante não encontrado nesta edição.");
@@ -1132,18 +1139,38 @@ export async function setKnockoutSlots(
       .from(matches)
       .where(eq(matches.editionId, editionId));
     const seen = new Set<string>();
-    for (const m of after.filter((x) => x.stage === "mata")) {
+    for (const m of after.filter(
+      (x) => x.stage === "mata" || x.stage === "repescagem",
+    )) {
       if (m.homeEntryId != null && m.homeEntryId === m.awayEntryId)
         throw new UserError("Um participante não pode jogar contra ele mesmo.");
       for (const id of [m.homeEntryId, m.awayEntryId]) {
         if (id == null) continue;
-        const key = `${m.round}:${id}`;
+        const key = `${m.stage}:${m.round}:${id}`;
         if (seen.has(key))
           throw new UserError(
             "O mesmo participante não pode estar em dois confrontos da mesma fase. Troque os dois lados.",
           );
         seen.add(key);
       }
+    }
+    // Quem já tem vaga direta no mata-mata não joga a repescagem (se vencesse,
+    // ocuparia duas vagas).
+    const direct = new Set<number>();
+    for (const m of after.filter((x) => x.stage === "mata" && x.round === 1)) {
+      if (m.homeEntryId != null && !m.homeSource?.startsWith("P:"))
+        direct.add(m.homeEntryId);
+      if (m.awayEntryId != null && !m.awaySource?.startsWith("P:"))
+        direct.add(m.awayEntryId);
+    }
+    for (const m of after.filter((x) => x.stage === "repescagem")) {
+      if (
+        (m.homeEntryId != null && direct.has(m.homeEntryId)) ||
+        (m.awayEntryId != null && direct.has(m.awayEntryId))
+      )
+        throw new UserError(
+          "Quem já tem vaga direta no mata-mata não pode jogar a repescagem.",
+        );
     }
   });
 }

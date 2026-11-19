@@ -429,3 +429,65 @@ describe("edição completa", () => {
     expect(computeResults(config, entries, matches).results.get(1)).toBe("campeao");
   });
 });
+
+describe("repescagem", () => {
+  const base: FormatConfig = {
+    format: "grupos",
+    groupsCount: 2,
+    legs: 1,
+    pairing: "interno",
+    crossGames: 0,
+    qualifiers: 4,
+    thirdPlace: false,
+    playoffs: 2,
+  };
+  const entries: EntryLike[] = Array.from({ length: 8 }, (_, i) => ({
+    id: i + 1,
+    seed: i,
+    groupLabel: i < 4 ? "A" : "B",
+  }));
+
+  it("cria os jogos da repescagem e reserva as últimas vagas do mata-mata", () => {
+    const plan = planMatches(base, entries);
+    const playoffs = plan.filter((m) => m.stage === "repescagem");
+    expect(playoffs).toHaveLength(2);
+    expect(playoffs.every((m) => m.homeSource == null && m.awaySource == null)).toBe(true);
+    const semis = plan.filter((m) => m.stage === "mata" && m.round === 1);
+    const sources = semis.flatMap((m) => [m.homeSource, m.awaySource]);
+    expect(sources.sort()).toEqual(["G:A:1", "G:B:1", "P:0", "P:1"]);
+    // os vencedores da repescagem enfrentam os líderes, não um ao outro
+    for (const m of semis) expect(m.homeSource?.startsWith("G:")).toBe(true);
+    expect(countMatches(base, 8)).toEqual({ group: 12, knockout: 2 + 3 });
+  });
+
+  it("valida as vagas da repescagem", () => {
+    expect(validateConfig(base, 8)).toBeNull();
+    expect(validateConfig({ ...base, playoffs: 4 }, 8)).toBeNull(); // limitado a 3
+    expect(validateConfig({ ...base, playoffs: 3 }, 6)).toMatch(/pelo menos 7/);
+    expect(validateConfig({ ...base, qualifiers: 4, playoffs: 2 }, 5)).toMatch(/pelo menos 6/);
+    expect(validateGroupSizes(base, [4, 4])).toBeNull();
+    // mata-mata puro não tem repescagem
+    const mata = planMatches({ ...base, format: "mata" }, entries);
+    expect(mata.some((m) => m.stage === "repescagem")).toBe(false);
+  });
+
+  it("o vencedor da repescagem entra no mata-mata", () => {
+    const plan = planMatches(base, entries);
+    let id = 0;
+    const matches: MatchLike[] = plan.map((m) => ({ ...m, id: ++id, homeScore: null, awayScore: null, homePens: null, awayPens: null }));
+    // fase de grupos: vence o menor id
+    for (const m of matches.filter((x) => x.stage === "grupo")) {
+      const homeWins = m.homeEntryId! < m.awayEntryId!;
+      m.homeScore = homeWins ? 2 : 0;
+      m.awayScore = homeWins ? 0 : 2;
+    }
+    // repescagem escolhida pelo organizador: 2 x 7 e 6 x 3; 7 e 3 vencem (3 nos pênaltis)
+    const [p0, p1] = matches.filter((x) => x.stage === "repescagem").sort((a, b) => a.slot - b.slot);
+    Object.assign(p0, { homeEntryId: 2, awayEntryId: 7, homeScore: 0, awayScore: 1 });
+    Object.assign(p1, { homeEntryId: 6, awayEntryId: 3, homeScore: 1, awayScore: 1, homePens: 3, awayPens: 4 });
+    const { matches: after } = resolveKnockout(entries, matches);
+    const semis = after.filter((m) => m.stage === "mata" && m.round === 1);
+    const players = semis.flatMap((m) => [m.homeEntryId, m.awayEntryId]).sort();
+    expect(players).toEqual([1, 3, 5, 7]);
+  });
+});

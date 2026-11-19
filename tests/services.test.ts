@@ -1327,3 +1327,90 @@ describe("gerenciar times", () => {
     );
   });
 });
+
+describe("repescagem", () => {
+  it("organizador escolhe a repescagem e o vencedor vai para o mata-mata", async () => {
+    const edition = await createEdition(db, {
+      ...baseEdition,
+      name: "Com repescagem",
+      number: 40,
+      config: {
+        ...baseEdition.config,
+        qualifiers: 4,
+        playoffs: 2,
+        thirdPlace: false,
+      },
+      playerIds: playerIds.slice(0, 8),
+      teamPool: TEAMS,
+    });
+    const id = edition.id;
+    expect(
+      (await loadAll(db)).editions.find((e) => e.id === id)!.playoffs,
+    ).toBe(2);
+    await drawTeams(db, id);
+    await startEdition(db, id);
+
+    // fase de grupos inteira
+    let v = await view(id);
+    for (const m of v.matches.filter((x) => x.stage === "grupo")) {
+      await saveMatchResult(db, m.id, { homeScore: 2, awayScore: 1 });
+    }
+    v = await view(id);
+    const playoffs = v.matches
+      .filter((m) => m.stage === "repescagem")
+      .sort((a, b) => a.slot - b.slot);
+    expect(playoffs).toHaveLength(2);
+    expect(playoffs[0].homeEntryId).toBeNull();
+
+    // quem já tem vaga direta não entra; escolhe 4 dos outros
+    const direct = new Set(
+      v.matches
+        .filter((m) => m.stage === "mata" && m.round === 1)
+        .flatMap((m) => [m.homeEntryId, m.awayEntryId])
+        .filter((x) => x != null),
+    );
+    expect(direct.size).toBe(2);
+    const others = v.entries.map((e) => e.id).filter((e) => !direct.has(e));
+    const [a, b, c, d] = others;
+    await setKnockoutSlots(db, id, [
+      { matchId: playoffs[0].id, side: "home", entryId: a },
+      { matchId: playoffs[0].id, side: "away", entryId: b },
+      { matchId: playoffs[1].id, side: "home", entryId: c },
+      { matchId: playoffs[1].id, side: "away", entryId: d },
+    ]);
+    // quem tem vaga direta não entra na repescagem
+    const [someDirect] = [...direct];
+    await expect(
+      setKnockoutSlots(db, id, [
+        { matchId: playoffs[0].id, side: "home", entryId: someDirect! },
+      ]),
+    ).rejects.toThrow(/vaga direta/);
+    // o mesmo jogador não pode estar nos dois jogos da repescagem
+    await expect(
+      setKnockoutSlots(db, id, [
+        { matchId: playoffs[1].id, side: "away", entryId: a },
+      ]),
+    ).rejects.toBeInstanceOf(UserError);
+
+    await saveMatchResult(db, playoffs[0].id, { homeScore: 0, awayScore: 2 }); // b vence
+    await saveMatchResult(db, playoffs[1].id, {
+      homeScore: 1,
+      awayScore: 1,
+      homePens: 5,
+      awayPens: 4,
+    }); // c vence
+    v = await view(id);
+    const semis = v.matches.filter((m) => m.stage === "mata" && m.round === 1);
+    const inSemis = new Set(
+      semis.flatMap((m) => [m.homeEntryId, m.awayEntryId]),
+    );
+    expect(inSemis.has(b)).toBe(true);
+    expect(inSemis.has(c)).toBe(true);
+    expect(inSemis.has(a)).toBe(false);
+
+    await playEverything(id);
+    v = await view(id);
+    expect(v.edition.status).toBe("encerrada");
+    expect(v.entries.filter((e) => e.result === "campeao")).toHaveLength(1);
+  });
+});

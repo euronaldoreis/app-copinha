@@ -68,6 +68,8 @@ export const editions = sqliteTable("editions", {
   /** No misto: adversários do outro grupo que cada um enfrenta (0 = todos). */
   crossGames: integer("cross_games").notNull().default(0),
   qualifiers: integer("qualifiers").notNull().default(0),
+  /** Vagas do mata-mata que saem de jogos de repescagem (0 = nenhuma). */
+  playoffs: integer("playoffs").notNull().default(0),
   thirdPlace: integer("third_place", { mode: "boolean" })
     .notNull()
     .default(false),

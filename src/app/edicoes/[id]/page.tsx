@@ -184,15 +184,16 @@ function Tournament({
   const tables = groupMatches.length ? standingsByGroup(entries, matches) : [];
   const entryById = new Map(entries.map((e) => [e.id, e]));
 
-  const full = tables.length
-    ? Math.floor(edition.qualifiers / tables.length)
-    : 0;
-  const extra = tables.length ? edition.qualifiers % tables.length : 0;
+  // Vagas diretas pela classificação; as da repescagem são decididas em jogo.
+  const direct = edition.qualifiers - edition.playoffs;
+  const full = tables.length ? Math.floor(direct / tables.length) : 0;
+  const extra = tables.length ? direct % tables.length : 0;
   const ordinal = ["", "primeiro", "segundo", "terceiro", "quarto", "quinto"];
   let rule = "";
   if (edition.qualifiers === 0) rule = "O líder é o campeão";
   else if (tables.length === 1)
-    rule = `Avançam os ${edition.qualifiers} primeiros`;
+    rule =
+      direct === 1 ? "Avança o primeiro" : `Avançam os ${direct} primeiros`;
   else {
     rule =
       full === 1
@@ -203,9 +204,14 @@ function Tournament({
         ordinal[full + 1] ?? `${full + 1}º`
       }${extra === 1 ? "" : "s"}`;
   }
+  if (edition.playoffs > 0)
+    rule += `, e ${edition.playoffs === 1 ? "1 vaga sai" : `${edition.playoffs} vagas saem`} da repescagem`;
 
-  // Mata-mata em ordem cronológica: fases, depois 3º lugar, depois a final.
+  // Mata-mata em ordem cronológica: repescagem, fases, 3º lugar e a final.
   const stages: { label: string; matches: Match[] }[] = [];
+  const playoffMatches = knockout.filter((m) => m.stage === "repescagem");
+  if (playoffMatches.length)
+    stages.push({ label: "Repescagem", matches: playoffMatches });
   for (let r = 1; r <= totalRounds; r++) {
     if (r === totalRounds) {
       const third = knockout.filter((m) => m.stage === "terceiro");
@@ -292,6 +298,29 @@ function Tournament({
           {stages.map((s) => (
             <div key={s.label} className="mt-5 first:mt-0">
               <SubHeading>{s.label}</SubHeading>
+              {s.label === "Repescagem" && (
+                <p className="mb-3 text-body text-muted">
+                  O vencedor de cada jogo ganha uma vaga no mata-mata.
+                  {s.matches.some(
+                    (m) => m.homeEntryId == null || m.awayEntryId == null,
+                  ) &&
+                    (admin ? (
+                      <>
+                        {" "}
+                        Escolha quem joga em{" "}
+                        <Link
+                          href={`/edicoes/${edition.id}/configuracoes`}
+                          className="font-black text-accent underline"
+                        >
+                          Configurações
+                        </Link>
+                        , em &quot;Confrontos do mata-mata&quot;.
+                      </>
+                    ) : (
+                      " Os confrontos são definidos pelo organizador."
+                    ))}
+                </p>
+              )}
               <MatchList
                 matches={s.matches}
                 view={view}
