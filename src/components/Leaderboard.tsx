@@ -3,16 +3,31 @@ import type { CSSProperties, ReactNode } from "react";
 import type { AvatarLook } from "@/lib/sprite";
 import { Avatar } from "./Avatar";
 
-/** Brasão com a posição: ouro, prata e bronze para os três primeiros. */
-export function RankBadge({ place }: { place: number }) {
+/**
+ * Brasão com a posição. "medal": ouro, prata e bronze para os três primeiros;
+ * "up": verde (ex.: quem avança no grupo); "plain": só o número.
+ */
+export type BadgeTone = "medal" | "up" | "plain";
+
+export function RankBadge({
+  place,
+  tone = "medal",
+}: {
+  place: number;
+  tone?: BadgeTone;
+}) {
   const medal =
-    place === 1
-      ? "lb-gold"
-      : place === 2
-        ? "lb-silver"
-        : place === 3
-          ? "lb-bronze"
-          : "";
+    tone === "up"
+      ? "lb-up"
+      : tone === "plain"
+        ? ""
+        : place === 1
+          ? "lb-gold"
+          : place === 2
+            ? "lb-silver"
+            : place === 3
+              ? "lb-bronze"
+              : "";
   return (
     <span className={`lb-badge ${medal}`} aria-label={`${place}º lugar`}>
       <span className="num">{place}</span>
@@ -58,8 +73,11 @@ export function LeaderRow({
   me = false,
   index,
   children,
+  badge = "medal",
 }: {
   place?: number;
+  /** Cor do brasão de posição. */
+  badge?: BadgeTone;
   href?: string;
   media: ReactNode;
   name: string;
@@ -75,7 +93,7 @@ export function LeaderRow({
 }) {
   const body = (
     <>
-      {place != null && <RankBadge place={place} />}
+      {place != null && <RankBadge place={place} tone={badge} />}
       {media}
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-2">
@@ -100,7 +118,12 @@ export function LeaderRow({
       )}
     </>
   );
-  const top = place != null && place <= 3 ? `lb-top lb-top-${place}` : "";
+  const top =
+    badge === "medal" && place != null && place <= 3
+      ? `lb-top lb-top-${place}`
+      : badge === "up"
+        ? "lb-row-up"
+        : "";
   const className = `lb-row ${top} ${me ? "lb-me" : ""}`;
   const style = { "--i": Math.min(index, 12) } as CSSProperties;
   if (children) {
