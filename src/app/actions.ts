@@ -40,6 +40,7 @@ function configFrom(fd: FormData): FormatConfig {
     crossGames: Number(fd.get("crossGames")) || 0,
     qualifiers: Number(fd.get("qualifiers")) || 0,
     thirdPlace: fd.get("thirdPlace") === "on",
+    playoffs: Number(fd.get("playoffs")) || 0,
   };
 }
 
@@ -337,6 +338,7 @@ export async function setKnockoutPhasesAction(
     svc.setKnockoutPhases(getDb(), id(fd, "editionId"), {
       qualifiers: Number(fd.get("qualifiers")),
       thirdPlace: fd.get("thirdPlace") === "on",
+      playoffs: Number(fd.get("playoffs")) || 0,
     }),
   );
 }

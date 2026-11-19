@@ -1,0 +1,1 @@
+ALTER TABLE `editions` ADD `playoffs` integer DEFAULT 0 NOT NULL;

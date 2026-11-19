@@ -92,6 +92,7 @@ export function sourceLabel(
     return format === "liga" ? `${b}º colocado` : `${b}º do Grupo ${a}`;
   }
   if (kind === "B") return `${b}º melhor ${a}º colocado`;
+  if (kind === "P") return `Vencedor da repescagem ${Number(a) + 1}`;
   const name = `${roundLabel(Number(a), totalRounds)} ${Number(b) + 1}`;
   return kind === "W" ? `Vencedor ${name}` : `Perdedor ${name}`;
 }

@@ -3,7 +3,8 @@
 // tanto no servidor quanto nos formulários.
 
 export type Format = "grupos" | "liga" | "mata" | "manual";
-export type Stage = "grupo" | "mata" | "terceiro";
+/** Fases dos jogos. "repescagem": jogo extra que vale uma vaga no mata-mata. */
+export type Stage = "grupo" | "repescagem" | "mata" | "terceiro";
 /**
  * Quem enfrenta quem na fase de grupos:
  * - interno: cada um joga contra os do próprio grupo;
@@ -42,6 +43,12 @@ export interface FormatConfig {
   /** Quantos avançam para o mata-mata (0 = campeão por pontos, só na liga). */
   qualifiers: number;
   thirdPlace: boolean;
+  /**
+   * Quantas das vagas do mata-mata saem da repescagem (0 = nenhuma). Cada vaga
+   * é um jogo extra cujo vencedor entra no mata-mata; os confrontos da
+   * repescagem são escolhidos pelo organizador.
+   */
+  playoffs?: number;
 }
 
 export interface EntryLike {
@@ -85,9 +92,13 @@ export function normalizeConfig(config: FormatConfig): FormatConfig {
     pairing === "misto" && Number.isInteger(config.crossGames)
       ? Math.max(0, config.crossGames)
       : 0;
+  const playoffs =
+    config.qualifiers >= 2 && Number.isInteger(config.playoffs)
+      ? Math.min(Math.max(0, config.playoffs!), config.qualifiers - 1)
+      : 0;
   switch (config.format) {
     case "grupos":
-      return { ...config, legs, pairing, crossGames };
+      return { ...config, legs, pairing, crossGames, playoffs };
     case "liga":
       return {
         ...config,
@@ -95,6 +106,7 @@ export function normalizeConfig(config: FormatConfig): FormatConfig {
         groupsCount: 1,
         pairing: "interno",
         crossGames: 0,
+        playoffs,
       };
     case "mata":
       return {
@@ -104,6 +116,7 @@ export function normalizeConfig(config: FormatConfig): FormatConfig {
         qualifiers: 0,
         pairing: "interno",
         crossGames: 0,
+        playoffs: 0,
       };
     default:
       return {
@@ -114,8 +127,26 @@ export function normalizeConfig(config: FormatConfig): FormatConfig {
         thirdPlace: false,
         pairing: "interno",
         crossGames: 0,
+        playoffs: 0,
       };
   }
+}
+
+/** Vagas diretas no mata-mata (as que não saem da repescagem). */
+export function directSpots(config: FormatConfig) {
+  return config.qualifiers - (config.playoffs ?? 0);
+}
+
+/** Mensagem de erro da repescagem para n participantes, ou null. */
+function playoffProblem(config: FormatConfig, n: number): string | null {
+  const p = config.playoffs ?? 0;
+  if (p === 0) return null;
+  const k = config.qualifiers;
+  if (p >= k) return "A repescagem precisa deixar pelo menos uma vaga direta.";
+  // Os diretos, mais dois jogadores por jogo de repescagem.
+  if (n < k + p)
+    return `Com ${p} ${p === 1 ? "vaga" : "vagas"} na repescagem são precisos pelo menos ${k + p} participantes.`;
+  return null;
 }
 
 /** Devolve uma mensagem de erro, ou null se a configuração serve para n participantes. */
@@ -132,7 +163,7 @@ export function validateConfig(raw: FormatConfig, n: number): string | null {
       return "O número de classificados precisa ser 2, 4, 8 ou 16.";
     if (k > n)
       return `Não dá para classificar ${k} com apenas ${n} participantes.`;
-    return null;
+    return playoffProblem(config, n);
   }
 
   const g = config.groupsCount;
@@ -158,9 +189,9 @@ export function validateConfig(raw: FormatConfig, n: number): string | null {
     return "O número de classificados não pode ser menor que o número de grupos.";
   if (k > n)
     return `Não dá para classificar ${k} com apenas ${n} participantes.`;
-  if (Math.floor(n / g) < Math.ceil(k / g))
+  if (Math.floor(n / g) < Math.ceil(directSpots(config) / g))
     return "Os grupos ficam pequenos demais para essa quantidade de classificados.";
-  return null;
+  return playoffProblem(config, n);
 }
 
 /**
@@ -196,10 +227,14 @@ export function validateGroupSizes(
   if (k < g)
     return "O número de classificados não pode ser menor que o número de grupos.";
   if (k > n) return `Não dá para classificar ${k} com apenas ${n} participantes.`;
+  const playoff = playoffProblem(config, n);
+  if (playoff) return playoff;
   // Cada grupo manda os `full` primeiros; as vagas que sobram vão para os
-  // melhores da posição seguinte, que precisam existir em algum grupo.
-  const full = Math.floor(k / g);
-  const extra = k % g;
+  // melhores da posição seguinte, que precisam existir em algum grupo. As
+  // vagas da repescagem não entram nessa conta.
+  const direct = directSpots(config);
+  const full = Math.floor(direct / g);
+  const extra = direct % g;
   if (Math.min(...sizes) < full)
     return "Algum grupo é pequeno demais para a quantidade de classificados.";
   if (sizes.filter((s) => s > full).length < extra)
@@ -432,12 +467,29 @@ export function planMatches(
     }
   }
   if (config.qualifiers >= 2) {
+    const playoffs = config.playoffs ?? 0;
+    // Jogos da repescagem: o organizador escolhe quem joga cada um.
+    for (let i = 0; i < playoffs; i++) {
+      out.push({
+        stage: "repescagem",
+        round: 1,
+        slot: i,
+        groupLabel: null,
+        homeEntryId: null,
+        awayEntryId: null,
+        homeSource: null,
+        awaySource: null,
+      });
+    }
+    // Os diretos são os cabeças de chave; os vencedores da repescagem ficam
+    // com as últimas vagas (enfrentam os melhores colocados).
+    const sources = [
+      ...groupSeedSources(directSpots(config), labels),
+      ...Array.from({ length: playoffs }, (_, i) => `P:${i}`),
+    ];
     out.push(
       ...planKnockout(
-        groupSeedSources(config.qualifiers, labels).map((source) => ({
-          entryId: null,
-          source,
-        })),
+        sources.map((source) => ({ entryId: null, source })),
         config.thirdPlace,
       ),
     );
@@ -690,18 +742,28 @@ export function resolveKnockout(entries: EntryLike[], matches: MatchLike[]) {
   const seeds = resolveGroupSeeds(entries, work);
   const knockout = work
     .filter((m) => m.stage !== "grupo")
-    .sort(
-      (a, b) =>
-        a.round - b.round ||
-        (a.stage === "mata" ? 0 : 1) - (b.stage === "mata" ? 0 : 1) ||
-        a.slot - b.slot,
-    );
+    .sort((a, b) => {
+      const order = (m: MatchLike) =>
+        m.stage === "repescagem" ? 0 : m.stage === "mata" ? 1 : 2;
+      return (
+        (a.stage === "repescagem" ? 0 : a.round) -
+          (b.stage === "repescagem" ? 0 : b.round) ||
+        order(a) - order(b) ||
+        a.slot - b.slot
+      );
+    });
   const find = (round: number, slot: number) =>
     work.find((m) => m.stage === "mata" && m.round === round && m.slot === slot);
 
   const resolve = (source: string): number | null => {
     const [kind, a, b] = source.split(":");
     if (kind === "G" || kind === "B") return seeds?.get(source) ?? null;
+    if (kind === "P") {
+      const playoff = work.find(
+        (m) => m.stage === "repescagem" && m.slot === Number(a),
+      );
+      return playoff ? matchWinner(playoff) : null;
+    }
     const ref = find(Number(a), Number(b));
     if (!ref) return null;
     return kind === "W" ? matchWinner(ref) : matchLoser(ref);

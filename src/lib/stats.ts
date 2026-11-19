@@ -476,7 +476,7 @@ function playedInOrder(data: AllData) {
   );
   const key = (m: Match) => [
     editionRank.get(m.editionId) ?? 0,
-    m.stage === "grupo" ? 0 : 1,
+    m.stage === "grupo" ? 0 : m.stage === "repescagem" ? 1 : 2,
     m.round,
     m.stage === "terceiro" ? 0 : 1,
     m.slot,

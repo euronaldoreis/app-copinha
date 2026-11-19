@@ -68,7 +68,8 @@ function Preview({ config, n }: { config: FormatConfig; n: number }) {
   }
   if (knockout) parts.push(`${plural(knockout, "jogo", "jogos")} de mata-mata`);
   const per = groupGamesPerEntry(config, n);
-  const phase = config.format === "liga" ? "nos pontos corridos" : "na fase de grupos";
+  const phase =
+    config.format === "liga" ? "nos pontos corridos" : "na fase de grupos";
   return (
     <p className="text-body text-muted">
       {plural(n, "participante", "participantes")}: {parts.join(", ")}.
@@ -105,6 +106,9 @@ export function FormatFields({
       if (next.groupsCount < 2) next.groupsCount = 2;
       if (next.qualifiers < 2) next.qualifiers = 4;
     }
+    // A repescagem sempre deixa pelo menos uma vaga direta.
+    const maxPlayoffs = next.qualifiers >= 2 ? next.qualifiers - 1 : 0;
+    if ((next.playoffs ?? 0) > maxPlayoffs) next.playoffs = maxPlayoffs;
     setConfig(next);
     onChange?.(next);
   };
@@ -128,8 +132,7 @@ export function FormatFields({
       )
     : [];
   const canHaveThird =
-    config.format === "mata" ||
-    (hasGroupStage && config.qualifiers >= 4);
+    config.format === "mata" || (hasGroupStage && config.qualifiers >= 4);
 
   return (
     <div className="flex flex-col gap-4">
@@ -171,7 +174,9 @@ export function FormatFields({
                 name="groupsCount"
                 className="field"
                 value={config.groupsCount}
-                onChange={(e) => update({ groupsCount: Number(e.target.value) })}
+                onChange={(e) =>
+                  update({ groupsCount: Number(e.target.value) })
+                }
               >
                 {[2, 3, 4, 5, 6, 8].map((g) => (
                   <option key={g} value={g}>
@@ -247,17 +252,42 @@ export function FormatFields({
                   <option value={0}>Campeão por pontos</option>
                 )}
                 <option value={2}>
-                  {config.format === "liga" ? "Final entre os 2 primeiros" : "2 (final)"}
+                  {config.format === "liga"
+                    ? "Final entre os 2 primeiros"
+                    : "2 (final)"}
                 </option>
                 <option value={4}>
-                  {config.format === "liga" ? "Semifinais com os 4 primeiros" : "4 (semifinais)"}
+                  {config.format === "liga"
+                    ? "Semifinais com os 4 primeiros"
+                    : "4 (semifinais)"}
                 </option>
                 <option value={8}>
-                  {config.format === "liga" ? "Quartas com os 8 primeiros" : "8 (quartas)"}
+                  {config.format === "liga"
+                    ? "Quartas com os 8 primeiros"
+                    : "8 (quartas)"}
                 </option>
                 {config.format === "grupos" && (
                   <option value={16}>16 (oitavas)</option>
                 )}
+              </select>
+            </label>
+          )}
+          {hasGroupStage && config.qualifiers >= 2 && (
+            <label>
+              <span className="label">Repescagem</span>
+              <select
+                name="playoffs"
+                className="field"
+                value={config.playoffs ?? 0}
+                onChange={(e) => update({ playoffs: Number(e.target.value) })}
+              >
+                {Array.from({ length: config.qualifiers }, (_, i) => (
+                  <option key={i} value={i}>
+                    {i === 0
+                      ? "Sem repescagem"
+                      : `${plural(i, "vaga", "vagas")} (${plural(i, "jogo", "jogos")})`}
+                  </option>
+                ))}
               </select>
             </label>
           )}
@@ -284,6 +314,21 @@ export function FormatFields({
           />
           Disputa de 3º lugar
         </label>
+      )}
+
+      {hasGroupStage && (config.playoffs ?? 0) > 0 && (
+        <p className="text-body text-muted">
+          {plural(
+            config.qualifiers - (config.playoffs ?? 0),
+            "vaga direta",
+            "vagas diretas",
+          )}{" "}
+          pela classificação e {plural(config.playoffs ?? 0, "vaga", "vagas")}{" "}
+          decidida
+          {(config.playoffs ?? 0) > 1 ? "s" : ""} em jogo de repescagem. Você
+          escolhe quem joga cada repescagem depois da fase de grupos, em
+          Configurações.
+        </p>
       )}
 
       <Preview config={config} n={participants} />

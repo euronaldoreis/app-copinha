@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { setKnockoutPhasesAction } from "@/app/actions";
 import { ActionForm, SubmitButton } from "./forms";
 
@@ -20,6 +23,7 @@ export function KnockoutPhases({
   thirdPlace,
   participants,
   groupsCount,
+  playoffs = 0,
 }: {
   editionId: number;
   format: string;
@@ -27,7 +31,15 @@ export function KnockoutPhases({
   thirdPlace: boolean;
   participants: number;
   groupsCount: number;
+  /** Vagas que saem da repescagem. */
+  playoffs?: number;
 }) {
+  const [k, setK] = useState(qualifiers);
+  const [p, setP] = useState(Math.min(playoffs, Math.max(0, qualifiers - 1)));
+  // Repescagem: sempre sobra uma vaga direta, e cada jogo precisa de 2 jogadores
+  // além dos diretos.
+  const maxPlayoffs =
+    k >= 2 ? Math.max(0, Math.min(k - 1, participants - k)) : 0;
   // Só mostra o que cabe: não dá para classificar mais gente do que há, nem
   // menos do que o número de grupos.
   const options = [0, 2, 4, 8, 16].filter(
@@ -37,7 +49,7 @@ export function KnockoutPhases({
 
   return (
     <ActionForm
-      key={`${qualifiers}:${thirdPlace}`}
+      key={`${qualifiers}:${thirdPlace}:${playoffs}`}
       action={setKnockoutPhasesAction}
       className="flex flex-col gap-4"
     >
@@ -53,7 +65,16 @@ export function KnockoutPhases({
         <span className="label">
           {format === "liga" ? "Decisão" : "Quantos avançam"}
         </span>
-        <select name="qualifiers" className="field" defaultValue={qualifiers}>
+        <select
+          name="qualifiers"
+          className="field"
+          value={k}
+          onChange={(e) => {
+            const next = Number(e.target.value);
+            setK(next);
+            setP((cur) => Math.min(cur, next >= 2 ? next - 1 : 0));
+          }}
+        >
           {options.map((k) => (
             <option key={k} value={k}>
               {k === 0 ? OPTION_LABELS[0] : `${k} · ${OPTION_LABELS[k]}`}
@@ -61,6 +82,25 @@ export function KnockoutPhases({
           ))}
         </select>
       </label>
+      {k >= 2 && (
+        <label>
+          <span className="label">Repescagem</span>
+          <select
+            name="playoffs"
+            className="field"
+            value={p}
+            onChange={(e) => setP(Number(e.target.value))}
+          >
+            {Array.from({ length: maxPlayoffs + 1 }, (_, i) => (
+              <option key={i} value={i}>
+                {i === 0
+                  ? "Sem repescagem"
+                  : `${i} ${i === 1 ? "vaga" : "vagas"} (${i} ${i === 1 ? "jogo" : "jogos"})`}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
       <label className="flex items-center gap-2.5 text-body">
         <input
           type="checkbox"

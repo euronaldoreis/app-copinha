@@ -138,6 +138,7 @@ export default async function EditionSettingsPage(
               format={format}
               qualifiers={edition.qualifiers}
               thirdPlace={edition.thirdPlace}
+              playoffs={edition.playoffs}
               participants={entries.length}
               groupsCount={format === "grupos" ? edition.groupsCount : 1}
             />
@@ -149,7 +150,9 @@ export default async function EditionSettingsPage(
             <KnockoutEditor
               editionId={edition.id}
               totalRounds={knockoutRounds(matches)}
-              matches={matches.filter((m) => m.stage === "mata")}
+              matches={matches.filter(
+                (m) => m.stage === "mata" || m.stage === "repescagem",
+              )}
               entries={entries.map((e) => ({
                 id: e.id,
                 name: e.player.name,

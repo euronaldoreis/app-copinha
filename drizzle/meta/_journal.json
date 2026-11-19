@@ -57,6 +57,13 @@
       "when": 1795029858273,
       "tag": "0007_acesso_jogador",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1795062249990,
+      "tag": "0008_repescagem",
+      "breakpoints": true
     }
   ]
 }
