@@ -1,3 +1,4 @@
+import { todayISO } from "@/lib/labels";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { NewEditionForm } from "@/components/NewEditionForm";
@@ -36,7 +37,12 @@ export default async function NewEditionPage() {
         title="Nova edição"
         subtitle="Dá para ajustar participantes, times e formato depois, até gerar a tabela."
       />
-      <NewEditionForm players={ordered} nextNumber={nextNumber} games={games} />
+      <NewEditionForm
+        players={ordered}
+        nextNumber={nextNumber}
+        games={games}
+        today={todayISO()}
+      />
     </>
   );
 }

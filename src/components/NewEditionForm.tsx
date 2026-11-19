@@ -15,15 +15,18 @@ export function NewEditionForm({
   players,
   nextNumber,
   games,
+  today,
 }: {
   players: Player[];
   nextNumber: number;
   games: string[];
+  /** Data de hoje (AAAA-MM-DD), que já vem preenchida. */
+  today: string;
 }) {
   const [number, setNumber] = useState(nextNumber);
   const [name, setName] = useState(`Copinha dos Lixos #${nextNumber}`);
   const [game, setGame] = useState(games[0] ?? "");
-  const [playedOn, setPlayedOn] = useState("");
+  const [playedOn, setPlayedOn] = useState(today);
   const [config, setConfig] = useState(DEFAULT_CONFIG);
   const [selected, setSelected] = useState<number[]>([]);
   const [newPlayers, setNewPlayers] = useState("");

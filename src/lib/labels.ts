@@ -80,6 +80,16 @@ export function roundLabel(round: number, totalRounds: number) {
   return `Fase de ${size}`;
 }
 
+/** Data de hoje (AAAA-MM-DD) no fuso da Copinha, Manaus. */
+export function todayISO(now = new Date()) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Manaus",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(now);
+}
+
 /** Texto para uma vaga do mata-mata que ainda não tem dono. */
 export function sourceLabel(
   source: string | null,
