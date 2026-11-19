@@ -90,14 +90,20 @@ export function recordItems(r: Records): RecordItem[] {
       tagline: "Levantaram a taça sem perder um jogo",
       layout: {
         type: "list",
-        people: list.slice(0, 5).map((c) => ({
+        // Todos os campeões invictos, do mais recente ao mais antigo.
+        people: list.map((c) => ({
           person: person(c.player),
           text: `${c.edition.name} · ${c.wins}V ${c.draws}E`,
         })),
-        more: Math.max(0, list.length - 5),
+        more: 0,
       },
       detail: plural(list.length, "taça invicta", "taças invictas"),
-      share: `Campeão invicto da Copinha dos Lixos: ${list[0].player.name} (${list[0].edition.name}). Sem perder um jogo!`,
+      share:
+        list.length === 1
+          ? `Campeão invicto da Copinha dos Lixos: ${list[0].player.name} (${list[0].edition.name}). Sem perder um jogo!`
+          : `Campeões invictos da Copinha dos Lixos: ${list
+              .map((c) => `${c.player.name} (${c.edition.name})`)
+              .join(", ")}. Sem perder um jogo!`,
     });
   }
   if (r.mostGoals) {
