@@ -2,99 +2,130 @@ import type { CSSProperties } from "react";
 import Link from "next/link";
 import type { EntryView } from "@/lib/services";
 import type { StandingRow } from "@/lib/tournament";
+import { Avatar } from "./Avatar";
 
-const th = "px-1.5 pb-2 text-right font-normal";
-const td = "num px-1.5 text-right";
 const wide = "hidden sm:table-cell";
+const signed = (n: number) => (n > 0 ? `+${n}` : String(n));
 
-/** Classificação de um grupo. No celular ficam só pontos, jogos e saldo. */
+/**
+ * Classificação de um grupo, no estilo de placar de jogo: faixa com o nome
+ * do grupo e a regra, e uma linha por jogador com a posição em círculo
+ * (verde para quem avança). No celular ficam só pontos, jogos e saldo.
+ */
 export function StandingsTable({
   rows,
   entries,
   qualifying,
+  title,
+  note,
 }: {
   rows: StandingRow[];
   entries: Map<number, EntryView>;
-  /** Quantos primeiros colocados têm vaga direta (ganham o ponto de destaque). */
+  /** Quantos primeiros colocados avançam (círculo verde). */
   qualifying: number;
+  /** Nome na faixa de cima (ex.: "Grupo A"). */
+  title: string;
+  /** Regra na faixa de cima, em dourado (ex.: "Os 2 primeiros avançam"). */
+  note?: string;
 }) {
   return (
-    <table className="w-full text-body">
-      <thead className="text-muted">
-        <tr>
-          <th className="w-14 pb-2 text-left font-normal">
-            <span className="sr-only">Posição</span>
-          </th>
-          <th className="pb-2 text-left font-normal">Jogador</th>
-          <th className={th} title="Pontos">
-            P
-          </th>
-          <th className={th} title="Jogos">
-            J
-          </th>
-          <th className={`${th} ${wide}`} title="Vitórias">
-            V
-          </th>
-          <th className={`${th} ${wide}`} title="Empates">
-            E
-          </th>
-          <th className={`${th} ${wide}`} title="Derrotas">
-            D
-          </th>
-          <th className={`${th} ${wide}`} title="Gols pró">
-            GP
-          </th>
-          <th className={`${th} ${wide}`} title="Gols contra">
-            GC
-          </th>
-          <th className={th} title="Saldo de gols">
-            SG
-          </th>
-        </tr>
-      </thead>
-      <tbody>
-        {rows.map((row, i) => {
-          const entry = entries.get(row.entryId);
-          if (!entry) return null;
-          return (
-            <tr
-              key={row.entryId}
-              className="anim-row h-[52px]"
-              style={{ "--i": Math.min(i, 12) } as CSSProperties}
-            >
-              <td className="num pl-4 pr-3 text-muted">
-                <span className="flex items-center gap-1.5">
-                  {i + 1}
-                  {i < qualifying && (
-                    <span
-                      className="size-1.5 bg-accent"
-                      title="Zona de classificação"
-                    />
-                  )}
-                </span>
-              </td>
-              <td className="max-w-0 w-full">
-                <Link href={`/jogadores/${entry.playerId}`} className="block">
-                  <span className="block truncate text-name font-semibold">
-                    {entry.player.name}
+    <section className="group-card" aria-label={title}>
+      <header className="group-card-head">
+        <h3 className="font-pixel text-[20px] uppercase leading-none">
+          {title}
+        </h3>
+        {note && (
+          <span className="text-right text-[12px] font-black uppercase tracking-wider text-accent">
+            {note}
+          </span>
+        )}
+      </header>
+      <table className="group-table w-full text-body">
+        <thead>
+          <tr>
+            <th className="w-12 text-center" title="Posição">
+              #
+            </th>
+            <th className="text-left">Jogador</th>
+            <th title="Pontos">P</th>
+            <th title="Jogos">J</th>
+            <th className={wide} title="Vitórias">
+              V
+            </th>
+            <th className={wide} title="Empates">
+              E
+            </th>
+            <th className={wide} title="Derrotas">
+              D
+            </th>
+            <th className={wide} title="Gols pró">
+              GP
+            </th>
+            <th className={wide} title="Gols contra">
+              GC
+            </th>
+            <th title="Saldo de gols">SG</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((row, i) => {
+            const entry = entries.get(row.entryId);
+            if (!entry) return null;
+            const up = i < qualifying;
+            return (
+              <tr
+                key={row.entryId}
+                className="anim-row"
+                style={{ "--i": Math.min(i, 12) } as CSSProperties}
+              >
+                <td className="text-center">
+                  <span
+                    className={`group-pos ${up ? "group-pos-up" : ""}`}
+                    title={up ? "Zona de classificação" : undefined}
+                  >
+                    {i + 1}
                   </span>
-                  <span className="block truncate text-muted">
-                    {entry.team?.name}
-                  </span>
-                </Link>
-              </td>
-              <td className={`${td} text-name font-semibold`}>{row.points}</td>
-              <td className={td}>{row.played}</td>
-              <td className={`${td} ${wide}`}>{row.wins}</td>
-              <td className={`${td} ${wide}`}>{row.draws}</td>
-              <td className={`${td} ${wide}`}>{row.losses}</td>
-              <td className={`${td} ${wide}`}>{row.gf}</td>
-              <td className={`${td} ${wide}`}>{row.ga}</td>
-              <td className={td}>{row.gd > 0 ? `+${row.gd}` : row.gd}</td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+                </td>
+                <td className="w-full max-w-0">
+                  <Link
+                    href={`/jogadores/${entry.playerId}`}
+                    className="flex items-center gap-2.5"
+                  >
+                    <span className="group-avatar">
+                      <Avatar
+                        name={entry.player.name}
+                        photoUrl={entry.player.photoUrl}
+                        avatar={entry.player.avatar}
+                        size={34}
+                      />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block truncate text-name font-black leading-tight">
+                        {entry.player.name}
+                      </span>
+                      {entry.team && (
+                        <span className="block truncate text-[13px] text-muted">
+                          {entry.team.name}
+                        </span>
+                      )}
+                    </span>
+                  </Link>
+                </td>
+                <td className="num font-pixel !text-[20px] text-white">
+                  {row.points}
+                </td>
+                <td className="num">{row.played}</td>
+                <td className={`num ${wide}`}>{row.wins}</td>
+                <td className={`num ${wide}`}>{row.draws}</td>
+                <td className={`num ${wide}`}>{row.losses}</td>
+                <td className={`num ${wide}`}>{row.gf}</td>
+                <td className={`num ${wide}`}>{row.ga}</td>
+                <td className="num font-black">{signed(row.gd)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </section>
   );
 }
