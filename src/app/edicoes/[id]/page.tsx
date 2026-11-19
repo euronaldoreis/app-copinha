@@ -167,7 +167,16 @@ function SubHeading({ children }: { children: React.ReactNode }) {
   return <h3 className="mb-2 text-body text-muted">{children}</h3>;
 }
 
-function Tournament({ view, admin }: { view: EditionView; admin: boolean }) {
+function Tournament({
+  view,
+  admin,
+  tiers,
+}: {
+  view: EditionView;
+  admin: boolean;
+  /** Categoria de cada jogador (moldura do retrato). */
+  tiers: Map<number, string>;
+}) {
   const { edition, entries, matches } = view;
   const totalRounds = knockoutRounds(matches);
   const groupMatches = matches.filter((m) => m.stage === "grupo");
@@ -264,6 +273,7 @@ function Tournament({ view, admin }: { view: EditionView; admin: boolean }) {
                 rows={t.rows}
                 entries={entryById}
                 qualifying={edition.qualifiers === 0 ? 1 : full}
+                tiers={tiers}
               />
             ))}
           </div>
@@ -514,7 +524,9 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
 
       <Podium view={view} />
 
-      {!manual && !setup && <Tournament view={view} admin={admin} />}
+      {!manual && !setup && (
+        <Tournament view={view} admin={admin} tiers={tiers} />
+      )}
 
       {(manual || setup) && (
         <Section
