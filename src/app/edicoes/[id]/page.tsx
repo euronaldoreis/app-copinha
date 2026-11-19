@@ -234,6 +234,17 @@ function Tournament({ view, admin }: { view: EditionView; admin: boolean }) {
       : `Grupo ${m.groupLabel}`;
   const stageLabel = (label: string) => () => label;
 
+  // Regra curta na faixa de cada grupo.
+  const advancing = edition.qualifiers === 0 ? 1 : full;
+  const groupNote =
+    edition.qualifiers === 0
+      ? "O líder é campeão"
+      : advancing === 1
+        ? "O 1º avança"
+        : advancing > 1
+          ? `Os ${advancing} primeiros avançam`
+          : undefined;
+
   const tabs: TabItem[] = [];
 
   if (tables.length > 0) {
@@ -246,18 +257,14 @@ function Tournament({ view, admin }: { view: EditionView; admin: boolean }) {
           <p className="mb-4 text-body text-muted">{rule}</p>
           <div className="grid grid-cols-1 gap-4">
             {tables.map((t) => (
-              <div key={t.label} className="card px-5 pb-2 pt-4">
-                {tables.length > 1 && (
-                  <h3 className="mb-2 text-name font-semibold">
-                    Grupo {t.label}
-                  </h3>
-                )}
-                <StandingsTable
-                  rows={t.rows}
-                  entries={entryById}
-                  qualifying={edition.qualifiers === 0 ? 1 : full}
-                />
-              </div>
+              <StandingsTable
+                key={t.label}
+                title={tables.length > 1 ? `Grupo ${t.label}` : "Classificação"}
+                note={groupNote}
+                rows={t.rows}
+                entries={entryById}
+                qualifying={edition.qualifiers === 0 ? 1 : full}
+              />
             ))}
           </div>
         </>
