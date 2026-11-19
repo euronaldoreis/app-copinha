@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { ChampionPanel } from "@/components/ChampionPanel";
 import { PlusIcon } from "@/components/icons";
 import { Empty, PageTitle } from "@/components/ui";
@@ -35,7 +36,7 @@ export default async function EditionsPage() {
         </Empty>
       ) : (
         <div className="flex flex-col gap-4">
-          {views.map(({ edition, entries, matches }) => {
+          {views.map(({ edition, entries, matches }, index) => {
             const champion = entries.find((e) => e.result === "campeao");
             const vice = entries.find((e) => e.result === "vice");
             const open = edition.status !== "encerrada";
@@ -53,7 +54,8 @@ export default async function EditionsPage() {
               <Link
                 key={edition.id}
                 href={`/edicoes/${edition.id}`}
-                className="card flex flex-col gap-3 p-3.5"
+                style={{ "--i": Math.min(index, 10) } as CSSProperties}
+                className="anim-pop card flex flex-col gap-3 p-3.5"
               >
                 {/* Título: número da edição e nome. */}
                 <span className="flex items-center gap-2.5">
@@ -88,7 +90,9 @@ export default async function EditionsPage() {
                       </>
                     ) : (
                       <span className="text-body text-muted">
-                        {open ? "Os jogos ainda não começaram." : "Campeão não informado."}
+                        {open
+                          ? "Os jogos ainda não começaram."
+                          : "Campeão não informado."}
                       </span>
                     )}
                   </span>
@@ -97,17 +101,19 @@ export default async function EditionsPage() {
                 {/* Situação e detalhes em etiquetas, que quebram de linha em telas estreitas. */}
                 <span className="flex flex-wrap items-center gap-1.5">
                   <span className="tag">
-                    {open && <span className="blink size-2 rounded-full bg-[#5bd94f]" />}
+                    {open && (
+                      <span className="blink size-2 rounded-full bg-[#5bd94f]" />
+                    )}
                     {STATUS_LABELS[edition.status]}
                   </span>
-                    {meta.map((m) => (
-                      <span
-                        key={m}
-                        className="rounded-full bg-night/50 px-2.5 py-1 text-[12px] font-black text-muted"
-                      >
-                        {m}
-                      </span>
-                    ))}
+                  {meta.map((m) => (
+                    <span
+                      key={m}
+                      className="rounded-full bg-night/50 px-2.5 py-1 text-[12px] font-black text-muted"
+                    >
+                      {m}
+                    </span>
+                  ))}
                 </span>
               </Link>
             );

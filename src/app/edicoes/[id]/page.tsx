@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -68,7 +69,7 @@ function Podium({ view }: { view: EditionView }) {
   if (!champion) return null;
   const third = by("terceiro");
   return (
-    <div className="card flex flex-col gap-2 p-3.5">
+    <div className="anim-pop card flex flex-col gap-2 p-3.5">
       <Link
         href={`/jogadores/${champion.playerId}`}
         aria-label={`Campeão: ${champion.player.name}`}
@@ -127,31 +128,36 @@ function MatchList({
   };
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-      {matches.map((m) => (
-        <MatchCard
+      {matches.map((m, i) => (
+        <div
           key={m.id}
-          matchId={m.id}
-          number={numbers.get(m.id) ?? 0}
-          label={label(m)}
-          knockout={m.stage !== "grupo"}
-          home={side(m.homeEntryId)}
-          away={side(m.awayEntryId)}
-          homePlaceholder={sourceLabel(
-            m.homeSource,
-            view.edition.format,
-            totalRounds,
-          )}
-          awayPlaceholder={sourceLabel(
-            m.awaySource,
-            view.edition.format,
-            totalRounds,
-          )}
-          homeScore={m.homeScore}
-          awayScore={m.awayScore}
-          homePens={m.homePens}
-          awayPens={m.awayPens}
-          admin={admin}
-        />
+          className="anim-pop"
+          style={{ "--i": Math.min(i, 10) } as CSSProperties}
+        >
+          <MatchCard
+            matchId={m.id}
+            number={numbers.get(m.id) ?? 0}
+            label={label(m)}
+            knockout={m.stage !== "grupo"}
+            home={side(m.homeEntryId)}
+            away={side(m.awayEntryId)}
+            homePlaceholder={sourceLabel(
+              m.homeSource,
+              view.edition.format,
+              totalRounds,
+            )}
+            awayPlaceholder={sourceLabel(
+              m.awaySource,
+              view.edition.format,
+              totalRounds,
+            )}
+            homeScore={m.homeScore}
+            awayScore={m.awayScore}
+            homePens={m.homePens}
+            awayPens={m.awayPens}
+            admin={admin}
+          />
+        </div>
       ))}
     </div>
   );
@@ -505,6 +511,7 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
 
       {(manual || setup) && (
         <Section
+          reveal
           title="Participantes"
           aside={
             entries.length
@@ -524,7 +531,7 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
       )}
 
       {admin && setup && (
-        <Section title="Sorteio e início">
+        <Section reveal title="Sorteio e início">
           <div className="card flex flex-col gap-4 p-5">
             <p className="text-body text-muted">
               {edition.useTeams ? (

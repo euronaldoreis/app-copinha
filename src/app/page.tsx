@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { Arcade } from "@/components/Arcade";
 import { Avatar } from "@/components/Avatar";
 import { ChevronIcon, SwordsIcon } from "@/components/icons";
@@ -32,7 +33,7 @@ function LiveEdition({ view }: { view: EditionView }) {
     : 0;
 
   return (
-    <section className="card flex flex-col gap-3 p-4">
+    <section className="anim-pop card flex flex-col gap-3 p-4">
       <div className="flex items-center justify-between gap-2">
         <span className="tag">
           <span className="blink size-2 rounded-full bg-[#5bd94f]" />
@@ -51,7 +52,7 @@ function LiveEdition({ view }: { view: EditionView }) {
           {[home, away].map((e, i) => (
             <span
               key={e.id}
-              className={`relative flex w-24 flex-col items-center gap-1 ${i === 1 ? "order-3" : ""}`}
+              className={`relative flex w-24 flex-col items-center gap-1 ${i === 1 ? "slide-from-right order-3" : "slide-from-left"}`}
             >
               <Avatar
                 name={e.player.name}
@@ -68,7 +69,9 @@ function LiveEdition({ view }: { view: EditionView }) {
             <span className="whitespace-nowrap rounded-full bg-night px-2 py-0.5 text-[11px] font-black uppercase tracking-wider">
               Próximo jogo
             </span>
-            <span className="text-title !text-[34px] text-accent">VS</span>
+            <span className="vs-pulse text-title !text-[34px] text-accent">
+              VS
+            </span>
           </span>
         </div>
       )}
@@ -180,14 +183,15 @@ export default async function HomePage() {
       {open && <LiveEdition view={open} />}
 
       {champions.length > 0 && (
-        <Section title="Campeões">
+        <Section title="Campeões" reveal>
           {/* Faixa de cartas: do campeão mais recente para o mais antigo. */}
           <div className="-mx-4 flex gap-3 overflow-x-auto px-4 pb-3 pt-1 [scrollbar-width:none]">
-            {champions.map(({ edition, entry }) => (
+            {champions.map(({ edition, entry }, i) => (
               <Link
                 key={edition.id}
                 href={`/edicoes/${edition.id}`}
-                className={`player-card tier-${tierById.get(entry.playerId) ?? "campeao"} w-[88px] shrink-0 !gap-1 !px-1.5`}
+                style={{ "--i": Math.min(i, 8) } as CSSProperties}
+                className={`player-card tier-${tierById.get(entry.playerId) ?? "campeao"} ${i === 0 ? "champ-latest" : "anim-pop"} w-[88px] shrink-0 !gap-1 !px-1.5`}
               >
                 <Avatar
                   name={entry.player.name}
@@ -208,13 +212,14 @@ export default async function HomePage() {
       )}
 
       {records.length > 0 && (
-        <Section title="Resenha">
+        <Section title="Resenha" reveal>
           <RecordsTeaser items={records} />
         </Section>
       )}
 
       {ranking.length > 0 && (
         <Section
+          reveal
           title="Ranking"
           aside={
             <Link href="/ranking" className="flex items-center gap-0.5">

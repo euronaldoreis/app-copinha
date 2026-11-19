@@ -47,13 +47,16 @@ export function Section({
   title,
   aside,
   children,
+  reveal = false,
 }: {
   title: string;
   aside?: ReactNode;
   children: ReactNode;
+  /** Aparece com animação ao entrar na tela. */
+  reveal?: boolean;
 }) {
   return (
-    <section className="mt-8">
+    <section className={reveal ? "anim-reveal mt-8" : "mt-8"}>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
         <h2 className="heading" aria-label={title}>
           <Arcade>{title}</Arcade>
