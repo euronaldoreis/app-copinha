@@ -74,7 +74,10 @@ export function LeaderRow({
   index,
   children,
   badge = "medal",
+  onSelect,
 }: {
+  /** Em vez de link, o card vira um botão (ex.: abrir os números num modal). */
+  onSelect?: () => void;
   place?: number;
   /** Cor do brasão de posição. */
   badge?: BadgeTone;
@@ -138,6 +141,13 @@ export function LeaderRow({
         )}
         <div className="lb-row-extra">{children}</div>
       </div>
+    );
+  }
+  if (onSelect) {
+    return (
+      <button type="button" onClick={onSelect} className={`${className} lb-row-button`} style={style}>
+        {body}
+      </button>
     );
   }
   return href ? (
