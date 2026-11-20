@@ -29,6 +29,7 @@ import {
   createEdition,
   createPlayer,
   deletePlayer,
+  drawReplay,
   drawTeams,
   editionView,
   loadAll,
@@ -295,6 +296,9 @@ describe("histórico e ranking", () => {
     expect(draw.filter((d) => d.champion).map((d) => d.playerName)).toEqual([
       "Ronaldo",
     ]);
+    // Rever o sorteio depois: mesma ordem, grupos e campeão.
+    expect(drawReplay(await loadAll(db), edition.id)).toEqual(draw);
+    expect(drawReplay(await loadAll(db), 999)).toBeNull();
     let v = await view(edition.id);
     const groupGames = v.matches.filter((m) => m.stage === "grupo");
     // 12 jogos dentro dos grupos + 2 contra o outro grupo para cada um dos 8

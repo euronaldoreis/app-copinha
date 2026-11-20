@@ -9,7 +9,7 @@ import {
 } from "@/components/ChampionParty";
 import { DrawPanel } from "@/components/DrawPanel";
 import { EntryControls } from "@/components/EntryControls";
-import { StartPanel } from "@/components/GroupDraw";
+import { DrawReplayButton, StartPanel } from "@/components/GroupDraw";
 import { Tabs, type TabItem } from "@/components/Tabs";
 import { MatchCard, type MatchSide } from "@/components/MatchCard";
 import { StandingsTable } from "@/components/StandingsTable";
@@ -39,7 +39,13 @@ import {
   sourceLabel,
 } from "@/lib/labels";
 import { ChampionPanel } from "@/components/ChampionPanel";
-import { configOf, editionView, type EditionView } from "@/lib/services";
+import {
+  configOf,
+  drawReplay,
+  editionView,
+  type EditionView,
+  type GroupDrawItem,
+} from "@/lib/services";
 import {
   knockoutRounds,
   standingsByGroup,
@@ -167,7 +173,16 @@ function SubHeading({ children }: { children: React.ReactNode }) {
   return <h3 className="mb-2 text-body text-muted">{children}</h3>;
 }
 
-function Tournament({ view, admin }: { view: EditionView; admin: boolean }) {
+function Tournament({
+  view,
+  admin,
+  replay,
+}: {
+  view: EditionView;
+  admin: boolean;
+  /** Sorteio dos grupos, para rever a animação (null = não há). */
+  replay: GroupDrawItem[] | null;
+}) {
   const { edition, entries, matches } = view;
   const totalRounds = knockoutRounds(matches);
   const groupMatches = matches.filter((m) => m.stage === "grupo");
@@ -260,7 +275,10 @@ function Tournament({ view, admin }: { view: EditionView; admin: boolean }) {
       icon: <PeopleIcon width={18} height={18} />,
       content: (
         <>
-          <p className="mb-4 text-body text-muted">{rule}</p>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+            <p className="text-body text-muted">{rule}</p>
+            {replay && <DrawReplayButton items={replay} />}
+          </div>
           <div className="grid grid-cols-1 gap-4">
             {tables.map((t) => (
               <StandingsTable
@@ -543,7 +561,9 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
 
       <Podium view={view} />
 
-      {!manual && !setup && <Tournament view={view} admin={admin} />}
+      {!manual && !setup && (
+        <Tournament view={view} admin={admin} replay={drawReplay(data, edition.id)} />
+      )}
 
       {(manual || setup) && (
         <Section

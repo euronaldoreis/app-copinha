@@ -132,10 +132,12 @@ function GroupDrawOverlay({
   draw,
   closing,
   onClose,
+  closeLabel = "Ver tabela de jogos",
 }: {
   draw: GroupDrawItem[];
   closing: boolean;
   onClose: () => void;
+  closeLabel?: string;
 }) {
   // `placed`: quantos já foram sorteados por completo. O da vez entra em campo
   // assim que o grupo dele aparece no placar (fase "show").
@@ -284,7 +286,7 @@ function GroupDrawOverlay({
               disabled={closing}
               autoFocus
             >
-              {closing ? "Abrindo..." : "Ver tabela de jogos"}
+              {closing ? "Abrindo..." : closeLabel}
             </button>
           ) : (
             <button
@@ -405,6 +407,46 @@ export function StartPanel({
             closing={pending}
             onClose={close}
             onFail={() => setFlat(true)}
+          />
+        ))}
+    </>
+  );
+}
+
+/**
+ * Mostra de novo o sorteio dos grupos de uma edição já começada, na ordem em
+ * que os participantes foram sorteados. Não muda nada na edição.
+ */
+export function DrawReplayButton({ items }: { items: GroupDrawItem[] }) {
+  const [open, setOpen] = useState(false);
+  const [flat, setFlat] = useState(false);
+  const close = () => {
+    if (document.fullscreenElement) void document.exitFullscreen();
+    setOpen(false);
+  };
+  return (
+    <>
+      <button
+        type="button"
+        className="btn btn-quiet"
+        onClick={() => {
+          setFlat(!supportsWebGL());
+          setOpen(true);
+        }}
+      >
+        <ExpandIcon />
+        Rever sorteio
+      </button>
+      {open &&
+        (flat ? (
+          <GroupDrawOverlay draw={items} closing={false} onClose={close} closeLabel="Fechar" />
+        ) : (
+          <GroupDraw3D
+            draw={items}
+            closing={false}
+            onClose={close}
+            onFail={() => setFlat(true)}
+            closeLabel="Fechar"
           />
         ))}
     </>
