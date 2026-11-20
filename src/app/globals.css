@@ -2085,7 +2085,15 @@ fieldset label:has(input[type="radio"]:checked) {
     animation-delay: calc(var(--i, 0) * 45ms);
     transition: transform 120ms;
   }
-  a.lb-row:active {
+  .lb-row-button {
+    width: 100%;
+    text-align: left;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+  a.lb-row:active,
+  .lb-row-button:active {
     transform: translateY(2px);
     box-shadow: 0 1px 0 var(--color-night);
   }
@@ -2672,3 +2680,59 @@ label:has(> input[type="date"]) {
   .draw3d .d3-done b { font-size: 20px; }
   .draw3d .d3-btn { padding: 0 11px; font-size: 12px; }
 }
+
+/* Modal com os números do jogador no ranking (src/components/RankingList.tsx). */
+.rk-window {
+  max-width: 420px;
+  max-height: calc(100dvh - 48px);
+  overflow-y: auto;
+  padding-top: 34px;
+}
+.rk-go {
+  font-family: var(--font-pixel);
+  font-size: 28px;
+  color: #ffc83d;
+  padding: 0 4px;
+}
+.rk-title {
+  margin: 16px 2px 8px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #dbe7ff;
+}
+.rk-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.rk-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 4px 7px;
+  border: 2px solid #3d6bd0;
+  border-radius: 12px;
+  background: rgb(10 26 82 / 0.55);
+  box-shadow: 0 2px 0 var(--color-night);
+}
+.rk-stat-value {
+  font-family: var(--font-pixel);
+  font-size: 26px;
+  line-height: 1;
+  color: #ffffff;
+  text-shadow: -2px 0 var(--color-night), 2px 0 var(--color-night), 0 -2px var(--color-night), 0 2px var(--color-night);
+}
+.rk-stat-label {
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #dbe7ff;
+  white-space: nowrap;
+}
+.rk-gold .rk-stat-value { color: #ffc83d; }
+.rk-good .rk-stat-value { color: #7cf06a; }
+.rk-bad .rk-stat-value { color: #ff8a7a; }
