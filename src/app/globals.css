@@ -2705,7 +2705,12 @@ label:has(> input[type="date"]) {
   box-shadow: 0 3px 0 var(--color-night);
 }
 .st-switch button {
-  padding: 6px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 40px;
+  min-height: 34px;
+  padding: 6px 10px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 900;

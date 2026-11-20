@@ -276,11 +276,9 @@ function Tournament({
       icon: <PeopleIcon width={18} height={18} />,
       content: (
         <>
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <p className="text-body text-muted">{rule}</p>
-            {replay && <DrawReplayButton items={replay} />}
-          </div>
-          <StandingsToggle>
+          <StandingsToggle
+            aside={replay && <DrawReplayButton items={replay} />}
+          >
             <div className="grid grid-cols-1 gap-4">
               {tables.map((t) => (
                 <StandingsTable
@@ -294,6 +292,9 @@ function Tournament({
                   qualifying={edition.qualifiers === 0 ? 1 : full}
                 />
               ))}
+            </div>
+            <div className="mb-4 mt-4 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-body text-muted">{rule}</p>
             </div>
           </StandingsToggle>
         </>
