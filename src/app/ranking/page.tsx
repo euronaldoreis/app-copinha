@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ComponentType, ReactNode, SVGProps } from "react";
-import { LeaderRow, PlayerMedia } from "@/components/Leaderboard";
+import { LeaderRow } from "@/components/Leaderboard";
 import { TeamShield } from "@/components/TeamShield";
 import {
   BallIcon,
@@ -30,6 +30,7 @@ import {
   computeTeamRanking,
   type PlayerStats,
 } from "@/lib/stats";
+import { RankingList } from "@/components/RankingList";
 import { RecordsBoard } from "@/components/RecordsBoard";
 import { recordItems } from "@/lib/recordItems";
 
@@ -152,32 +153,41 @@ export default async function RankingPage(props: PageProps<"/ranking">) {
       content = rows.length ? (
         <>
           {top.length > 0 && <RankPodium key={filter.id} top={top} />}
-          <div key={`lista-${filter.id}`} className="lb-list">
-            {rows.map((r, i) => {
+          <RankingList
+            key={`lista-${filter.id}`}
+            rows={rows.map((r) => {
               const v = filter.value(r);
-              return (
-                <LeaderRow
-                  key={r.player.id}
-                  index={i}
-                  place={i + 1}
-                  href={`/jogadores/${r.player.id}`}
-                  me={myId === r.player.id}
-                  media={
-                    <PlayerMedia
-                      name={r.player.name}
-                      photoUrl={r.player.photoUrl}
-                      avatar={r.player.avatar}
-                      tier={tierOf(r.bestResult, r.titles)}
-                    />
-                  }
-                  name={r.player.name}
-                  sub={summary(filter.id, r)}
-                  value={<span className="num">{v}</span>}
-                  unit={v === 1 ? metric.unit[0] : metric.unit[1]}
-                />
-              );
+              return {
+                id: r.player.id,
+                name: r.player.name,
+                photoUrl: r.player.photoUrl,
+                avatar: r.player.avatar,
+                tier: tierOf(r.bestResult, r.titles),
+                sub: summary(filter.id, r),
+                value: v,
+                unit: v === 1 ? metric.unit[0] : metric.unit[1],
+                me: myId === r.player.id,
+                numbers: {
+                  titles: r.titles,
+                  vices: r.vices,
+                  thirds: r.thirds,
+                  finals: r.finals,
+                  podiums: r.podiums,
+                  participations: r.participations,
+                  played: r.played,
+                  wins: r.wins,
+                  draws: r.draws,
+                  losses: r.losses,
+                  points: r.points,
+                  pct: r.pct,
+                  gf: r.gf,
+                  ga: r.ga,
+                  gd: r.gd,
+                  best: r.bestResult ? resultLabel(r.bestResult) : null,
+                },
+              };
             })}
-          </div>
+          />
           {NOTES[filter.id] && (
             <p className="mt-4 px-1 text-body text-muted">{NOTES[filter.id]}</p>
           )}

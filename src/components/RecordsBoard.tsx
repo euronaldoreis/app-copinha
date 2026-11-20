@@ -183,7 +183,7 @@ export function RecordsBoard({ items }: { items: RecordItem[] }) {
   );
 }
 
-function RecordCard({ item, index }: { item: RecordItem; index: number }) {
+export function RecordCard({ item, index }: { item: RecordItem; index: number }) {
   const vexame = item.kind === "vexame";
   const [revealed, setRevealed] = useState(!vexame);
   const [justRevealed, setJustRevealed] = useState(false);
@@ -196,11 +196,12 @@ function RecordCard({ item, index }: { item: RecordItem; index: number }) {
     if (!reducedMotion()) navigator.vibrate?.(60);
   }
 
+  // O link abre a página do recorde, com a prévia (imagem) do próprio cartão.
   const shareUrl = () => {
     const link =
       typeof window === "undefined"
         ? ""
-        : ` ${window.location.origin}/ranking?aba=recordes`;
+        : ` ${window.location.origin}/recordes/${item.id}`;
     return `https://wa.me/?text=${encodeURIComponent(item.share + link)}`;
   };
 

@@ -2,17 +2,8 @@
 
 // Sem foto, cada jogador ganha um retrato de desenho animado, sempre o mesmo
 // para o mesmo nome (ver src/lib/sprite.ts).
+import { HAIR_PATHS, PORTRAIT_BG } from "@/lib/portrait";
 import { spriteLook, type AvatarLook } from "@/lib/sprite";
-
-// Cabelo de cada corte (mesma ordem de HAIR_STYLES): curto, comprido, careca e topete.
-const HAIR_PATHS = [
-  "M14.5 19C13 6 35 6 33.5 19 30 13.5 18 13.5 14.5 19Z",
-  "M14 31C9 5 39 5 34 31l-2.5-1C35 14 13 14 16.5 30Z",
-  "",
-  "M14.5 19C12 9 22 3 35 8c-3 2-.5 6-1.5 11C30 14 18 14 14.5 19Z",
-];
-// Fundo do retrato, um por corte, para a lista não ficar toda da mesma cor.
-const BACKGROUNDS = ["#ffd9a8", "#c8f0c0", "#e6d0ff", "#a9d6ff"];
 
 function Portrait({ name, avatar }: { name: string; avatar?: AvatarLook | null }) {
   const look = spriteLook(name, avatar);
@@ -20,7 +11,7 @@ function Portrait({ name, avatar }: { name: string; avatar?: AvatarLook | null }
   const line = { stroke: "#0a1a52", strokeLinejoin: "round" as const };
   return (
     <svg viewBox="0 0 48 48" className="block size-full">
-      <rect width="48" height="48" fill={BACKGROUNDS[look.style]} />
+      <rect width="48" height="48" fill={PORTRAIT_BG[look.style]} />
       <path d="M11.5 49C11.5 39 16 35 24 35s12.5 4 12.5 14Z" fill={shirt} strokeWidth="2.5" {...line} />
       <rect x="20.5" y="28" width="7" height="8.5" fill={skin} strokeWidth="2.5" {...line} />
       <ellipse cx="24" cy="20" rx="9.5" ry="10.5" fill={skin} strokeWidth="2.5" {...line} />
