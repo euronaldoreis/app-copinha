@@ -1169,6 +1169,8 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
       // todos já no pódio e a festa começa
       for (const w of walkers) if (!w.done) { w.p.position.copy(spotOf(w.item)); w.p.rotation.y = FACE_CAM; w.done = true; w.celebrate = 0; pose(w, {}); }
       for (const item of DRAW) if (!walkers.some((w) => w.item === item)) enter(item, true);
+      // (pular ainda na abertura: as etapas ainda não foram montadas)
+      if (!pStages.length) pStages = partyStages();
       hatchGoal = 0; pStage = pStages.indexOf("party") - 1; nextStage();
       return;
     }
@@ -1215,8 +1217,9 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
   const sweep = { p: { position: new THREE.Vector3() } }; // "jogador" fictício que o holofote segue no suspense
   const GOLD = ["#ffd23f", "#fff2b0"];
   const byPlace = (n) => DRAW.find((d) => d.place === n);
+  const partyStages = () => [...(byPlace(3) ? ["third"] : []), ...(byPlace(2) ? ["vice"] : []), "drumroll", "champion", "party"];
   function runParty() {
-    pStages = [...(byPlace(3) ? ["third"] : []), ...(byPlace(2) ? ["vice"] : []), "drumroll", "champion", "party"];
+    pStages = partyStages();
     pStage = -1; nextStage();
   }
   function nextStage() {
@@ -1355,8 +1358,20 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
   let puffT = 0;
   function updateWalker(wk, dt, t) {
     if (wk.done) {
-      wk.p.rotation.y += (FACE_CAM - wk.p.rotation.y) * Math.min(1, dt * 8);
+      // na festa, 2º e 3º viram para o campeão e batem palmas quando ele entra
+      const st = PARTY ? pStages[pStage] : null;
+      const clapFor = PARTY && wk.item.place > 1 && (st === "champion" || st === "party") ? walkers.find((w) => w.item.place === 1) : null;
+      const faceYaw = clapFor ? Math.atan2(clapFor.p.position.x - wk.p.position.x, clapFor.p.position.z - wk.p.position.z) : FACE_CAM;
+      let turn = faceYaw - wk.p.rotation.y; turn = Math.atan2(Math.sin(turn), Math.cos(turn));
+      wk.p.rotation.y += turn * Math.min(1, dt * (clapFor ? 6 : 8));
       if (wk.spotLeft > 0 && (wk.spotLeft -= dt) <= 0 && seedSpotOn === wk) seedSpotOn = null;
+      if (clapFor && !(wk.celebrate > 0)) {
+        // braços para a frente, abrindo e fechando: as mãos se batem no meio
+        const c = (Math.sin(t * 15 + wk.seed) + 1) / 2, a = 0.3 + 0.32 * c;
+        pose(wk, { shX: [-1.3, -1.3], shZ: [a, -a], el: [-0.3, -0.3], bob: c * 0.02, headX: -0.08 });
+        wk.p.position.y = wk.baseY + Math.max(0, Math.sin(t * 7 + wk.seed)) * 0.05;
+        return;
+      }
       if (wk.celebrate > 0) {
         wk.celebrate -= dt;
         const air = cheerPose(wk, 1 - wk.celebrate / 1.1, t);
