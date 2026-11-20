@@ -583,29 +583,30 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
   }
   // Corredor de torcedores do lado de fora, pulando com sinalizadores, do caminhão até o portão
   const fans = [], FAN_S = 2.1;
-  for (const side of [-1, 1]) for (let row = 0; row < 3; row++) {
-    const x = GATE_X + side * (1.9 + row * 0.75);
-    for (let z = FRONT + 1.6 + (row % 2) * 0.3; z <= ROAD_Z - 2.3; z += 0.62) {
-      if (row === 2 && srand() < 0.35) continue;
+  // 2 fileiras de cada lado, mais espaçadas: leve no celular
+  for (const side of [-1, 1]) for (let row = 0; row < 2; row++) {
+    const x = GATE_X + side * (1.9 + row * 0.8);
+    for (let z = FRONT + 1.7 + (row % 2) * 0.45; z <= ROAD_Z - 2.3; z += 0.95) {
       fans.push({ x: x + sr(-0.1, 0.1), z: z + sr(-0.08, 0.08), side, c: crowdColors[Math.floor(srand() * 10)], sk: skinTones[Math.floor(srand() * 4)], ph: srand() * 6.28 });
     }
   }
   const fanParts = [["legs", [0.3, 0.45, 0.2]], ["body", [0.4, 0.45, 0.26]], ["head", [0.26, 0.26, 0.26]], ["arm", [0.1, 0.42, 0.1]]];
   const fanMesh = Object.fromEntries(fanParts.map(([k, [w, h, d]]) => {
     const m = new THREE.InstancedMesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ flatShading: true, roughness: 1 }), fans.length * (k === "arm" ? 2 : 1));
-    m.castShadow = true; scene.add(m); return [k, m];
+    scene.add(m); return [k, m];
   }));
   fans.forEach((f, i) => {
     fanMesh.legs.setColorAt(i, cc.set(pick(["#2f3b55", "#22262e", "#3a4a6a"]))); fanMesh.body.setColorAt(i, cc.set(f.c)); fanMesh.head.setColorAt(i, cc.set(f.sk));
     fanMesh.arm.setColorAt(i * 2, cc.set(f.sk)); fanMesh.arm.setColorAt(i * 2 + 1, cc.set(f.sk));
-    // um em cada três da primeira fileira segura um sinalizador
-    if (Math.abs(f.x - GATE_X) < 2.3 && i % 3 === 0) {
+    // alguns da primeira fileira seguram sinalizador
+    if (Math.abs(f.x - GATE_X) < 2.3 && i % 4 === 0) {
       f.flare = { pos: new THREE.Vector3(), wind: new THREE.Vector3(0, 0, -0.2), street: true, smokeT: Math.random() * 0.1 };
       f.stick = box(0.1, 0.35, 0.1, glowMat("#ff3020", 4), 0, -50, 0); f.stick.castShadow = false;
     }
   });
-  const fanLights = [new THREE.PointLight("#ff3a1e", 12, 9, 2), new THREE.PointLight("#ff3a1e", 12, 9, 2)];
-  fanLights[0].position.set(GATE_X - 2.6, 3, FRONT + 4.5); fanLights[1].position.set(GATE_X + 2.6, 3, FRONT + 2.5); scene.add(...fanLights);
+  // uma luz vermelha só para o corredor (cada luz pesa em todos os objetos da cena)
+  const fanLights = [new THREE.PointLight("#ff3a1e", 16, 10, 2)];
+  fanLights[0].position.set(GATE_X, 3, FRONT + 3.5); scene.add(...fanLights);
   function updateFans(t) {
     const S = FAN_S;
     fans.forEach((f, i) => {
