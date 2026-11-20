@@ -5,6 +5,7 @@ import "@fontsource/silkscreen/latin-700.css";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { GroupDrawItem } from "@/lib/services";
+import { isMuted, setMuted, stopAudio, unlockAudio } from "@/lib/sfx";
 import type { BoardState, DrawScene } from "./draw3d/stadiumScene";
 import { useFullscreen, useWakeLock } from "./drawHooks";
 import { ExpandIcon } from "./icons";
@@ -96,6 +97,9 @@ export function GroupDraw3D({
   const [intro, setIntro] = useState<IntroStage>("off");
   const [done, setDone] = useState(false);
   const [idle, setIdle] = useState(false);
+  // No celular o som só pode tocar depois de um toque: o sorteio começa no botão.
+  const [started, setStarted] = useState(false);
+  const [muted, setMutedState] = useState(isMuted);
   const fullscreen = useFullscreen();
   const { toggle: toggleFullscreen } = fullscreen;
   useWakeLock();
@@ -119,6 +123,7 @@ export function GroupDraw3D({
           tagsLayer: tags.current,
           items: items.current,
           reducedMotion: window.matchMedia("(prefers-reduced-motion: reduce)").matches,
+          autoStart: false,
           insets: () => ({
             top: (board.current?.getBoundingClientRect().bottom ?? 0) + 6,
             bottom: window.innerHeight - (bar.current?.getBoundingClientRect().top ?? window.innerHeight) + 6,
@@ -137,6 +142,7 @@ export function GroupDraw3D({
       cancelled = true;
       created?.dispose();
       scene.current = null;
+      stopAudio();
     };
   }, []);
 
@@ -173,7 +179,7 @@ export function GroupDraw3D({
       <div ref={stage} className="absolute inset-0" />
       <div ref={tags} aria-hidden="true" />
       <div ref={board} className="d3-board-wrap">
-        <Board state={state} hidden={loading || intro !== "off"} />
+        <Board state={state} hidden={loading || !started || intro !== "off"} />
       </div>
       <div className={`d3-intro ${intro === "on" && !loading ? "is-on" : ""}`} aria-hidden={intro !== "on"}>
         <div className="d3-live">
@@ -183,8 +189,26 @@ export function GroupDraw3D({
         <b>Copinha dos Lixos</b>
         <small>Sorteio dos grupos</small>
       </div>
+      {!loading && !started && (
+        <div className="d3-start">
+          <b>Sorteio dos grupos</b>
+          <small>Aumente o som da TV ou do celular</small>
+          <button
+            type="button"
+            className="d3-btn is-primary is-big"
+            autoFocus
+            onClick={() => {
+              unlockAudio();
+              setStarted(true);
+              scene.current?.start();
+            }}
+          >
+            Começar sorteio
+          </button>
+        </div>
+      )}
       <div ref={bar} className="d3-bar">
-        {done ? (
+        {!started ? null : done ? (
           <>
             <button type="button" className="d3-btn is-primary" onClick={onClose} disabled={closing} autoFocus>
               {closing ? "Abrindo..." : closeLabel}
@@ -206,6 +230,19 @@ export function GroupDraw3D({
             Pular animação
           </button>
         )}
+        <button
+          type="button"
+          className="d3-btn"
+          aria-pressed={!muted}
+          title={muted ? "Ligar o som" : "Desligar o som"}
+          onClick={() => {
+            unlockAudio();
+            setMuted(!muted);
+            setMutedState(!muted);
+          }}
+        >
+          {muted ? "Som off" : "Som on"}
+        </button>
         {fullscreen.supported && (
           <button
             type="button"

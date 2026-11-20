@@ -8,13 +8,14 @@ import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { SKIN, HAIR, SHIRT, autoLook } from "@/lib/sprite";
+import { stadiumSfx } from "@/lib/sfx";
 
 /**
  * Monta a cena dentro de `container` e começa a abertura e o sorteio.
  * @param {import("./stadiumScene").DrawSceneOptions} options
  * @returns {import("./stadiumScene").DrawScene}
  */
-export function createDrawScene({ container, tagsLayer, items, reducedMotion, insets, onBoard = () => {}, onIntro, onDone, mode = "draw", onStage = () => {} }) {
+export function createDrawScene({ container, tagsLayer, items, reducedMotion, insets, onBoard = () => {}, onIntro, onDone, mode = "draw", onStage = () => {}, autoStart = true }) {
   // "party": festa do título (3º, vice e campeão sobem no pódio).
   const PARTY = mode === "party";
   // ================= Dados do sorteio =================
@@ -796,6 +797,7 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
   const rockets = [];
   function launchFirework(x, colors) {
     const side = x ?? (Math.random() < 0.5 ? -1 : 1) * rnd(8, 22);
+    stadiumSfx.launch();
     rockets.push({ pos: new THREE.Vector3(side, 1, BZ - B_DEPTH - 3), vel: new THREE.Vector3(rnd(-1, 1), rnd(19, 23), rnd(0.5, 1.5)), fuse: rnd(1, 1.3), colors: colors ?? [pick(FIRE_COLORS), pick(FIRE_COLORS)] });
   }
   function updateRockets(dt) {
@@ -804,7 +806,7 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
       r.fuse -= dt; r.vel.y -= 9 * dt; r.pos.addScaledVector(r.vel, dt);
       glow.emit(1, () => ({ pos: r.pos.clone(), vel: new THREE.Vector3(rnd(-0.3, 0.3), rnd(-1, 0), rnd(-0.3, 0.3)), g: -2, size: 0.16, max: 0.35, color: "#ffd9a0", boost: 2.5, floor: false }));
       if (r.fuse <= 0) {
-        rockets.splice(i, 1);
+        rockets.splice(i, 1); stadiumSfx.bang();
         glow.emit(80, (k) => {
           const d = new THREE.Vector3(rnd(-1, 1), rnd(-1, 1), rnd(-1, 1)).normalize().multiplyScalar(rnd(4.5, 7.5));
           return { pos: r.pos.clone(), vel: d, g: -2.2, drag: 1.1, size: rnd(0.22, 0.32), grow: -0.06, max: rnd(1.3, 2.1), color: r.colors[k % 2], boost: 2.8, floor: false };
@@ -1057,7 +1059,7 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
       runPhase();
     }, wait));
   }
-  function finish() { onDone(); cheer = 1; if (!reduced) { rainLeft = 2.6; finale = 3.2; paperShower(160); } }
+  function finish() { onDone(); cheer = 1; stadiumSfx.roar(1.2); if (!reduced) { rainLeft = 2.6; finale = 3.2; paperShower(160); } }
 
   // Jogador sai do caminhão: a tampa abre, ele pula na rua, entra pelo portão e corre até o lugar.
   function enter(item, instant = false) {
@@ -1066,7 +1068,7 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
     const zone = PARTY ? null : zones.find((z) => z.label === item.groupLabel);
     Object.assign(w, { item, baseY: spot.y, anchor: zone ? 2.55 + (zone.members.indexOf(item) % 2) * 0.8 : 2.55 });
     if (instant || reduced) { w.p.position.copy(spot); w.p.rotation.y = FACE_CAM; walkers.push(Object.assign(w, { done: true, celebrate: 0 })); if (item.champion && !PARTY) addRing(w); return w; }
-    hatchGoal = 1;
+    hatchGoal = 1; stadiumSfx.horn(false);
     if (item.champion) { seedSpotOn = w; w.spotLeft = 99; cheer = 1; }
     const start = truck.localToWorld(new THREE.Vector3(2.4, 2.0, 0));
     const land = truck.localToWorld(new THREE.Vector3(5.6, 0, 0)); land.set(land.x, 0.12, ROAD_Z - 0.6);
@@ -1104,10 +1106,19 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
   let intro = { active: false, t: 0 }, finalCam = null;
   const ease3 = (k) => 1 - Math.pow(1 - k, 3);
   const easeIO = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
+  let started = autoStart;
   function startIntro() {
+    // sem o toque de "Começar", a cena fica parada no primeiro quadro da abertura
+    if (!started) { intro = { active: true, t: 0, fired: false, waiting: true }; return; }
+    stadiumSfx.crowdStart();
     if (reduced) { endIntro(); return; }
     intro = { active: true, t: 0, fired: false };
     onIntro(true);
+  }
+  function start() {
+    if (started) return;
+    started = true;
+    startIntro();
   }
   function applyFinalCam() {
     if (!finalCam) return;
@@ -1123,7 +1134,8 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
     if (PARTY) runParty(); else runPhase();
   }
   function updateIntro(dt) {
-    intro.t += dt;
+    if (!intro.waiting) intro.t += dt;
+    if (!intro.honked && intro.t >= T_DRIVE) { intro.honked = true; stadiumSfx.horn(true); } // chegou: buzina
     const t = intro.t, portrait = innerWidth < innerHeight;
     const fwdX = -Math.cos(truck.rotation.y);                 // para onde a cabine aponta
     const k = Math.min(1, t / T_DRIVE), left = DRIVE_DIST * (1 - ease3(k));
@@ -1150,6 +1162,7 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
   }
   function skip() {
     seedSpotOn = null;
+    if (!started) { started = true; stadiumSfx.crowdStart(); }
     if (intro.active) { intro.active = false; truck.position.copy(truckPark); applyFinalCam(); onIntro(false); }
     clearTimers();
     if (PARTY) {
@@ -1224,7 +1237,7 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
     } else celebrate();
   }
   function celebrate() {
-    partyOn = true; drum = 0; hatchGoal = 0; cheer = 1;
+    partyOn = true; drum = 0; hatchGoal = 0; cheer = 1; stadiumSfx.roar(1.3);
     const champ = walkers.find((w) => w.item.place === 1);
     if (champ?.trophy) { champ.trophy.visible = true; champ.lift = reduced ? 1 : 0; seedSpotOn = champ; champ.spotLeft = 999; }
     if (!reduced) {
@@ -1387,6 +1400,7 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
       if (wk.seg >= wk.path.length - 1) {
         pos.y = target.y;
         wk.done = true; wk.celebrate = 1.1; cheer = Math.max(cheer, 0.9); confetti(pos, wk.colors); paperShower(40);
+        stadiumSfx.roar(isChamp ? 1 : 0.6);
         if (PARTY) { if (isChamp && pStages[pStage] === "champion") nextStage(); return; }
         if (isChamp) {
           confetti(pos, ["#ffd23f", "#fff2b0", "#ffffff"]); paperShower(80); addRing(wk); wk.spotLeft = 2.2; cheer = 1;
@@ -1408,7 +1422,7 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
     const prog = Math.min(1, Math.max(0, 1 - d / segLen));
     pos.y = from.y + (target.y - from.y) * prog + (target.y - from.y > 0.2 ? Math.sin(prog * Math.PI) * 0.6 : 0);
   }
-  let rafId = 0, disposed = false;
+  let rafId = 0, disposed = false, crowdT = 0;
   function loop() {
     if (disposed) return;
     const raw = clock.getDelta(), dt = Math.min(raw, 0.05), t = clock.elapsedTime;
@@ -1442,6 +1456,7 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
     updateParts(dt);
     cheer = Math.max(0, cheer - dt * 0.35);
     if (PARTY) updateParty(dt, t);
+    if (started && (crowdT -= dt) <= 0) { crowdT = 0.12; stadiumSfx.crowdLevel(drum ? 0.05 : cheer); }
     updateCrowd(t);
     if (seedSpotOn) {
       const q = seedSpotOn.p.position;
@@ -1464,6 +1479,7 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
   function dispose() {
     disposed = true;
     cancelAnimationFrame(rafId);
+    stadiumSfx.crowdStop();
     clearTimers();
     removeEventListener("resize", frame);
     resizeObserver?.disconnect();
@@ -1479,5 +1495,5 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
     renderer.domElement.remove();
   }
 
-  return { skip, replay: reset, dispose };
+  return { skip, replay: reset, start, dispose };
 }

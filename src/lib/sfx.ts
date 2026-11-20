@@ -61,6 +61,7 @@ export function stopAudio() {
   ctx = null;
   master = null;
   channel = null;
+  crowdBed = null;
   void old?.close().catch(() => {});
 }
 
@@ -197,5 +198,140 @@ export const sfx = {
       tone(v, at, dur, f / 2, { type: "triangle", gain: 0.08 });
     }
     noise(v, 0, 3.2, { gain: 0.035, cutoff: 1200 });
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Sons do estádio (sorteio e festa em 3D): tocam por cima uns dos outros, sem
+// cortar o efeito anterior, e a torcida fica de fundo o tempo todo.
+
+/** Voz que toca junto com as outras. */
+function layer(): Voice | null {
+  const c = audio();
+  if (!c || !master) return null;
+  master.gain.setValueAtTime(isMuted() ? 0 : 1, c.currentTime);
+  const out = c.createGain();
+  out.connect(master);
+  setTimeout(() => out.disconnect(), 6000);
+  return { c, out, t0: c.currentTime + 0.02 };
+}
+
+/** Ruído com filtro passa-faixa e envelope (subida, sustentação, descida). */
+function band(
+  v: Voice,
+  at: number,
+  { attack, hold, release, gain, freq, q = 0.8 }: { attack: number; hold: number; release: number; gain: number; freq: number; q?: number },
+) {
+  noise(v, 0, 0); // garante o buffer de ruído
+  const src = v.c.createBufferSource();
+  const filter = v.c.createBiquadFilter();
+  const g = v.c.createGain();
+  const t = v.t0 + at;
+  src.buffer = noiseBuffer;
+  src.loop = true;
+  filter.type = "bandpass";
+  filter.frequency.value = freq;
+  filter.Q.value = q;
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(gain, t + attack);
+  g.gain.setValueAtTime(gain, t + attack + hold);
+  g.gain.linearRampToValueAtTime(0, t + attack + hold + release);
+  src.connect(filter).connect(g).connect(v.out);
+  src.start(t);
+  src.stop(t + attack + hold + release + 0.05);
+}
+
+let crowdBed: { gain: GainNode; stop: () => void } | null = null;
+let lastLaunch = 0;
+let lastBang = 0;
+
+export const stadiumSfx = {
+  /** Murmúrio da torcida de fundo, que acompanha o nível de empolgação. */
+  crowdStart() {
+    const c = audio();
+    if (!c || !master || crowdBed) return;
+    master.gain.setValueAtTime(isMuted() ? 0 : 1, c.currentTime);
+    const v = { c, out: master, t0: c.currentTime };
+    noise(v, 0, 0);
+    const gain = c.createGain();
+    gain.gain.setValueAtTime(0, c.currentTime);
+    gain.gain.linearRampToValueAtTime(0.03, c.currentTime + 1.5);
+    gain.connect(master);
+    const sources: AudioBufferSourceNode[] = [];
+    // duas faixas de ruído: o "burburinho" das vozes e o ronco grave do estádio
+    for (const [freq, q, g] of [
+      [900, 0.7, 1],
+      [260, 0.9, 0.8],
+    ] as const) {
+      const src = c.createBufferSource();
+      const filter = c.createBiquadFilter();
+      const level = c.createGain();
+      src.buffer = noiseBuffer;
+      src.loop = true;
+      filter.type = "bandpass";
+      filter.frequency.value = freq;
+      filter.Q.value = q;
+      level.gain.value = g;
+      src.connect(filter).connect(level).connect(gain);
+      src.start();
+      sources.push(src);
+    }
+    crowdBed = {
+      gain,
+      stop: () => {
+        const t = c.currentTime;
+        gain.gain.setTargetAtTime(0, t, 0.2);
+        sources.forEach((s) => s.stop(t + 1));
+      },
+    };
+  },
+  /** 0 = torcida tranquila, 1 = estádio pulando. */
+  crowdLevel(level: number) {
+    if (!ctx || !crowdBed) return;
+    crowdBed.gain.gain.setTargetAtTime(0.025 + 0.09 * Math.min(1, Math.max(0, level)), ctx.currentTime, 0.25);
+  },
+  crowdStop() {
+    crowdBed?.stop();
+    crowdBed = null;
+  },
+  /** Grito da torcida: sobe rápido e vai baixando, com o "uhhh" das vozes. */
+  roar(strength = 1) {
+    const v = layer();
+    if (!v) return;
+    band(v, 0, { attack: 0.25, hold: 0.5 * strength, release: 1.6, gain: 0.11 * strength, freq: 1100, q: 0.6 });
+    band(v, 0, { attack: 0.3, hold: 0.4 * strength, release: 1.4, gain: 0.08 * strength, freq: 420, q: 0.9 });
+    for (const f of [196, 233, 262]) tone(v, 0.05, 0.9 + 0.4 * strength, f, { type: "sawtooth", gain: 0.012 * strength, slideTo: f * 0.85 });
+  },
+  /** Buzina do caminhão: "fom-fom" (ou um toque curto). */
+  horn(double = true) {
+    const v = layer();
+    if (!v) return;
+    const beeps = double ? [0, 0.42] : [0];
+    for (const at of beeps) {
+      const dur = double ? 0.32 : 0.18;
+      tone(v, at, dur, 311, { type: "square", gain: double ? 0.05 : 0.03 });
+      tone(v, at, dur, 370, { type: "square", gain: double ? 0.04 : 0.025 });
+    }
+  },
+  /** Rojão subindo (assobio). */
+  launch() {
+    const c = audio();
+    if (!c || c.currentTime - lastLaunch < 0.18) return;
+    lastLaunch = c.currentTime;
+    const v = layer();
+    if (!v) return;
+    tone(v, 0, 1, 900, { type: "triangle", gain: 0.018, slideTo: 2300 });
+  },
+  /** Estouro do rojão. */
+  bang() {
+    const c = audio();
+    if (!c || c.currentTime - lastBang < 0.12) return;
+    lastBang = c.currentTime;
+    const v = layer();
+    if (!v) return;
+    noise(v, 0, 0.55, { gain: 0.13, cutoff: 2600 });
+    tone(v, 0, 0.35, 110, { type: "sine", gain: 0.14, slideTo: 40 });
+    // estalinhos depois do estouro
+    for (let i = 0; i < 5; i++) noise(v, 0.25 + Math.random() * 0.5, 0.05, { gain: 0.04, cutoff: 7000 });
   },
 };
