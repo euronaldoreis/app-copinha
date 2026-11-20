@@ -800,8 +800,8 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
     return shirtMats.get(key);
   }
 
-  // Troféu dourado brilhante (origem na base)
-  const trophyGold = new THREE.MeshStandardMaterial({ color: "#ffcf3a", emissive: "#ff9d00", emissiveIntensity: 0.95, metalness: 0.2, roughness: 0.35, flatShading: true });
+  // Troféu dourado, sem brilho próprio (só a luz da cena)
+  const trophyGold = new THREE.MeshStandardMaterial({ color: "#e6b53a", metalness: 0.15, roughness: 0.45, flatShading: true });
   function buildTrophy() {
     const g = new THREE.Group();
     box(0.34, 0.14, 0.34, "#3a2614", 0, 0.07, 0, g);
@@ -812,7 +812,6 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
     const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.04, 8), trophyGold); rim.position.y = 0.78; g.add(rim);
     for (const sx of [-1, 1]) { const h = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.035, 4, 8), trophyGold); h.position.set(sx * 0.31, 0.6, 0); g.add(h); }
     g.traverse((o) => { if (o.isMesh) o.castShadow = true; });
-    const light = new THREE.PointLight("#ffcf6a", 6, 5, 2); light.position.y = 0.6; g.add(light);
     return g;
   }
   // campeão segura o troféu erguido acima da cabeça; "pump" sobe e desce
@@ -1216,10 +1215,6 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
     updateParts(dt);
     cheer = Math.max(0, cheer - dt * 0.35);
     updateCrowd(t);
-    for (const wk of walkers) if (wk.trophy && Math.random() < dt * 14) {
-      const tp = wk.trophy.localToWorld(new THREE.Vector3(rnd(-0.35, 0.35), rnd(0.2, 0.9), rnd(-0.35, 0.35)));
-      glow.emit(1, () => ({ pos: tp, vel: new THREE.Vector3(0, rnd(0.2, 0.6), 0), g: 0, drag: 1, size: rnd(0.07, 0.12), max: rnd(0.25, 0.45), color: pick(["#ffffff", "#fff2b0", "#ffd23f"]), boost: 3.2, floor: false }));
-    }
     if (seedSpotOn) {
       const q = seedSpotOn.p.position;
       seedSpot.position.set(q.x + 3, 16, q.z + 4); seedSpot.target.position.set(q.x, 0, q.z);

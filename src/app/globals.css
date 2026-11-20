@@ -2281,6 +2281,11 @@ fieldset label:has(input[type="radio"]:checked) {
   .lb-row-extra {
     padding-left: 2px;
   }
+  /* A animação de entrada deixa cada card numa camada própria: o card em uso
+     sobe para a lista de times não ficar atrás do card de baixo. */
+  .lb-row-stack:focus-within {
+    z-index: 20;
+  }
 }
 
 
