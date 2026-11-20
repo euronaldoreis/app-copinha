@@ -1,5 +1,5 @@
-// Sorteio dos grupos em 3D: estádio em pixel art (inspirado na Arena da Amazônia),
-// caminhão de lixo, torcida e sorteio com a mesma sequência da tela antiga.
+// Sorteio dos grupos e festa do título em 3D: estádio em pixel art (inspirado na
+// Arena da Amazônia), caminhão de lixo, torcida, sorteio e pódio.
 // Carregado sob demanda pela tela do sorteio, para o three.js não pesar no resto do app.
 import * as THREE from "three";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
@@ -14,7 +14,9 @@ import { SKIN, HAIR, SHIRT, autoLook } from "@/lib/sprite";
  * @param {import("./stadiumScene").DrawSceneOptions} options
  * @returns {import("./stadiumScene").DrawScene}
  */
-export function createDrawScene({ container, tagsLayer, items, reducedMotion, insets, onBoard, onIntro, onDone }) {
+export function createDrawScene({ container, tagsLayer, items, reducedMotion, insets, onBoard = () => {}, onIntro, onDone, mode = "draw", onStage = () => {} }) {
+  // "party": festa do título (3º, vice e campeão sobem no pódio).
+  const PARTY = mode === "party";
   // ================= Dados do sorteio =================
   const DRAW = items.map((item) => ({ ...item }));
   const LABELS = [...new Set(DRAW.map((d) => d.groupLabel ?? ""))].sort();
@@ -182,8 +184,9 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
       return { label, x, zc, members: DRAW.filter((d) => d.groupLabel === label) };
     });
   }
-  buildZones();
+  if (!PARTY) buildZones();
   function spotOf(item) {
+    if (PARTY) return podiumSpot(item.place);
     const z = zones.find((zz) => zz.label === item.groupLabel);
     const idx = z.members.indexOf(item), m = z.members.length;
     if (zoneRows > 1) {
@@ -399,9 +402,10 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
 
   // ---------- Refletores, postes, bancos, bicicletas ----------
   // refletores presos no anel da cobertura, iluminando o campo
+  const stadiumSpots = [];
   [[0.2, true], [0.8, true], [0.04, false], [0.96, false]].forEach(([k, shadow]) => {
     const p = at(TALL[Math.floor(TALL.length * k)], D_IN + 0.2);
-    const spot = new THREE.SpotLight("#fff1d2", 1.25, 0, 0.78, 0.55, 0);
+    const spot = new THREE.SpotLight("#fff1d2", 1.25, 0, 0.78, 0.55, 0); stadiumSpots.push(spot);
     spot.position.set(p.x, ROOF_IN_Y - 0.3, p.z); spot.target.position.set(-p.x * 0.3, 0, FZ - (p.z - FZ) * 0.3);
     if (shadow) { spot.castShadow = true; spot.shadow.mapSize.set(2048, 2048); spot.shadow.camera.near = 3; spot.shadow.camera.far = 80; spot.shadow.bias = -0.0004; spot.shadow.normalBias = 0.03; }
     scene.add(spot, spot.target);
@@ -940,10 +944,12 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
   }
   // campeão segura o troféu erguido acima da cabeça; "pump" sobe e desce
   function holdTrophy(wk, t, pump = 0) {
-    if (!wk.trophy) return;
-    wk.arms.forEach((a, i) => { a.sh.rotation.x = -3.02 + pump * 0.3; a.sh.rotation.z = i ? -0.16 : 0.16; a.el.rotation.x = 0; });
-    wk.trophy.position.y = 1.0 - pump * 0.14;
-    wk.trophy.rotation.y = Math.sin(t * 1.4) * 0.35;
+    if (!wk.trophy || !wk.trophy.visible) return;
+    // lift: 0 = taça no peito, 1 = erguida acima da cabeça
+    const k = wk.lift ?? 1, ease = k * k * (3 - 2 * k);
+    wk.arms.forEach((a, i) => { a.sh.rotation.x = -1.25 + (-1.77 + pump * 0.3) * ease; a.sh.rotation.z = (i ? -0.16 : 0.16) * ease; a.el.rotation.x = -0.5 * (1 - ease); });
+    wk.trophy.position.set(0, 0.3 + (0.7 - pump * 0.14) * ease, 0.42 - 0.4 * ease);
+    wk.trophy.rotation.y = Math.sin(t * 1.4) * 0.35 * ease;
   }
   function buildPlayer(item) {
     const look = item.avatar ?? autoLook(item.playerName);
@@ -989,7 +995,7 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
     if (look.style === 3) { box(0.3, 0.2, 0.3, hair, 0, 0.44, 0.06, head); box(0.2, 0.12, 0.2, hair, 0, 0.56, 0.1, head); }
     p.traverse((o) => { if (o.isMesh) o.castShadow = true; });
     let trophy = null;
-    if (item.champion) { trophy = buildTrophy(); trophy.position.set(0, 1.0, 0.02); torso.add(trophy); }
+    if (item.champion) { trophy = buildTrophy(); trophy.position.set(0, 1.0, 0.02); torso.add(trophy); if (PARTY) trophy.visible = false; }
     p.scale.setScalar(1.35);
     scene.add(p);
     const tag = document.createElement("div");
@@ -1057,9 +1063,9 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
   function enter(item, instant = false) {
     const w = buildPlayer(item);
     const spot = spotOf(item);
-    const zone = zones.find((z) => z.label === item.groupLabel);
-    Object.assign(w, { item, anchor: 2.55 + (zone.members.indexOf(item) % 2) * 0.8 });
-    if (instant || reduced) { w.p.position.copy(spot); w.p.rotation.y = FACE_CAM; walkers.push(Object.assign(w, { done: true, celebrate: 0 })); if (item.champion) addRing(w); return; }
+    const zone = PARTY ? null : zones.find((z) => z.label === item.groupLabel);
+    Object.assign(w, { item, baseY: spot.y, anchor: zone ? 2.55 + (zone.members.indexOf(item) % 2) * 0.8 : 2.55 });
+    if (instant || reduced) { w.p.position.copy(spot); w.p.rotation.y = FACE_CAM; walkers.push(Object.assign(w, { done: true, celebrate: 0 })); if (item.champion && !PARTY) addRing(w); return w; }
     hatchGoal = 1;
     if (item.champion) { seedSpotOn = w; w.spotLeft = 99; cheer = 1; }
     const start = truck.localToWorld(new THREE.Vector3(2.4, 2.0, 0));
@@ -1069,11 +1075,13 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
       new THREE.Vector3(GATE_X, 0.12, FRONT + 3.4),
       new THREE.Vector3(GATE_X, 0.15, FRONT + 0.2),
       new THREE.Vector3(GATE_X, 0.17, FRONT - 1.4),
+      ...(PARTY ? [new THREE.Vector3(spot.x, 0.17, PODIUM_Z + 1.9)] : []), // pé do pódio
       spot,
     ];
     w.p.position.copy(start);
-    walkers.push(Object.assign(w, { t: 0, jumpFrom: start, path, seg: 0, done: false, landed: false, ph: 0 }));
+    walkers.push(Object.assign(w, { t: 0, jumpFrom: start, path, seg: 0, done: false, landed: false, ph: 0, segFrom: path[0].clone() }));
     cheer = Math.max(cheer, 0.6);
+    return w;
   }
   function clearWalkers() { walkers.forEach((w) => { scene.remove(w.p); w.tag.remove(); if (w.ring) scene.remove(w.ring); }); walkers = []; seedSpotOn = null; }
   // anel dourado no gramado marcando o lugar do atual campeão
@@ -1087,6 +1095,7 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
   function reset() {
     clearTimers(); clearWalkers();
     placed = 0; phase = "name"; tick = 0; hatchGoal = 0; rainLeft = 0; finale = 0;
+    partyOn = false; drum = 0; pStage = -1;
     startIntro();
   }
 
@@ -1111,7 +1120,7 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
     truck.position.copy(truckPark); wheels.forEach((w) => (w.rotation.z = 0));
     applyFinalCam();
     onIntro(false);
-    runPhase();
+    if (PARTY) runParty(); else runPhase();
   }
   function updateIntro(dt) {
     intro.t += dt;
@@ -1143,11 +1152,106 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
     seedSpotOn = null;
     if (intro.active) { intro.active = false; truck.position.copy(truckPark); applyFinalCam(); onIntro(false); }
     clearTimers();
+    if (PARTY) {
+      // todos já no pódio e a festa começa
+      for (const w of walkers) if (!w.done) { w.p.position.copy(spotOf(w.item)); w.p.rotation.y = FACE_CAM; w.done = true; w.celebrate = 0; pose(w, {}); }
+      for (const item of DRAW) if (!walkers.some((w) => w.item === item)) enter(item, true);
+      hatchGoal = 0; pStage = pStages.indexOf("party") - 1; nextStage();
+      return;
+    }
     for (const w of walkers) if (!w.done) { w.p.position.copy(spotOf(w.item)); w.p.rotation.y = FACE_CAM; w.done = true; w.celebrate = 0; pose(w, {}); if (w.item.champion) addRing(w); }
     for (let i = walkers.length; i < DRAW.length; i++) enter(DRAW[i], true);
     placed = DRAW.length; hatchGoal = 0; renderBoard(); finish();
   }
 
+
+  // ================= Festa do título: pódio, suspense e comemoração =================
+  const PODIUM_Z = FZ + 1.2;
+  const PODIUM = { 1: { x: 0, h: 1.35, side: "#e6b53a" }, 2: { x: -2.45, h: 0.9, side: "#b9bec8" }, 3: { x: 2.45, h: 0.6, side: "#b9773e" } };
+  const podiumSpot = (place) => new THREE.Vector3(PODIUM[place].x, 0.15 + PODIUM[place].h + 0.02, PODIUM_Z);
+  const pyroCannons = [];
+  if (PARTY) {
+    for (const place of [1, 2, 3]) {
+      const { x, h, side } = PODIUM[place];
+      box(2.3, h, 2.2, side, x, 0.15 + h / 2, PODIUM_Z);
+      box(2.36, 0.08, 2.26, "#f4f2ea", x, 0.15 + h, PODIUM_Z);
+      const num = new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.62), new THREE.MeshStandardMaterial({ map: pixTex(7, 9, (g) => pixText(g, String(place), 1, 1, 1, "#ffffff")), transparent: true, alphaTest: 0.5, roughness: 1 }));
+      num.position.set(x, 0.15 + h * 0.5, PODIUM_Z + 1.111); scene.add(num);
+    }
+    // tapete vermelho do portão até o pódio
+    const carpetLen = FRONT - 0.2 - (PODIUM_Z + 1.1);
+    box(1.7, 0.03, carpetLen, "#b3202a", GATE_X, 0.19, PODIUM_Z + 1.1 + carpetLen / 2).castShadow = false;
+    for (const sx of [-0.9, 0.9]) box(0.1, 0.035, carpetLen, "#e6b53a", GATE_X + sx, 0.195, PODIUM_Z + 1.1 + carpetLen / 2).castShadow = false;
+    box(7.6, 0.03, 0.9, "#b3202a", 0, 0.19, PODIUM_Z + 1.55).castShadow = false;
+    // painel atrás do pódio
+    const tex = pixTex(108, 26, (g, w, h) => {
+      g.fillStyle = "#0f6b34"; g.fillRect(0, 0, w, h); g.fillStyle = "#e6b53a"; g.fillRect(0, 0, w, 1); g.fillRect(0, h - 1, w, 1);
+      pixText(g, "CAMPEAO", 54, 3, 2, "#ffd23f", "center"); pixText(g, "COPINHA DOS LIXOS", 54, 18, 1, "#ffffff", "center");
+    });
+    const wall = new THREE.Mesh(new THREE.PlaneGeometry(9, 3.4), new THREE.MeshStandardMaterial({ map: tex, roughness: 1 }));
+    wall.position.set(0, 3.1, PODIUM_Z - 2.4); wall.castShadow = wall.receiveShadow = true; scene.add(wall);
+    box(9.2, 3.6, 0.15, "#15181c", 0, 3.1, PODIUM_Z - 2.5);
+    for (const sx of [-4.4, 4.4]) box(0.16, 4.9, 0.16, "#2c2f38", sx, 2.45, PODIUM_Z - 2.55);
+    // canhões de fogo nos cantos do pódio
+    for (const [x, z] of [[-4.2, PODIUM_Z + 1.3], [4.2, PODIUM_Z + 1.3], [-4.2, PODIUM_Z - 1.6], [4.2, PODIUM_Z - 1.6]]) {
+      box(0.5, 0.45, 0.5, "#1b1b1f", x, 0.38, z); box(0.3, 0.06, 0.3, glowMat("#ff8a1c", 1.5), x, 0.62, z).castShadow = false;
+      pyroCannons.push(new THREE.Vector3(x, 0.7, z));
+    }
+  }
+  let pStages = [], pStage = -1, partyOn = false, drum = 0, pyroLeft = 0, pyroT = 0;
+  const sweep = { p: { position: new THREE.Vector3() } }; // "jogador" fictício que o holofote segue no suspense
+  const GOLD = ["#ffd23f", "#fff2b0"];
+  const byPlace = (n) => DRAW.find((d) => d.place === n);
+  function runParty() {
+    pStages = [...(byPlace(3) ? ["third"] : []), ...(byPlace(2) ? ["vice"] : []), "drumroll", "champion", "party"];
+    pStage = -1; nextStage();
+  }
+  function nextStage() {
+    clearTimers(); pStage++;
+    const st = pStages[pStage];
+    if (!st) return;
+    onStage(st);
+    if (st === "third" || st === "vice") {
+      enter(byPlace(st === "third" ? 3 : 2));
+      timers.push(setTimeout(nextStage, reduced ? 700 : 3600));
+    } else if (st === "drumroll") {
+      drum = 1; cheer = 0;
+      timers.push(setTimeout(nextStage, reduced ? 700 : 2100));
+    } else if (st === "champion") {
+      drum = 0; seedSpotOn = null; cheer = 1;
+      enter(byPlace(1));
+      timers.push(setTimeout(nextStage, reduced ? 700 : 7000)); // normalmente a chegada ao pódio já chama a festa
+    } else celebrate();
+  }
+  function celebrate() {
+    partyOn = true; drum = 0; hatchGoal = 0; cheer = 1;
+    const champ = walkers.find((w) => w.item.place === 1);
+    if (champ?.trophy) { champ.trophy.visible = true; champ.lift = reduced ? 1 : 0; seedSpotOn = champ; champ.spotLeft = 999; }
+    if (!reduced) {
+      pyroLeft = 2.4; rainLeft = 7; finale = 6; paperShower(260);
+      launchFirework(-10, GOLD); launchFirework(10, GOLD); launchFirework(0, GOLD);
+      if (champ) confetti(champ.p.position, ["#ffd23f", "#fff2b0", "#ffffff"]);
+    }
+    onDone();
+  }
+  function updateParty(dt, t) {
+    const goal = drum ? 0.3 : 1.25;
+    for (const sp of stadiumSpots) sp.intensity += (goal - sp.intensity) * Math.min(1, dt * 4);
+    if (drum) { sweep.p.position.set(Math.sin(t * 2.4) * 3.6, 0, PODIUM_Z + Math.cos(t * 1.7) * 0.8); seedSpotOn = sweep; }
+    if (!partyOn) return;
+    cheer = Math.max(cheer, 0.85);
+    const champ = walkers.find((w) => w.item.place === 1);
+    if (champ && champ.lift < 1) champ.lift = Math.min(1, champ.lift + dt / 1.3);
+    if (champ) champ.anchor = 2.55 + 1.15 * (champ.lift ?? 1); // nome acima da taça
+    if (reduced) return;
+    // jatos de fogo: forte na hora da taça e depois de tempos em tempos
+    pyroT -= dt;
+    if (pyroT <= 0 && pyroLeft <= 0) { pyroLeft = 0.7; pyroT = rnd(3, 4.5); }
+    if (pyroLeft > 0) {
+      pyroLeft -= dt;
+      for (const c of pyroCannons) glow.emit(lowQ ? 1 : 3, () => ({ pos: c.clone(), vel: new THREE.Vector3(rnd(-0.5, 0.5), rnd(7, 10), rnd(-0.5, 0.5)), g: -6, drag: 0.8, size: rnd(0.22, 0.34), grow: -0.25, max: rnd(0.45, 0.7), color: pick(["#ff6a1c", "#ffb020", "#ffd23f", "#ff3a1e"]), boost: 3.2, floor: false }));
+    }
+  }
 
   // ================= Render em pixel art: contornos + paleta com pontilhado =================
   const composer = new EffectComposer(renderer);
@@ -1188,7 +1292,12 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
     placeTruck(portrait);
     placePress(portrait);
     const pts = [];
-    if (portrait) {
+    if (PARTY) {
+      // fecha no pódio e no tapete vermelho até a entrada do túnel
+      const ex = portrait ? 4.6 : 7;
+      for (const x of [-ex, ex]) for (const z of [PODIUM_Z - 2.6, FRONT + 1]) pts.push([x, 0, z], [x, 2.5, z]);
+      pts.push([0, 5, PODIUM_Z - 2.5]);
+    } else if (portrait) {
       // celular em pé: fecha no campo, no portão e na traseira do caminhão
       const ex = Math.min(PW / 2, Math.max(...DRAW.map((d) => Math.abs(spotOf(d).x))) + 1.6);
       for (const x of [-ex, ex]) for (const z of [FZ - PD / 2, FZ + PD / 2]) pts.push([x, 0, z], [x, 2.8, z]);
@@ -1239,7 +1348,7 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
         wk.celebrate -= dt;
         const air = cheerPose(wk, 1 - wk.celebrate / 1.1, t);
         holdTrophy(wk, t, Math.max(0, Math.sin(t * 10)));
-        wk.p.position.y = 0.17 + air * 0.55;
+        wk.p.position.y = wk.baseY + air * 0.55;
         if (wk.celebrate <= 0) pose(wk, {});
         return;
       }
@@ -1252,7 +1361,7 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
       });
       wk.torso.scale.y = 1 + Math.sin(t * 2.2 + wk.seed) * 0.02;
       holdTrophy(wk, t, Math.max(0, Math.sin(t * 3)) * 0.6);
-      wk.p.position.y = 0.17 + hop;
+      wk.p.position.y = wk.baseY + hop;
       return;
     }
     const isChamp = wk.item.champion;
@@ -1274,9 +1383,11 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
     const pos = wk.p.position, dir = target.clone().sub(pos); dir.y = 0;
     const speed = 7, d = dir.length();
     if (d < speed * dt) {
-      pos.x = target.x; pos.z = target.z; wk.seg++;
+      pos.x = target.x; pos.z = target.z; wk.seg++; wk.segFrom = target.clone();
       if (wk.seg >= wk.path.length - 1) {
+        pos.y = target.y;
         wk.done = true; wk.celebrate = 1.1; cheer = Math.max(cheer, 0.9); confetti(pos, wk.colors); paperShower(40);
+        if (PARTY) { if (isChamp && pStages[pStage] === "champion") nextStage(); return; }
         if (isChamp) {
           confetti(pos, ["#ffd23f", "#fff2b0", "#ffffff"]); paperShower(80); addRing(wk); wk.spotLeft = 2.2; cheer = 1;
           launchFirework(-12, ["#ffd23f", "#fff2b0"]); launchFirework(12, ["#ffd23f", "#ffb020"]);
@@ -1292,7 +1403,10 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
     runPose(wk, wk.ph);
     holdTrophy(wk, t, Math.abs(Math.sin(wk.ph)) * 0.25);
     if (wk.squash > 0) { wk.squash = Math.max(0, wk.squash - dt * 1.2); wk.body.scale.y = 1 - wk.squash; }
-    pos.y = target.y;
+    // subida do degrau: a altura acompanha o trecho, com um pulinho
+    const from = wk.segFrom ?? target, segLen = Math.hypot(target.x - from.x, target.z - from.z) || 1;
+    const prog = Math.min(1, Math.max(0, 1 - d / segLen));
+    pos.y = from.y + (target.y - from.y) * prog + (target.y - from.y > 0.2 ? Math.sin(prog * Math.PI) * 0.6 : 0);
   }
   let rafId = 0, disposed = false;
   function loop() {
@@ -1319,7 +1433,7 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
     updateBigFlag(t);
     updateCloths(t);
     if (!reduced) {
-      if ((fwTimer -= dt) <= 0) { fwTimer = rnd(2.2, 4); launchFirework(); }
+      if ((fwTimer -= dt * (partyOn ? 3 : 1)) <= 0) { fwTimer = rnd(2.2, 4); launchFirework(undefined, partyOn && Math.random() < 0.5 ? ["#ffd23f", "#fff2b0"] : undefined); }
       if (finale > 0) { finale -= dt; if (Math.random() < dt * 4) launchFirework(); }
     }
     if (intro.active) updateIntro(dt);
@@ -1327,6 +1441,7 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
     updateRockets(dt);
     updateParts(dt);
     cheer = Math.max(0, cheer - dt * 0.35);
+    if (PARTY) updateParty(dt, t);
     updateCrowd(t);
     if (seedSpotOn) {
       const q = seedSpotOn.p.position;
