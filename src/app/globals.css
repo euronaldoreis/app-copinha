@@ -2572,3 +2572,82 @@ fieldset label:has(input[type="radio"]:checked) {
 label:has(> input[type="date"]) {
   min-width: 0;
 }
+
+/* ===== Sorteio dos grupos em 3D (GroupDraw3D) ===== */
+.draw3d {
+  --d3-ink: #1d221f;
+  --d3-led: #ffd23f;
+  --d3-panel: #1f2c24;
+  background: #0b1433;
+  font-family: "Silkscreen", ui-monospace, monospace;
+  color: var(--d3-ink);
+}
+.draw3d canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+.draw3d .d3-board-wrap {
+  position: absolute; z-index: 2; left: 50%; transform: translateX(-50%);
+  top: max(12px, env(safe-area-inset-top)); width: min(520px, calc(100% - 24px));
+}
+.draw3d .d3-board {
+  box-sizing: border-box; background: var(--d3-panel); color: #f3ead2;
+  border: 3px solid #111a14; border-radius: 3px; padding: 9px 12px 10px;
+  box-shadow: inset 0 0 0 2px #3a4d40, 0 5px 0 rgba(0, 0, 0, 0.25);
+  transition: opacity 0.6s;
+}
+.draw3d .d3-board.is-hidden { opacity: 0; pointer-events: none; }
+.draw3d .d3-head { display: flex; justify-content: space-between; font-size: 12px; letter-spacing: 0.04em; color: var(--d3-led); }
+.draw3d .d3-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 62px; }
+.draw3d .d3-name { font-weight: 700; font-size: clamp(20px, 6vw, 28px); line-height: 1.1; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; }
+.draw3d .d3-name.is-spin { color: #a9b5a6; }
+.draw3d .d3-team { font-size: 12px; color: #dfe5d6; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.draw3d .d3-champ { display: inline-block; margin-top: 5px; font-size: 10px; color: #3b2600; background: var(--d3-led); padding: 2px 6px 1px; box-shadow: 0 0 12px rgba(255, 210, 63, 0.55); }
+.draw3d .d3-gbox { display: flex; flex-direction: column; align-items: center; gap: 3px; flex: none; }
+.draw3d .d3-gbox span { font-size: 10px; color: var(--d3-led); }
+.draw3d .d3-letter { width: 48px; height: 48px; display: grid; place-items: center; background: #111a14; border: 2px solid #3a4d40; font-weight: 700; font-size: 30px; color: var(--d3-led); }
+.draw3d .d3-letter.is-spin { color: #c9b45a; }
+.draw3d .d3-letter.is-blink { animation: d3-blink 0.5s steps(2) infinite; }
+.draw3d .d3-done { text-align: center; padding: 8px 0 4px; }
+.draw3d .d3-done b { display: block; font-size: 24px; color: var(--d3-led); }
+.draw3d .d3-done small { font-size: 11px; color: #b9c2b0; }
+.draw3d .d3-reveal { animation: d3-reveal 0.3s steps(4); }
+@keyframes d3-reveal { from { transform: scale(1.6); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes d3-blink { 50% { opacity: 0.2; } }
+.draw3d .d3-intro {
+  position: absolute; z-index: 2; left: 50%; transform: translateX(-50%); text-align: center; white-space: nowrap;
+  bottom: calc(max(14px, env(safe-area-inset-bottom)) + 62px);
+  background: var(--d3-panel); color: #f3ead2; border: 3px solid #111a14; border-radius: 3px;
+  box-shadow: inset 0 0 0 2px #3a4d40; padding: 9px 16px 10px; opacity: 0; transition: opacity 0.6s; pointer-events: none;
+}
+.draw3d .d3-intro.is-on { opacity: 1; }
+.draw3d .d3-live { font-size: 10px; color: #ff5a4a; letter-spacing: 0.08em; }
+.draw3d .d3-live i { display: inline-block; width: 7px; height: 7px; background: #ff3a2a; margin-right: 5px; animation: d3-blink 1s steps(2) infinite; }
+.draw3d .d3-intro b { display: block; font-size: 22px; color: var(--d3-led); margin: 3px 0 1px; }
+.draw3d .d3-intro small { font-size: 11px; color: #dfe5d6; }
+.draw3d .d3-bar {
+  position: absolute; z-index: 3; left: 50%; transform: translateX(-50%);
+  bottom: max(14px, env(safe-area-inset-bottom)); display: flex; gap: 6px; white-space: nowrap;
+}
+.draw3d .d3-btn {
+  display: inline-flex; align-items: center; gap: 6px; font-family: inherit; font-size: 13px; text-transform: uppercase;
+  color: var(--d3-ink); height: 42px; padding: 0 16px; border-radius: 3px; cursor: pointer;
+  border: 1px solid #b9b4a7; background: #faf8f2;
+}
+.draw3d .d3-btn:hover { background: #fff; }
+.draw3d .d3-btn:active { transform: translateY(1px); }
+.draw3d .d3-btn:disabled { opacity: 0.6; cursor: default; }
+.draw3d .d3-btn.is-primary { color: #fff; background: #1f1f1f; border-color: #1f1f1f; }
+.draw3d .d3-btn svg { width: 16px; height: 16px; }
+.draw3d .d3-tag {
+  position: fixed; z-index: 1; left: 0; top: 0; pointer-events: none; white-space: nowrap;
+  font-size: 10px; line-height: 1; text-transform: uppercase; padding: 3px 4px 2px;
+  background: #faf8f2; color: var(--d3-ink); border: 1px solid var(--d3-ink);
+}
+.draw3d .d3-tag.is-champ { background: #fff2b0; color: #3b2600; border-color: #c98a12; box-shadow: 0 0 10px rgba(255, 200, 60, 0.8); }
+.draw3d .d3-loading { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; color: #f3ead2; font-size: 14px; }
+@media (max-width: 520px) {
+  .draw3d .d3-tag { font-size: 9px; padding: 2px 3px 1px; }
+  .draw3d .d3-board { padding: 7px 10px 8px; }
+  .draw3d .d3-row { min-height: 50px; gap: 8px; }
+  .draw3d .d3-letter { width: 44px; height: 44px; font-size: 28px; }
+  .draw3d .d3-gbox span { display: none; }
+  .draw3d .d3-done b { font-size: 20px; }
+}

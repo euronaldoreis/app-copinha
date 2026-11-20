@@ -774,6 +774,28 @@ export interface GroupDrawItem {
   avatar: AvatarLook | null;
   teamName: string | null;
   groupLabel: string | null;
+  /** Campeão da edição anterior: entra no sorteio carregando o troféu. */
+  champion: boolean;
+}
+
+/**
+ * Jogador campeão da edição anterior (a de número mais alto antes desta que
+ * tem campeão definido), ou null se ainda não houver.
+ */
+export async function defendingChampionId(
+  db: Db,
+  editionId: number,
+): Promise<number | null> {
+  const edition = await getEdition(db, editionId);
+  const rows = await db
+    .select({ playerId: entries.playerId, number: editions.number })
+    .from(entries)
+    .innerJoin(editions, eq(entries.editionId, editions.id))
+    .where(and(eq(entries.result, "campeao"), ne(editions.id, editionId)));
+  const before = rows
+    .filter((r) => r.number < edition.number)
+    .sort((a, b) => b.number - a.number);
+  return before[0]?.playerId ?? null;
 }
 
 interface Seeded {
@@ -881,6 +903,7 @@ export async function startEdition(
   const names = await db
     .select({
       entryId: entries.id,
+      playerId: entries.playerId,
       playerName: players.name,
       avatar: players.avatar,
       teamName: teams.name,
@@ -890,12 +913,14 @@ export async function startEdition(
     .leftJoin(teams, eq(entries.teamId, teams.id))
     .where(eq(entries.editionId, editionId));
   const byEntry = new Map(names.map((n) => [n.entryId, n]));
+  const championId = await defendingChampionId(db, editionId);
   return seeded.map((e) => ({
     entryId: e.id,
     playerName: byEntry.get(e.id)?.playerName ?? "",
     avatar: byEntry.get(e.id)?.avatar ?? null,
     teamName: byEntry.get(e.id)?.teamName ?? null,
     groupLabel: e.groupLabel,
+    champion: championId != null && byEntry.get(e.id)?.playerId === championId,
   }));
 }
 
