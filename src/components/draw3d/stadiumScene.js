@@ -23,7 +23,8 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
   const LABELS = [...new Set(DRAW.map((d) => d.groupLabel ?? ""))].sort();
 
   // Tempos do sorteio original
-  const NAME_SPIN_MS = 1300, GROUP_SPIN_MS = 800, SHOW_MS = 900, SEED_SHOW_MS = 2400, TICK_MS = 85;
+  // Animação com desaceleração e tempo de leitura maior na revelação.
+  const NAME_SPIN_MS = 1450, GROUP_SPIN_MS = 1050, SHOW_MS = 1150, SEED_SHOW_MS = 2600;
 
   // ================= Fonte pixel 5x7 (letreiros, placar, gramado) =================
   const RAW = {
@@ -1038,7 +1039,9 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
   function renderBoard() {
     const done = placed >= DRAW.length, cur = DRAW[placed];
     const pool = DRAW.slice(placed);
-    const shown = phase === "name" ? (pool.length ? pool[(tick * 3 + 1) % pool.length] : null) : cur;
+    // Incrementos coprimos evitam repetir o mesmo jogador em listas de 3, 6, 9…
+    const hop = pool.length % 3 === 0 ? Math.max(1, pool.length - 1) : 3;
+    const shown = phase === "name" ? (pool.length ? pool[(tick * hop + placed * 7 + 1) % pool.length] : null) : cur;
     const letter = phase === "name" ? "?" : phase === "group" ? LABELS[tick % LABELS.length] : cur?.groupLabel ?? "?";
     onBoard({ placed, total: DRAW.length, phase, tick, done, name: shown?.playerName ?? "", team: cur?.teamName ?? "", letter, champion: Boolean(cur?.champion) });
   }
@@ -1047,13 +1050,34 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
     clearTimers(); renderBoard();
     if (placed >= DRAW.length) return finish();
     if (phase === "show") {
+      // Spotlight temporário no destino, sem alterar a distribuição dos grupos.
+      if (!reduced) {
+        const focus = spotOf(DRAW[placed]);
+        groupRevealSpot.position.set(focus.x + 3, 15, focus.z + 4);
+        groupRevealSpot.target.position.set(focus.x, 0, focus.z);
+        groupFlash = 1;
+      }
       enter(DRAW[placed]);
       timers.push(setTimeout(() => { placed++; phase = "name"; runPhase(); }, DRAW[placed].champion && !reduced ? SEED_SHOW_MS : SHOW_MS));
       return;
     }
     const quick = reduced || DRAW.length - placed === 1;
     const wait = phase === "name" ? (quick ? 350 : NAME_SPIN_MS) : quick ? 300 : GROUP_SPIN_MS;
-    timers.push(setInterval(() => { tick++; renderBoard(); }, TICK_MS));
+    // Começa rápida, desacelera e fixa o resultado já definido no servidor.
+    // O efeito não faz nenhum novo sorteio.
+    if (!reduced && DRAW.length - placed > 1) {
+      const spinStarted = performance.now();
+      const spin = () => {
+        const elapsed = performance.now() - spinStarted;
+        if (elapsed >= wait - 70) return;
+        tick++;
+        renderBoard();
+        const fraction = Math.min(1, elapsed / wait);
+        const delay = 60 + Math.round(160 * fraction * fraction);
+        timers.push(setTimeout(spin, delay));
+      };
+      timers.push(setTimeout(spin, 60));
+    }
     timers.push(setTimeout(() => {
       if (phase === "name") phase = "group"; else phase = "show";
       runPhase();
@@ -1093,16 +1117,21 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
   // holofote dourado que segue o atual campeão
   const seedSpot = new THREE.SpotLight("#ffc94a", 0, 0, 0.13, 0.5, 0); scene.add(seedSpot, seedSpot.target);
   let seedSpotOn = null;
+  const groupRevealSpot = new THREE.SpotLight("#96dbff", 0, 45, 0.42, 0.7, 0);
+  groupRevealSpot.position.set(0, 15, FZ + 4);
+  groupRevealSpot.target.position.set(0, 0, FZ);
+  scene.add(groupRevealSpot, groupRevealSpot.target);
+  let groupFlash = 0;
 
   function reset() {
     clearTimers(); clearWalkers();
-    placed = 0; phase = "name"; tick = 0; hatchGoal = 0; rainLeft = 0; finale = 0;
+    placed = 0; phase = "name"; tick = 0; hatchGoal = 0; rainLeft = 0; finale = 0; groupFlash = 0; groupRevealSpot.intensity = 0;
     partyOn = false; drum = 0; pStage = -1;
     startIntro();
   }
 
   // ================= Abertura: câmera acompanha o caminhão pela rua e depois revela o estádio =================
-  const T_DRIVE = 4, T_HOLD = 0.5, T_CRANE = 3.2, DRIVE_DIST = 58;
+  const T_DRIVE = PARTY ? 4 : 3.4, T_HOLD = PARTY ? 0.5 : 0.45, T_CRANE = PARTY ? 3.2 : 2.7, DRIVE_DIST = 58;
   let intro = { active: false, t: 0 }, finalCam = null;
   const ease3 = (k) => 1 - Math.pow(1 - k, 3);
   const easeIO = (k) => (k < 0.5 ? 4 * k * k * k : 1 - Math.pow(-2 * k + 2, 3) / 2);
@@ -1176,7 +1205,7 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
     }
     for (const w of walkers) if (!w.done) { w.p.position.copy(spotOf(w.item)); w.p.rotation.y = FACE_CAM; w.done = true; w.celebrate = 0; pose(w, {}); if (w.item.champion) addRing(w); }
     for (let i = walkers.length; i < DRAW.length; i++) enter(DRAW[i], true);
-    placed = DRAW.length; hatchGoal = 0; renderBoard(); finish();
+    placed = DRAW.length; hatchGoal = 0; groupFlash = 0; groupRevealSpot.intensity = 0; renderBoard(); finish();
   }
 
 
@@ -1299,7 +1328,8 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
   const tv = new THREE.Vector3();
   function frame() {
     const w = innerWidth, h = innerHeight, portrait = w < h;
-    const pr = Math.min(devicePixelRatio || 1, 2);
+    // Limita o custo do pós-processamento nos celulares, mantendo a pixel art.
+    const pr = Math.min(devicePixelRatio || 1, portrait ? 1.5 : 2);
     // tamanho do "pixel" do pixel art em pixels do aparelho: celular retina = 2 (1 ponto), desktop retina = 3, tela comum = 2
     const px = pr >= 2 ? (portrait ? 2 : 3) : 2;
     renderer.setPixelRatio(pr); renderer.setSize(w, h, false);
@@ -1441,6 +1471,7 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
   function loop() {
     if (disposed) return;
     const raw = clock.getDelta(), dt = Math.min(raw, 0.05), t = clock.elapsedTime;
+    if (document.visibilityState === "hidden") { rafId = requestAnimationFrame(loop); return; }
     if (!lowQ && ++perfN > 30) { perfT += raw; if (perfN > 90) { if (perfT / 60 > 0.045) degrade(); perfN = 0; perfT = 0; } }
     for (const wk of walkers) updateWalker(wk, dt, t);
     if (phase !== "show" && walkers.every((w) => w.done || w.t > 0.9)) hatchGoal = 0;
@@ -1479,6 +1510,11 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
       seedSpot.intensity += (1.8 - seedSpot.intensity) * Math.min(1, dt * 6);
     } else seedSpot.intensity += (0 - seedSpot.intensity) * Math.min(1, dt * 4);
     ringMat.color.setRGB(1.6, 1.3, 0.4).multiplyScalar(0.8 + Math.sin(t * 4) * 0.2);
+    // Pulso luminoso curto na área do participante recém-sorteado.
+    if (!PARTY && groupFlash > 0) {
+      groupFlash = Math.max(0, groupFlash - dt / 1.2);
+      groupRevealSpot.intensity = 2.2 * Math.sin(groupFlash * Math.PI);
+    } else groupRevealSpot.intensity = 0;
     composer.render();
     // etiquetas com o nome acompanham a cabeça de cada jogador
     const w = innerWidth, h = innerHeight;
