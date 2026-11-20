@@ -374,17 +374,6 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
     crowdBody.instanceMatrix.needsUpdate = crowdHead.instanceMatrix.needsUpdate = crowdArm.instanceMatrix.needsUpdate = true;
   }
 
-  // ---------- Telão em cima da arquibancada do fundo ----------
-  const jumboC = document.createElement("canvas"); jumboC.width = 48; jumboC.height = 20;
-  const jumboTex = new THREE.CanvasTexture(jumboC);
-  jumboTex.magFilter = jumboTex.minFilter = THREE.NearestFilter; jumboTex.generateMipmaps = false; jumboTex.colorSpace = THREE.SRGBColorSpace;
-  const JB = new THREE.Group(); JB.position.set(0, ROOF_IN_Y - 3.1, BACK - D_IN + 0.8); JB.rotation.y = FACE_CAM * 0.6; scene.add(JB);
-  for (const dx of [-3.5, 3.5]) box(0.1, 1.4, 0.1, "#3a3f46", dx, 2.9, 0, JB); // cabos presos na cobertura
-  box(10.2, 4.6, 0.4, "#16211a", 0, 0, 0, JB);
-  const screen = new THREE.Mesh(new THREE.PlaneGeometry(9.6, 4), new THREE.MeshBasicMaterial({ map: jumboTex, toneMapped: false }));
-  screen.position.set(0, 0, 0.21); JB.add(screen);
-  const JUMBO_TOP = JB.position.y + 2.3;
-
   // ---------- Árvores ----------
   const pines = [];
   for (let x = -44; x <= 44; x += 1.8) pines.push([x + sr(-0.3, 0.3), BZ - B_DEPTH - 4 + sr(-0.4, 0.4), sr(1.05, 1.5)]);
@@ -417,7 +406,7 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
     if (shadow) { spot.castShadow = true; spot.shadow.mapSize.set(2048, 2048); spot.shadow.camera.near = 3; spot.shadow.camera.far = 80; spot.shadow.bias = -0.0004; spot.shadow.normalBias = 0.03; }
     scene.add(spot, spot.target);
   });
-  for (const x of [-20, -13, -6.5, 6.5, 13, 19]) { box(0.12, 2.3, 0.12, "#262826", x, 1.15, FRONT + 4.6); box(0.36, 0.3, 0.36, "#262826", x, 2.4, FRONT + 4.6); box(0.24, 0.1, 0.24, glowMat("#ffe2a0", 2.2), x, 2.2, FRONT + 4.6); }
+  for (const x of [-20, -13, -8, 8, 13, 19]) { box(0.12, 2.3, 0.12, "#262826", x, 1.15, FRONT + 4.6); box(0.36, 0.3, 0.36, "#262826", x, 2.4, FRONT + 4.6); box(0.24, 0.1, 0.24, glowMat("#ffe2a0", 2.2), x, 2.2, FRONT + 4.6); }
   // luz da rua, para ver o caminhão e o jogador saindo
   const roadLight = new THREE.PointLight("#ffd9a0", 18, 18, 2); roadLight.position.set(GATE_X, 3.4, ROAD_Z - 2.6); scene.add(roadLight);
   function bench(x, z, sitters) {
@@ -425,9 +414,9 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
     for (const dx of [-0.75, 0.75]) box(0.1, 0.5, 0.45, "#2a2a2a", x + dx, 0.25, z);
     sitters.forEach((c, i) => { const sx = x - 0.4 + i * 0.8; box(0.36, 0.5, 0.28, c, sx, 0.85, z - 0.05); box(0.24, 0.24, 0.24, "#d9a777", sx, 1.25, z - 0.05); box(0.3, 0.14, 0.4, "#2f3b55", sx, 0.6, z + 0.15); });
   }
-  bench(-16.5, FRONT + 4.2, ["#c0453a", "#3d5f9e"]); bench(5.4, FRONT + 4.2, ["#e0b44a"]); bench(9.5, FRONT + 4.2, ["#3f7f53", "#e9e4d8"]); bench(16, FRONT + 4.2, []);
+  bench(-16.5, FRONT + 4.2, ["#c0453a", "#3d5f9e"]); bench(10.2, FRONT + 4.2, ["#e0b44a"]); bench(15.6, FRONT + 4.2, ["#3f7f53", "#e9e4d8"]); 
   for (const [dx, frameC] of [[0, "#c0453a"], [0.9, "#3d5f9e"]]) {
-    const bx = -5.2 + dx, bz = FRONT + 4 + dx * 0.4;
+    const bx = -10.6 + dx, bz = FRONT + 4 + dx * 0.4;
     for (const wx of [-0.45, 0.45]) { const wheel = new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.05, 4, 10), mat("#222222")); wheel.position.set(bx + wx, 0.35, bz); wheel.castShadow = true; scene.add(wheel); }
     box(0.9, 0.06, 0.06, frameC, bx, 0.6, bz);
   }
@@ -581,6 +570,99 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
       if (f.light) f.light.intensity = 10 + Math.sin(t * 23 + f.pos.x) * 3 + Math.random() * 4;
     }
   }
+  // Imprensa na entrada do estádio: repórteres, cinegrafistas, fotógrafos e
+  // um painel de entrevista. Eles viram para acompanhar quem está chegando.
+  // Ficam do lado do corredor oposto ao caminhão, para ele não tampar.
+  const press = [], pressItems = [];
+  const PRESS_Z = FRONT + 5.05;
+  function placePress(portrait) {
+    const sx = portrait ? -1 : 1;
+    for (const it of pressItems) { it.obj.position.x = GATE_X + sx * it.dx; it.obj.rotation.y = sx * it.face; }
+    for (const m of press) m.faceNow = sx * m.face;
+  }
+  function pressPerson(dx, z, face, kind, shirt, pants) {
+    const g = new THREE.Group(); g.position.set(GATE_X + dx, 0.1, z); g.rotation.y = face; scene.add(g);
+    pressItems.push({ obj: g, dx, face });
+    const skin = skinTones[Math.floor(srand() * 4)], hair = ["#1d1a1a", "#4a2c17", "#8c5a2b"][Math.floor(srand() * 3)];
+    for (const sx of [-0.13, 0.13]) { box(0.22, 0.7, 0.24, pants, sx, 0.4, 0, g); box(0.24, 0.1, 0.32, "#151518", sx, 0.05, 0.04, g); }
+    box(0.6, 0.66, 0.34, shirt, 0, 1.08, 0, g);
+    const head = new THREE.Group(); head.position.y = 1.64; g.add(head);
+    box(0.42, 0.42, 0.4, skin, 0, 0, 0, head); box(0.44, 0.12, 0.42, hair, 0, 0.24, -0.01, head); box(0.44, 0.24, 0.1, hair, 0, 0.08, -0.2, head);
+    for (const ex of [-0.09, 0.09]) box(0.06, 0.07, 0.02, "#151518", ex, 0.03, 0.205, head);
+    const arm = (sx, rx) => { const a = new THREE.Group(); a.position.set(sx, 1.36, 0); a.rotation.x = rx; g.add(a); box(0.16, 0.5, 0.18, shirt, 0, -0.2, 0, a); box(0.14, 0.14, 0.15, skin, 0, -0.48, 0, a); return a; };
+    let flashAt = null;
+    if (kind === "camera") {
+      // câmera de ombro, com a luz vermelha de gravando
+      arm(-0.38, -0.25); const a = arm(0.38, -2.6); a.rotation.z = 0.25;
+      const cam = new THREE.Group(); cam.position.set(0.3, 1.66, 0.12); g.add(cam);
+      box(0.32, 0.34, 0.78, "#1b1b1f", 0, 0, 0, cam); box(0.22, 0.22, 0.22, "#2c2f38", 0, 0, 0.46, cam);
+      box(0.18, 0.18, 0.04, glowMat("#9fd0ff", 1.3), 0, 0, 0.58, cam).castShadow = false;
+      box(0.06, 0.06, 0.04, glowMat("#ff2a1a", 3), 0.1, 0.13, 0.4, cam).castShadow = false;
+      box(0.08, 0.1, 0.4, "#2c2f38", 0, 0.22, -0.05, cam);
+    } else if (kind === "reporter") {
+      // repórter com o microfone esticado, com o cubo da emissora
+      arm(-0.38, 0); const a = arm(0.38, -1.25);
+      box(0.05, 0.32, 0.05, "#222226", 0, -0.62, 0.02, a); box(0.12, 0.12, 0.12, "#3a3d46", 0, -0.82, 0.02, a); box(0.16, 0.12, 0.16, "#ffd23f", 0, -0.66, 0.02, a);
+    } else {
+      // fotógrafo com a câmera no rosto
+      const a = arm(-0.36, -1.5), b = arm(0.36, -1.5); a.rotation.z = -0.35; b.rotation.z = 0.35;
+      box(0.32, 0.22, 0.18, "#1b1b1f", 0, 1.66, 0.3, g); box(0.14, 0.14, 0.2, "#2c2f38", 0, 1.64, 0.46, g);
+      box(0.12, 0.08, 0.08, "#d9dde6", 0.08, 1.82, 0.3, g);
+      flashAt = new THREE.Vector3(0.08, 1.86, 0.36);
+    }
+    g.traverse((o) => { if (o.isMesh && o.castShadow !== false) o.castShadow = true; });
+    g.scale.setScalar(1.3);
+    press.push({ g, head, face, faceNow: face, flashAt, next: Math.random() });
+  }
+  const TOWARD = -Math.PI / 2 + 0.3; // de frente para o caminho (e um pouco para a rua)
+  pressPerson(3.7, PRESS_Z + 0.1, TOWARD, "reporter", "#7a3fd1", "#2b2d3a");
+  pressPerson(5.1, PRESS_Z + 0.5, TOWARD + 0.1, "camera", "#2a2d3a", "#22262e");
+  pressPerson(4.3, PRESS_Z - 0.65, TOWARD - 0.1, "photo", "#e9e4d8", "#2f3b55");
+  pressPerson(6.1, PRESS_Z - 0.2, TOWARD + 0.15, "photo", "#3f7f53", "#22262e");
+  pressPerson(3.5, PRESS_Z + 0.95, TOWARD + 0.35, "photo", "#c0453a", "#2f3b55");
+  pressPerson(7.1, PRESS_Z + 0.7, TOWARD + 0.25, "camera", "#3a3a3a", "#22262e");
+  // câmera no tripé com painel de luz
+  {
+    const g = new THREE.Group(); g.position.set(GATE_X + 6.9, 0.1, PRESS_Z - 0.55); g.rotation.y = TOWARD; scene.add(g);
+    pressItems.push({ obj: g, dx: 6.9, face: TOWARD });
+    for (const a of [0, 2.1, 4.2]) { const leg = box(0.06, 1.6, 0.06, "#2c2f38", Math.sin(a) * 0.25, 0.78, Math.cos(a) * 0.25, g); leg.rotation.set(Math.cos(a) * 0.3, 0, -Math.sin(a) * 0.3); }
+    box(0.36, 0.36, 0.7, "#1b1b1f", 0, 1.78, 0.05, g); box(0.24, 0.24, 0.2, "#2c2f38", 0, 1.78, 0.48, g);
+    box(0.05, 1.1, 0.05, "#2c2f38", 0.42, 2.3, -0.1, g);
+    box(0.6, 0.42, 0.08, "#15171c", 0.42, 2.9, -0.1, g); box(0.52, 0.34, 0.02, glowMat("#fff6e0", 2.6), 0.42, 2.9, -0.05, g).castShadow = false;
+    g.scale.setScalar(1.3);
+  }
+  // painel de entrevista atrás dos repórteres, com a marca repetida
+  {
+    const tex = pixTex(40, 30, (g2, w, h) => {
+      g2.fillStyle = "#0f6b34"; g2.fillRect(0, 0, w, h);
+      for (let row = 0; row < 3; row++) pixText(g2, row % 2 ? "LIXO" : "COPINHA", row % 2 ? 26 : 16, 1 + row * 10, 1, row % 2 ? "#ffd23f" : "#ffffff", "center");
+    });
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.repeat.set(2, 1);
+    // de frente para a rua, atrás do grupo
+    const wall = new THREE.Group(); wall.position.set(GATE_X + 5.4, 0, FRONT + 4.2); scene.add(wall);
+    const cloth = new THREE.Mesh(new THREE.PlaneGeometry(3, 2.4), new THREE.MeshStandardMaterial({ map: tex, roughness: 1 }));
+    cloth.position.y = 1.3; cloth.castShadow = cloth.receiveShadow = true; wall.add(cloth);
+    for (const dx of [-1.52, 1.52]) box(0.08, 2.6, 0.08, "#2c2f38", dx, 1.3, -0.03, wall);
+    pressItems.push({ obj: wall, dx: 5.4, face: 0 });
+  }
+  const pressTmp = new THREE.Vector3();
+  function updatePress(t, dt) {
+    // quem está chegando agora (fora do campo): a imprensa vira para ele e os fotógrafos disparam o flash
+    const target = walkers.find((w) => !w.done && w.p.position.z > FRONT - 0.5);
+    for (const m of press) {
+      let yaw = m.faceNow;
+      if (target) yaw = Math.atan2(target.p.position.x - m.g.position.x, target.p.position.z - m.g.position.z);
+      let diff = yaw - m.g.rotation.y; diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+      m.g.rotation.y += diff * Math.min(1, dt * 5);
+      m.head.rotation.y = Math.sin(t * 0.8 + m.next * 6) * (target ? 0.05 : 0.3);
+      if (m.flashAt && target && (m.next -= dt) <= 0) {
+        m.next = rnd(0.25, 0.8);
+        m.g.localToWorld(pressTmp.copy(m.flashAt));
+        glow.emit(lowQ ? 3 : 7, () => ({ pos: pressTmp.clone(), vel: new THREE.Vector3(rnd(-1.5, 1.5), rnd(-1.5, 1.5), rnd(-1.5, 1.5)), g: 0, drag: 4, size: rnd(0.22, 0.34), grow: -0.5, max: rnd(0.08, 0.14), color: "#ffffff", boost: 4, floor: false }));
+      }
+    }
+  }
+
   // Corredor de torcedores do lado de fora, pulando com sinalizadores, do caminhão até o portão
   const fans = [], FAN_S = 2.1;
   // 2 fileiras de cada lado, mais espaçadas: leve no celular
@@ -951,20 +1033,6 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
     const shown = phase === "name" ? (pool.length ? pool[(tick * 3 + 1) % pool.length] : null) : cur;
     const letter = phase === "name" ? "?" : phase === "group" ? LABELS[tick % LABELS.length] : cur?.groupLabel ?? "?";
     onBoard({ placed, total: DRAW.length, phase, tick, done, name: shown?.playerName ?? "", team: cur?.teamName ?? "", letter, champion: Boolean(cur?.champion) });
-    drawJumbo(done, letter);
-  }
-  function drawJumbo(done, letter) {
-    const g = jumboC.getContext("2d");
-    g.fillStyle = "#1c2a21"; g.fillRect(0, 0, 48, 20);
-    if (done) { pixText(g, "GRUPOS", 24, 2, 1, "#ffd23f", "center"); pixText(g, "PRONTOS", 24, 11, 1, "#ffffff", "center"); }
-    else {
-      pixText(g, "GRUPO", 2, 2, 1, "#ffd23f");
-      pixText(g, `${placed + 1}/${DRAW.length}`, 2, 11, 1, "#ffffff");
-      g.fillStyle = "#0c120e"; g.fillRect(33, 1, 14, 18);
-      const on = phase !== "name" || Math.floor(tick / 3) % 2 === 0;
-      pixText(g, letter, 40, 3, 2, phase === "show" ? "#ffd23f" : on ? "#d8c25a" : "#3a3420", "center");
-    }
-    jumboTex.needsUpdate = true;
   }
   function clearTimers() { timers.forEach((t) => { clearTimeout(t); clearInterval(t); }); timers = []; }
   function runPhase() {
@@ -1118,12 +1186,13 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
     composer.setPixelRatio(pr); composer.setSize(w, h);
     pixelPass.setPixelSize(px); palettePass.uniforms.pixel.value = px;
     placeTruck(portrait);
+    placePress(portrait);
     const pts = [];
     if (portrait) {
       // celular em pé: fecha no campo, no portão e na traseira do caminhão
       const ex = Math.min(PW / 2, Math.max(...DRAW.map((d) => Math.abs(spotOf(d).x))) + 1.6);
       for (const x of [-ex, ex]) for (const z of [FZ - PD / 2, FZ + PD / 2]) pts.push([x, 0, z], [x, 2.8, z]);
-      pts.push([GATE_X, 0, FRONT + 1], [0, JUMBO_TOP, JB.position.z]);
+      pts.push([GATE_X, 0, FRONT + 1], [0, ROOF_IN_Y, BACK - D_IN]);
       for (const lx of [-5.0, 4.5]) for (const ly of [0, 4.2]) { const v = truck.localToWorld(new THREE.Vector3(lx, ly, 1.3)); pts.push([v.x, v.y, v.z]); }
     } else {
       for (const x of [-FW / 2, FW / 2]) for (const z of [BACK, FRONT]) pts.push([x, 0, z], [x, FH, z]);
@@ -1244,6 +1313,7 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
       emit(7, () => ({ pos: new THREE.Vector3(rnd(-PW / 2, PW / 2), rnd(10, 14), FZ + rnd(-PD / 2, PD / 2)), vel: new THREE.Vector3(rnd(-0.6, 0.6), rnd(-1.6, -0.6), rnd(-0.6, 0.6)), g: -1.1, drag: 0.9, size: rnd(0.13, 0.19), max: rnd(5, 7), spin: rnd(-8, 8), flutter: 2.5, flat: true, color: pick(RAIN_COLORS) }));
     }
     updateFans(t);
+    updatePress(t, dt);
     updateFlares(dt, t);
     flags.forEach((f) => { f.pivot.rotation.y = f.base + Math.sin(t * 4 + f.ph) * 0.7; f.pivot.rotation.z = Math.sin(t * 2.3 + f.ph) * 0.25; });
     updateBigFlag(t);
