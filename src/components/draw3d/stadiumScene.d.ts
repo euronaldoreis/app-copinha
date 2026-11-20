@@ -26,6 +26,8 @@ export type SceneItem = GroupDrawItem & { place?: 1 | 2 | 3 };
 export interface DrawSceneOptions {
   /** "draw" = sorteio dos grupos (padrão); "party" = festa do título no pódio. */
   mode?: "draw" | "party";
+  /** Falso = espera start() (o toque libera o som no celular). Padrão: true. */
+  autoStart?: boolean;
   /** Elemento que recebe o canvas (ocupa a tela inteira). */
   container: HTMLElement;
   /** Camada onde ficam as etiquetas com o nome dos jogadores. */
@@ -49,6 +51,8 @@ export interface DrawScene {
   skip: () => void;
   /** Recomeça do início: abertura e sorteio de novo. */
   replay: () => void;
+  /** Começa a abertura (quando autoStart é falso). */
+  start: () => void;
   dispose: () => void;
 }
 
