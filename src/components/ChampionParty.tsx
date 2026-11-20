@@ -6,6 +6,8 @@ import { buildShareCard, shareCard } from "@/lib/shareCard";
 import type { AvatarLook } from "@/lib/sprite";
 import { Arcade } from "./Arcade";
 import { PlayerSprite } from "./PlayerSprite";
+import { ChampionParty3D } from "./ChampionParty3D";
+import { supportsWebGL } from "./GroupDraw3D";
 import { TrophyIcon } from "./icons";
 import {
   FRONT_WALK_MS,
@@ -357,18 +359,37 @@ export function ChampionParty({
   // Compara com o campeão do render anterior para notar o momento da conquista.
   const [seenId, setSeenId] = useState(championId);
   const [open, setOpen] = useState(false);
+  // Estádio 3D quando o aparelho desenha WebGL; senão (ou se falhar), a festa em 2D.
+  const [flat, setFlat] = useState(false);
   if (championId !== seenId) {
     setSeenId(championId);
-    if (championId != null && auto) setOpen(true);
+    if (championId != null && auto) {
+      setFlat(typeof window === "undefined" || !supportsWebGL());
+      setOpen(true);
+    }
   }
 
   useEffect(() => {
-    const replay = () => setOpen(true);
+    const replay = () => {
+      setFlat(!supportsWebGL());
+      setOpen(true);
+    };
     window.addEventListener(REPLAY_EVENT, replay);
     return () => window.removeEventListener(REPLAY_EVENT, replay);
   }, []);
 
   if (!open || !champion) return null;
+  if (!flat)
+    return (
+      <ChampionParty3D
+        editionName={editionName}
+        champion={champion}
+        vice={vice}
+        third={third}
+        onClose={() => setOpen(false)}
+        onFail={() => setFlat(true)}
+      />
+    );
   return (
     <PartyOverlay
       editionName={editionName}

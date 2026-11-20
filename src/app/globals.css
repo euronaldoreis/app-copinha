@@ -2614,6 +2614,11 @@ label:has(> input[type="date"]) {
 .draw3d .d3-done b { display: block; font-size: 24px; color: var(--d3-led); }
 .draw3d .d3-done small { font-size: 11px; color: #b9c2b0; }
 .draw3d .d3-reveal { animation: d3-reveal 0.3s steps(4); }
+.draw3d .d3-party { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 76px; text-align: center; }
+.draw3d .d3-party-tag { font-size: 13px; color: var(--d3-led); text-transform: uppercase; }
+.draw3d .d3-party-tag.is-blink { animation: d3-blink 0.9s steps(2) infinite; }
+.draw3d .d3-party-name { max-width: 100%; font-weight: 700; font-size: clamp(22px, 6.5vw, 32px); line-height: 1.1; text-transform: uppercase; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #fff; }
+.draw3d .d3-party-name.is-gold { color: var(--d3-led); text-shadow: 0 0 14px rgba(255, 210, 63, 0.6); }
 @keyframes d3-reveal { from { transform: scale(1.6); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes d3-blink { 50% { opacity: 0.2; } }
 .draw3d .d3-intro {
@@ -2629,7 +2634,8 @@ label:has(> input[type="date"]) {
 .draw3d .d3-intro small { font-size: 11px; color: #dfe5d6; }
 .draw3d .d3-bar {
   position: absolute; z-index: 3; left: 50%; transform: translateX(-50%);
-  bottom: max(14px, env(safe-area-inset-bottom)); display: flex; gap: 6px; white-space: nowrap;
+  bottom: max(14px, env(safe-area-inset-bottom)); display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; white-space: nowrap;
+  width: max-content; max-width: calc(100% - 16px);
 }
 .draw3d .d3-btn {
   display: inline-flex; align-items: center; gap: 6px; font-family: inherit; font-size: 13px; text-transform: uppercase;
@@ -2655,4 +2661,5 @@ label:has(> input[type="date"]) {
   .draw3d .d3-letter { width: 44px; height: 44px; font-size: 28px; }
   .draw3d .d3-gbox span { display: none; }
   .draw3d .d3-done b { font-size: 20px; }
+  .draw3d .d3-btn { padding: 0 11px; font-size: 12px; }
 }

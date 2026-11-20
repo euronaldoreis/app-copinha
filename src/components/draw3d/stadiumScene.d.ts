@@ -17,18 +17,30 @@ export interface BoardState {
   champion: boolean;
 }
 
+/** Etapas da festa do título, na ordem. */
+export type PartyStage = "third" | "vice" | "drumroll" | "champion" | "party";
+
+/** Um participante da cena: no sorteio vem de GroupDrawItem; na festa, com o lugar no pódio. */
+export type SceneItem = GroupDrawItem & { place?: 1 | 2 | 3 };
+
 export interface DrawSceneOptions {
+  /** "draw" = sorteio dos grupos (padrão); "party" = festa do título no pódio. */
+  mode?: "draw" | "party";
   /** Elemento que recebe o canvas (ocupa a tela inteira). */
   container: HTMLElement;
   /** Camada onde ficam as etiquetas com o nome dos jogadores. */
   tagsLayer: HTMLElement;
-  items: GroupDrawItem[];
+  items: SceneItem[];
   reducedMotion: boolean;
   /** Espaço ocupado pelo placar (em cima) e pelos botões (embaixo), em px. */
   insets: () => { top: number; bottom: number };
-  onBoard: (state: BoardState) => void;
+  /** Sorteio: o que o placar mostra. */
+  onBoard?: (state: BoardState) => void;
+  /** Festa: etapa que começou. */
+  onStage?: (stage: PartyStage) => void;
   /** Abertura (caminhão chegando) começou/terminou; `fading` = letreiro some antes do fim. */
   onIntro: (active: boolean, fading?: boolean) => void;
+  /** Sorteio terminou / a festa começou. */
   onDone: () => void;
 }
 
