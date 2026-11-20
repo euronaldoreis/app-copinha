@@ -2672,3 +2672,49 @@ label:has(> input[type="date"]) {
   .draw3d .d3-done b { font-size: 20px; }
   .draw3d .d3-btn { padding: 0 11px; font-size: 12px; }
 }
+
+/* Classificação completa no celular (src/components/StandingsToggle.tsx).
+   Fora de camada para valer mais que o "hidden" do Tailwind. */
+.st-full .group-table .st-wide {
+  display: table-cell;
+}
+.st-full .group-table th,
+.st-full .group-table td {
+  padding-left: 5px;
+  padding-right: 5px;
+}
+.st-full .group-table th:last-child,
+.st-full .group-table td:last-child {
+  padding-right: 10px;
+}
+.st-full .group-table .group-avatar {
+  display: none;
+}
+@media (min-width: 640px) {
+  .st-full .group-table .group-avatar {
+    display: block;
+  }
+}
+.st-switch {
+  display: inline-flex;
+  padding: 3px;
+  gap: 3px;
+  border: 2px solid var(--color-night);
+  border-radius: 999px;
+  background: rgb(10 26 82 / 0.6);
+  box-shadow: 0 3px 0 var(--color-night);
+}
+.st-switch button {
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #dbe7ff;
+  cursor: pointer;
+}
+.st-switch button[aria-pressed="true"] {
+  background: linear-gradient(#ffd95e, #f7a81d);
+  color: #5b3600;
+}

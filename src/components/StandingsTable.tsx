@@ -4,13 +4,15 @@ import type { EntryView } from "@/lib/services";
 import type { StandingRow } from "@/lib/tournament";
 import { Avatar } from "./Avatar";
 
-const wide = "hidden sm:table-cell";
+// Colunas que, no celular, só aparecem na visualização completa (StandingsToggle).
+const wide = "st-wide hidden sm:table-cell";
 const signed = (n: number) => (n > 0 ? `+${n}` : String(n));
 
 /**
  * Classificação de um grupo, no estilo de placar de jogo: faixa com o nome
  * do grupo e a regra, e uma linha por jogador com a posição em círculo
- * (verde para quem avança). No celular ficam só pontos, jogos e saldo.
+ * (verde para quem avança). No celular ficam só pontos, jogos e saldo, a não
+ * ser na visualização completa.
  */
 export function StandingsTable({
   rows,

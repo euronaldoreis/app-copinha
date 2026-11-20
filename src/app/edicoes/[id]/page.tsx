@@ -13,6 +13,7 @@ import { DrawReplayButton, StartPanel } from "@/components/GroupDraw";
 import { Tabs, type TabItem } from "@/components/Tabs";
 import { MatchCard, type MatchSide } from "@/components/MatchCard";
 import { StandingsTable } from "@/components/StandingsTable";
+import { StandingsToggle } from "@/components/StandingsToggle";
 import {
   PeopleIcon,
   SettingsIcon,
@@ -279,18 +280,22 @@ function Tournament({
             <p className="text-body text-muted">{rule}</p>
             {replay && <DrawReplayButton items={replay} />}
           </div>
-          <div className="grid grid-cols-1 gap-4">
-            {tables.map((t) => (
-              <StandingsTable
-                key={t.label}
-                title={tables.length > 1 ? `Grupo ${t.label}` : "Classificação"}
-                note={groupNote}
-                rows={t.rows}
-                entries={entryById}
-                qualifying={edition.qualifiers === 0 ? 1 : full}
-              />
-            ))}
-          </div>
+          <StandingsToggle>
+            <div className="grid grid-cols-1 gap-4">
+              {tables.map((t) => (
+                <StandingsTable
+                  key={t.label}
+                  title={
+                    tables.length > 1 ? `Grupo ${t.label}` : "Classificação"
+                  }
+                  note={groupNote}
+                  rows={t.rows}
+                  entries={entryById}
+                  qualifying={edition.qualifiers === 0 ? 1 : full}
+                />
+              ))}
+            </div>
+          </StandingsToggle>
         </>
       ),
     });
@@ -562,7 +567,11 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
       <Podium view={view} />
 
       {!manual && !setup && (
-        <Tournament view={view} admin={admin} replay={drawReplay(data, edition.id)} />
+        <Tournament
+          view={view}
+          admin={admin}
+          replay={drawReplay(data, edition.id)}
+        />
       )}
 
       {(manual || setup) && (
