@@ -290,7 +290,11 @@ describe("histórico e ranking", () => {
     expect(edition.pairing).toBe("misto");
     expect(edition.crossGames).toBe(2);
     await drawTeams(db, edition.id);
-    await startEdition(db, edition.id);
+    const draw = await startEdition(db, edition.id);
+    // Campeão da edição anterior com campeão (a #2, registrada à mão): Ronaldo.
+    expect(draw.filter((d) => d.champion).map((d) => d.playerName)).toEqual([
+      "Ronaldo",
+    ]);
     let v = await view(edition.id);
     const groupGames = v.matches.filter((m) => m.stage === "grupo");
     // 12 jogos dentro dos grupos + 2 contra o outro grupo para cada um dos 8
