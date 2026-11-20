@@ -3135,6 +3135,143 @@ label:has(> input[type="date"]) {
   }
 }
 
+
+/* COPINHA GROUP DRAW 3D / CINEMATIC V2. Estilos isolados do sorteio. */
+.draw3d--groups .d3-board-wrap { top: max(14px, env(safe-area-inset-top)); width: min(560px, calc(100% - 24px)); }
+.draw3d--groups .d3-board {
+  position: relative; overflow: hidden; padding: 13px 16px 14px;
+  border: 2px solid #e7bb59; border-radius: 10px;
+  background: linear-gradient(160deg, rgba(24,56,108,.97), rgba(10,24,61,.97) 68%, rgba(5,16,42,.98));
+  box-shadow: inset 0 0 0 2px #264e85, inset 0 0 34px rgba(65,139,248,.15), 0 6px 0 #08112a, 0 16px 32px rgba(0,0,0,.5);
+  transition: opacity .35s ease, box-shadow .3s ease;
+}
+.draw3d--groups .d3-board::before {
+  content: ""; position: absolute; inset: 0 0 auto; height: 3px;
+  background: linear-gradient(90deg, transparent, #fff4ad 30%, #f8bb45 70%, transparent); opacity: .85;
+}
+.draw3d--groups .d3-board.is-revealed {
+  box-shadow: inset 0 0 0 2px #4971ae, inset 0 0 36px rgba(255,216,105,.18),
+    0 6px 0 #08112a, 0 0 32px rgba(255,203,74,.23);
+}
+.draw3d--groups .d3-head { align-items: center; font-size: 11px; color: #ffe08a; letter-spacing: .045em; }
+.draw3d--groups .d3-brand { display: inline-flex; align-items: center; gap: 7px; }
+.draw3d--groups .d3-brand i {
+  width: 7px; height: 7px; background: #ff665c; border-radius: 100%;
+  box-shadow: 0 0 10px #ff625b; animation: d3-live-pulse 1.4s ease-in-out infinite;
+}
+.draw3d--groups .d3-counter { color: #fff; font-variant-numeric: tabular-nums; }
+.draw3d--groups .d3-stage {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 8px 0 3px; color: #a6c8ff; font-size: 10px; text-transform: uppercase; letter-spacing: .06em;
+}
+.draw3d--groups .d3-stage span:last-child { color: #ffe08a; white-space: nowrap; }
+.draw3d--groups .d3-row { gap: 14px; min-height: 83px; }
+.draw3d--groups .d3-name-cell { flex: 1 1 0; min-width: 0; }
+.draw3d--groups .d3-kicker { color: #ffdf84; font-size: 9px; letter-spacing: .07em; }
+.draw3d--groups .d3-name {
+  font-size: clamp(20px, 5.5vw, 30px); color: #fff9ed; text-shadow: 0 2px 0 #112651; margin-top: 3px;
+}
+.draw3d--groups .d3-name.is-spin { color: #c3d3ef; text-shadow: 0 0 12px rgba(142,202,255,.3); }
+.draw3d--groups .d3-team { color: #c3d9ff; }
+.draw3d--groups .d3-gbox { gap: 4px; }
+.draw3d--groups .d3-gbox span { color: #ffe69c; font-size: 10px; }
+.draw3d--groups .d3-letter {
+  width: 59px; height: 59px; border: 2px solid #f7d16c; border-radius: 7px;
+  background: radial-gradient(circle at 40% 22%, #33589a, #152a60 60%, #081737);
+  box-shadow: inset 0 0 0 2px #1d417a, 0 4px 0 #07122d;
+  font-size: 35px; color: #ffe68d; text-shadow: 0 2px 0 #714e13;
+}
+.draw3d--groups .d3-letter.is-spin { color: #b7caf4; border-color: #6687ba; }
+.draw3d--groups .d3-row .d3-reveal { animation: d3-settle .58s cubic-bezier(.18,1.36,.32,1) both; }
+.draw3d--groups .d3-result-banner {
+  display: flex; align-items: center; gap: 8px; padding: 7px 9px; margin: 2px 0 6px;
+  background: linear-gradient(90deg, rgba(22,104,72,.94), rgba(13,70,64,.75));
+  border: 1px solid #6ad7a3; border-radius: 5px; font-size: 11px; line-height: 1.4;
+  text-transform: uppercase; color: #eefff4; animation: d3-banner-in .48s cubic-bezier(.2,.9,.25,1) both;
+}
+.draw3d--groups .d3-result-banner b { color: #ffe68d; white-space: nowrap; }
+.draw3d--groups .d3-result-check {
+  flex: none; display: grid; place-items: center; width: 22px; height: 22px;
+  border-radius: 50%; background: #bef6d0; color: #123f2a; font-size: 16px;
+}
+.draw3d--groups .d3-progress-shell { margin-top: 6px; }
+.draw3d--groups .d3-progress-label {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 5px; font-size: 9px; color: #a9c9f6; letter-spacing: .05em;
+}
+.draw3d--groups .d3-progress-label b { color: #ffe08a; }
+.draw3d--groups .d3-progress-track {
+  overflow: hidden; height: 8px; padding: 1px; border: 1px solid #456da3;
+  background: #091632; border-radius: 3px;
+}
+.draw3d--groups .d3-progress-track > div {
+  height: 100%; border-radius: 2px; background: linear-gradient(90deg,#e3a52c,#ffeb95);
+  box-shadow: 0 0 8px rgba(255,216,108,.7); transition: width .45s cubic-bezier(.2,.9,.3,1);
+}
+.draw3d--groups .d3-finale { padding: 13px 0 8px; animation: d3-banner-in .65s cubic-bezier(.2,.9,.25,1) both; }
+.draw3d--groups .d3-finale b {
+  font-size: clamp(17px,5vw,24px); color: #ffe88b; text-shadow: 0 0 14px rgba(255,211,86,.28);
+}
+.draw3d--groups .d3-finale small { color: #b9ddfc; }
+.draw3d--groups .d3-start {
+  box-sizing: border-box; width: min(420px, calc(100% - 32px)); white-space: normal;
+  padding: 23px 22px 25px; border-radius: 13px; border-color: #f0c86a;
+  background: linear-gradient(160deg,#224b91,#112957 60%,#091b42);
+  box-shadow: inset 0 0 0 2px #3966a7, 0 8px 0 #08132d, 0 24px 70px rgba(0,0,0,.65);
+}
+.draw3d--groups .d3-start-crest {
+  display: grid; place-items: center; width: 58px; height: 58px; border: 2px solid #ffe8a1;
+  border-radius: 14px; background: #264a80; box-shadow: 0 5px 0 #081b3e; font-size: 33px; margin-bottom: 4px;
+}
+.draw3d--groups .d3-start-kicker {
+  color: #afd3fb; text-transform: uppercase; letter-spacing: .09em; font-size: 10px;
+}
+.draw3d--groups .d3-start b { font-size: clamp(20px,6vw,27px); line-height: 1.12; }
+.draw3d--groups .d3-start small { line-height: 1.5; white-space: normal; color: #caddf6; }
+.draw3d--groups .d3-start-flow {
+  display: flex; flex-wrap: wrap; justify-content: center; gap: 7px; margin-bottom: 8px;
+}
+.draw3d--groups .d3-start-flow span {
+  padding: 5px 6px; border: 1px solid #6f96c9; background: #142b58; color: #d4e7ff; font-size: 9px;
+}
+.draw3d--groups .d3-btn.is-primary {
+  border: 1px solid #ffeb9d; border-radius: 5px; background: linear-gradient(#f5c94f,#d78f1e);
+  box-shadow: 0 4px 0 #7a4d10; color: #1e2850; font-weight: 700;
+}
+.draw3d--groups .d3-btn.is-primary:hover { background: linear-gradient(#ffe281,#ecaa30); }
+.draw3d--groups .d3-intro {
+  border-color: #efc56b; border-radius: 8px; background: rgba(16,36,79,.95);
+  box-shadow: inset 0 0 0 2px #395d9a, 0 12px 40px #020b24aa;
+}
+.draw3d--groups .d3-loading { background: #091b3c; }
+@keyframes d3-settle {
+  0% { opacity: .25; transform: translateY(-8px) scale(1.13); filter: brightness(1.6); }
+  57% { opacity: 1; transform: translateY(2px) scale(.96); }
+  100% { opacity: 1; transform: translateY(0) scale(1); filter: brightness(1); }
+}
+@keyframes d3-banner-in {
+  from { opacity: 0; transform: translateY(-9px) scale(.97); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes d3-live-pulse { 50% { opacity: .55; box-shadow: 0 0 3px #ff625b; } }
+@media (max-width: 520px) {
+  .draw3d--groups .d3-board { padding: 9px 10px 11px; }
+  .draw3d--groups .d3-head { font-size: 9px; }
+  .draw3d--groups .d3-stage { font-size: 9px; }
+  .draw3d--groups .d3-row { min-height: 70px; gap: 9px; }
+  .draw3d--groups .d3-letter { width: 48px; height: 48px; font-size: 30px; }
+  .draw3d--groups .d3-gbox span { display: block; font-size: 9px; }
+  .draw3d--groups .d3-result-banner { font-size: 9px; gap: 5px; }
+  .draw3d--groups .d3-finale b { font-size: 19px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .draw3d--groups .d3-brand i,
+  .draw3d--groups .d3-row .d3-reveal,
+  .draw3d--groups .d3-result-banner,
+  .draw3d--groups .d3-finale { animation: none !important; }
+  .draw3d--groups .d3-progress-track > div { transition: none; }
+}
+
 /* Modal com os números do jogador no ranking (src/components/RankingList.tsx). */
 .rk-window {
   max-width: 420px;
