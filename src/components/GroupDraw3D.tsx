@@ -25,45 +25,83 @@ type IntroStage = "on" | "crane" | "off";
 /** Placar do sorteio: roleta do nome, depois da letra do grupo. */
 function Board({ state, hidden }: { state: BoardState | null; hidden: boolean }) {
   const s = state;
+  const settled = Boolean(s && !s.done && s.phase === "show");
+  const progress = s?.total ? Math.round(((s.done ? s.total : s.placed) / s.total) * 100) : 0;
+  const stage = !s
+    ? "Preparando a arena"
+    : s.done
+      ? "Sorteio concluído"
+      : s.phase === "name"
+        ? "Revelando participante"
+        : s.phase === "group"
+          ? "Definindo o grupo"
+          : "Destino revelado";
+
   return (
-    <div className={`d3-board ${hidden ? "is-hidden" : ""}`} aria-live="polite">
-      <div className="d3-head">
-        <span>Sorteio dos grupos</span>
-        <span>{s ? `${Math.min(s.placed + 1, s.total)}/${s.total}` : ""}</span>
+    <>
+      <div className={`d3-board ${hidden ? "is-hidden" : ""} ${settled ? "is-revealed" : ""}`}>
+        <div className="d3-head">
+          <span className="d3-brand"><i aria-hidden="true" /> COPINHA DOS LIXOS</span>
+          <span className="d3-counter">{s ? `${Math.min(s.placed + 1, s.total)} / ${s.total}` : "-- / --"}</span>
+        </div>
+        <div className="d3-stage" aria-hidden="true">
+          <span>{stage}</span>
+          <span>{s?.done ? "FINAL" : s?.phase === "name" ? "ETAPA 01" : s?.phase === "group" ? "ETAPA 02" : "CONFIRMADO"}</span>
+        </div>
+        {s?.done ? (
+          <div className="d3-done d3-finale">
+            <b>🏆 Grupos definidos!</b>
+            <small>Os participantes já estão prontos para a batalha.</small>
+          </div>
+        ) : (
+          <div className="d3-row">
+            <div className="d3-name-cell">
+              <span className="d3-kicker">{s?.phase === "name" ? "QUEM VEM AÍ?" : "PARTICIPANTE"}</span>
+              <div
+                key={s?.phase === "name" ? "spin" : `n-${s?.placed}`}
+                className={`d3-name ${s?.phase === "name" ? "is-spin" : "d3-reveal"}`}
+                aria-hidden={!s || s.phase === "name"}
+              >
+                {s?.name || "..."}
+              </div>
+              <div className="d3-team">{s?.phase === "name" || !s ? "Sorteando jogador..." : s.team}</div>
+              {s && s.phase !== "name" && s.champion && <div className="d3-champ">🏆 Atual campeão</div>}
+            </div>
+            <div className="d3-gbox">
+              <span>GRUPO</span>
+              <div
+                key={s?.phase === "show" ? `l-${s.placed}` : "spin"}
+                className={`d3-letter ${s?.phase === "show" ? "d3-reveal" : "is-spin"} ${!s || s.phase === "name" ? "is-blink" : ""}`}
+              >
+                {s?.letter ?? "?"}
+              </div>
+            </div>
+          </div>
+        )}
+        {settled && s && (
+          <div key={`confirmed-${s.placed}`} className="d3-result-banner" aria-hidden="true">
+            <span className="d3-result-check">✓</span>
+            <span>{s.name} vai para o <b>GRUPO {s.letter}</b></span>
+          </div>
+        )}
+        <div className="d3-progress-shell">
+          <div className="d3-progress-label"><span>GRUPOS EM FORMAÇÃO</span><b>{progress}%</b></div>
+          <div
+            className="d3-progress-track"
+            role="progressbar"
+            aria-label="Participantes sorteados"
+            aria-valuemin={0}
+            aria-valuemax={s?.total ?? 0}
+            aria-valuenow={s?.done ? s.total : (s?.placed ?? 0)}
+          >
+            <div style={{ width: `${progress}%` }} />
+          </div>
+        </div>
       </div>
-      {s?.done ? (
-        <div className="d3-done">
-          <b>Grupos definidos</b>
-          <small>A tabela de jogos já está pronta.</small>
-        </div>
-      ) : (
-        <div className="d3-row">
-          <div className="min-w-0">
-            <div
-              // a chave reinicia a animação quando o nome para
-              key={s?.phase === "name" ? "spin" : `n-${s?.placed}`}
-              className={`d3-name ${s?.phase === "name" ? "is-spin" : "d3-reveal"}`}
-              aria-hidden={s?.phase === "name"}
-            >
-              {s?.name || " "}
-            </div>
-            <div className="d3-team">{s?.phase === "name" || !s ? "Sorteando..." : s.team}</div>
-            {s && s.phase !== "name" && s.champion && <div className="d3-champ">🏆 Atual campeão</div>}
-          </div>
-          <div className="d3-gbox">
-            <span>Grupo</span>
-            <div
-              key={s?.phase === "show" ? `l-${s.placed}` : "spin"}
-              className={`d3-letter ${s?.phase === "show" ? "d3-reveal" : "is-spin"} ${
-                !s || s.phase === "name" ? "is-blink" : ""
-              }`}
-            >
-              {s?.letter ?? "?"}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+      <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {s?.done ? "Sorteio encerrado. Todos os grupos foram definidos." : settled && s ? `${s.name} foi sorteado para o grupo ${s.letter}.` : ""}
+      </span>
+    </>
   );
 }
 
@@ -174,7 +212,7 @@ export function GroupDraw3D({
       role="dialog"
       aria-modal="true"
       aria-label="Sorteio dos grupos"
-      className={`draw3d fixed inset-0 z-50 overflow-hidden ${fullscreen.active && idle ? "cursor-none" : ""}`}
+      className={`draw3d draw3d--groups fixed inset-0 z-50 overflow-hidden ${fullscreen.active && idle ? "cursor-none" : ""}`}
     >
       <div ref={stage} className="absolute inset-0" />
       <div ref={tags} aria-hidden="true" />
@@ -191,8 +229,11 @@ export function GroupDraw3D({
       </div>
       {!loading && !started && (
         <div className="d3-start">
+          <span className="d3-start-crest" aria-hidden="true">🏆</span>
+          <span className="d3-start-kicker">A ARENA ESTÁ PRONTA</span>
           <b>Sorteio dos grupos</b>
-          <small>Aumente o som da TV ou do celular</small>
+          <small>O caminhão chegou! Descubra o destino de cada jogador com a emoção de uma final.</small>
+          <div className="d3-start-flow" aria-hidden="true"><span>01 · JOGADOR</span><span>02 · GRUPO</span><span>03 · REVELAÇÃO</span></div>
           <button
             type="button"
             className="d3-btn is-primary is-big"
