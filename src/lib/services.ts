@@ -792,10 +792,48 @@ export async function defendingChampionId(
     .from(entries)
     .innerJoin(editions, eq(entries.editionId, editions.id))
     .where(and(eq(entries.result, "campeao"), ne(editions.id, editionId)));
-  const before = rows
-    .filter((r) => r.number < edition.number)
+  return latestChampionBefore(rows, edition.number);
+}
+
+function latestChampionBefore(
+  champions: { playerId: number; number: number }[],
+  number: number,
+): number | null {
+  const before = champions
+    .filter((r) => r.number < number)
     .sort((a, b) => b.number - a.number);
   return before[0]?.playerId ?? null;
+}
+
+/**
+ * O sorteio dos grupos de uma edição já começada, na ordem em que saiu, para
+ * rever a animação. Null se a edição não tem grupos ou ainda não foi sorteada.
+ */
+export function drawReplay(data: AllData, editionId: number): GroupDrawItem[] | null {
+  const edition = data.editions.find((e) => e.id === editionId);
+  if (!edition || edition.format !== "grupos" || edition.status === "inscricoes")
+    return null;
+  const list = data.entries
+    .filter((e) => e.editionId === editionId)
+    .sort((a, b) => a.seed - b.seed || a.id - b.id);
+  if (!list.length || list.some((e) => !e.groupLabel)) return null;
+  const editionNumber = new Map(data.editions.map((e) => [e.id, e.number]));
+  const championId = latestChampionBefore(
+    data.entries
+      .filter((e) => e.result === "campeao" && e.editionId !== editionId)
+      .map((e) => ({ playerId: e.playerId, number: editionNumber.get(e.editionId) ?? 0 })),
+    edition.number,
+  );
+  const playerById = new Map(data.players.map((p) => [p.id, p]));
+  const teamById = new Map(data.teams.map((t) => [t.id, t]));
+  return list.map((e) => ({
+    entryId: e.id,
+    playerName: playerById.get(e.playerId)?.name ?? "",
+    avatar: parseAvatar(playerById.get(e.playerId)?.avatar ?? null),
+    teamName: e.teamId != null ? (teamById.get(e.teamId)?.name ?? null) : null,
+    groupLabel: e.groupLabel,
+    champion: championId != null && e.playerId === championId,
+  }));
 }
 
 interface Seeded {

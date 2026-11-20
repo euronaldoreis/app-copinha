@@ -663,6 +663,48 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
     }
     a.needsUpdate = true; bigGeo.computeVertexNormals();
   }
+  // Tecidos da torcida: faixas compridas que descem do anel de cima até as
+  // fileiras de baixo, por cima da galera, como nas arquibancadas sul-americanas.
+  const CLOTH_COLORS = [["#ffffff", "#1f8a3d"], ["#c8102e", "#111111"], ["#ffd23f", "#0a2a6b"], ["#ffffff", "#c8102e"], ["#0a2a6b", "#ffffff"], ["#111111", "#ffffff"], ["#1f8a3d", "#ffd23f"]];
+  const clothMats = CLOTH_COLORS.map(([c1, c2]) => new THREE.MeshStandardMaterial({
+    map: pixTex(6, 2, (g) => { for (let x = 0; x < 6; x++) { g.fillStyle = x === 2 || x === 3 ? c2 : c1; g.fillRect(x, 0, 1, 2); } }),
+    side: THREE.DoubleSide, roughness: 1, flatShading: true,
+  }));
+  const slopeLen = Math.hypot(ROW_D, ROW_H), LIFT_OUT = -ROW_H / slopeLen, LIFT_UP = ROW_D / slopeLen;
+  const cloths = [];
+  function addCloth(s, iTop, iBot, width, mat) {
+    const N = Math.max(4, Math.round((iTop - iBot) * 1.3)), tx = -s.nz, tz = s.nx;
+    const pos = [], uv = [], idx = [];
+    for (let k = 0; k <= N; k++) {
+      const i = iTop - ((iTop - iBot) * k) / N, d = ROW0 + i * ROW_D + 0.2, y = 0.5 + i * ROW_H + 1.05;
+      const c = at(s, d);
+      for (const side of [-1, 1]) { pos.push(c.x + tx * side * width / 2, y, c.z + tz * side * width / 2); uv.push(side < 0 ? 0 : 1, k / N); }
+      if (k < N) { const a = k * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
+    }
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); geo.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2)); geo.setIndex(idx);
+    const mesh = new THREE.Mesh(geo, mat); mesh.castShadow = mesh.receiveShadow = true; scene.add(mesh);
+    cloths.push({ geo, base: Float32Array.from(pos), N, lx: s.nx * LIFT_OUT, lz: s.nz * LIFT_OUT, ph: Math.random() * 6 });
+  }
+  const back = (x) => ({ cx: x, cz: BACK, nx: 0, nz: -1, line: 1 });
+  const sideOf = (sx, z) => ({ cx: sx * FW / 2, cz: z, nx: sx, nz: 0, line: 1 });
+  let ci = 0;
+  for (const x of [-14, -11.3, -8.7, 7.6, 10.2, 12.9]) addCloth(back(x), ROWS - 1, 1, 2, clothMats[ci++ % clothMats.length]);
+  for (const x of [-5.4, -2.4, 0.6, 3.6]) addCloth(back(x), ROWS - 1, 5.6, 1.9, clothMats[ci++ % clothMats.length]); // acima do bandeirão
+  for (const sx of [-1, 1]) for (const z of [FZ - 6, FZ - 2.3, FZ + 1.4, FZ + 5.1]) addCloth(sideOf(sx, z), ROWS - 1, 1, 1.9, clothMats[ci++ % clothMats.length]);
+  function updateCloths(t) {
+    for (const c of cloths) {
+      const a = c.geo.attributes.position, sway = 0.6 + 0.4 * Math.sin(t * 1.3 + c.ph);
+      for (let k = 0; k <= c.N; k++) {
+        const off = Math.sin(t * 2.4 + k * 0.6 + c.ph) * 0.17 * sway;
+        for (let j = 0; j < 2; j++) {
+          const v = (k * 2 + j) * 3, o = off + (j ? 0.03 : -0.03) * Math.sin(t * 3.1 + k);
+          a.array[v] = c.base[v] + c.lx * o; a.array[v + 1] = c.base[v + 1] + LIFT_UP * o; a.array[v + 2] = c.base[v + 2] + c.lz * o;
+        }
+      }
+      a.needsUpdate = true;
+    }
+  }
   // Fogos de artifício estourando atrás das arquibancadas
   const FIRE_COLORS = ["#ff3b3b", "#ffd23f", "#3fa9ff", "#5bd94f", "#ff7ab6", "#ffffff", "#c77dff", "#ff9a2a"];
   const rockets = [];
@@ -1205,6 +1247,7 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
     updateFlares(dt, t);
     flags.forEach((f) => { f.pivot.rotation.y = f.base + Math.sin(t * 4 + f.ph) * 0.7; f.pivot.rotation.z = Math.sin(t * 2.3 + f.ph) * 0.25; });
     updateBigFlag(t);
+    updateCloths(t);
     if (!reduced) {
       if ((fwTimer -= dt) <= 0) { fwTimer = rnd(2.2, 4); launchFirework(); }
       if (finale > 0) { finale -= dt; if (Math.random() < dt * 4) launchFirework(); }
@@ -1251,5 +1294,5 @@ export function createDrawScene({ container, tagsLayer, items, reducedMotion, in
     renderer.domElement.remove();
   }
 
-  return { skip, dispose };
+  return { skip, replay: reset, dispose };
 }

@@ -76,9 +76,12 @@ export function GroupDraw3D({
   closing,
   onClose,
   onFail,
+  closeLabel = "Ver tabela de jogos",
 }: {
   draw: GroupDrawItem[];
   closing: boolean;
+  /** Texto do botão que fecha o sorteio no fim. */
+  closeLabel?: string;
   onClose: () => void;
   /** A cena não pôde ser montada: quem chama mostra o sorteio em 2D. */
   onFail: () => void;
@@ -182,9 +185,22 @@ export function GroupDraw3D({
       </div>
       <div ref={bar} className="d3-bar">
         {done ? (
-          <button type="button" className="d3-btn is-primary" onClick={onClose} disabled={closing} autoFocus>
-            {closing ? "Abrindo..." : "Ver tabela de jogos"}
-          </button>
+          <>
+            <button type="button" className="d3-btn is-primary" onClick={onClose} disabled={closing} autoFocus>
+              {closing ? "Abrindo..." : closeLabel}
+            </button>
+            <button
+              type="button"
+              className="d3-btn"
+              onClick={() => {
+                setDone(false);
+                setState(null);
+                scene.current?.replay();
+              }}
+            >
+              Rever sorteio
+            </button>
+          </>
         ) : (
           <button type="button" className="d3-btn" onClick={() => scene.current?.skip()} disabled={loading}>
             Pular animação

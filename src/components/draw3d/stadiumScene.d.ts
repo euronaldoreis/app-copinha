@@ -35,6 +35,8 @@ export interface DrawSceneOptions {
 export interface DrawScene {
   /** Pula a abertura e o sorteio: todos aparecem no lugar. */
   skip: () => void;
+  /** Recomeça do início: abertura e sorteio de novo. */
+  replay: () => void;
   dispose: () => void;
 }
 
