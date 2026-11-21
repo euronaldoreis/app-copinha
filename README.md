@@ -86,6 +86,7 @@ Os deploys de teste (Preview) continuam usando branches, o que é bom para testa
 | `npm run db:generate` | Gera uma migração depois de mudar `src/db/schema.ts` |
 | `npm run db:migrate` | Aplica as migrações no banco |
 | `npm run db:copy` | Copia os dados de um banco para outro (veja o topo de `scripts/copy-db.mjs`) |
+| `npm run db:seed:times` | Cadastra os times do Brasileirão (A, B e C), das ligas da Inglaterra, Itália, Espanha, Portugal, França, Alemanha, Holanda e Argentina e da MLS (lista em `scripts/times.json`). Só acrescenta os que faltam; com as variáveis do Turso, cadastra no banco da nuvem |
 
 Onde fica cada coisa:
 

@@ -11,7 +11,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "node scripts/migrate.mjs",
     "predev": "node scripts/migrate.mjs",
-    "db:copy": "node scripts/copy-db.mjs"
+    "db:copy": "node scripts/copy-db.mjs",
+    "db:seed:times": "node scripts/migrate.mjs && node scripts/seed-times.mjs"
   },
   "dependencies": {
     "@fontsource/lilita-one": "^5.3.0",
