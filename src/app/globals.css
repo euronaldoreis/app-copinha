@@ -3139,7 +3139,6 @@ label:has(> input[type="date"]) {
 .rk-window {
   max-width: 420px;
   max-height: calc(100dvh - 48px);
-  overflow-y: auto;
   padding-top: 34px;
 }
 .rk-go {
