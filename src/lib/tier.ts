@@ -30,3 +30,41 @@ export function tierOf(bestResult: string | null, titles = 0): Tier {
   if (bestResult === "terceiro") return "podio";
   return "participou";
 }
+
+/** Nome da categoria no verso da carta: "Jogador" + `name`. */
+const BACK_NAMES: Record<Tier, string> = {
+  rubi: "Rubi",
+  esmeralda: "Esmeralda",
+  campeao: "Ouro",
+  vice: "Prata",
+  podio: "Bronze",
+  participou: "Lixo",
+};
+
+export type CardHighlight = {
+  /** Ex.: "Jogador Esmeralda". */
+  title: string;
+  /** Só a parte de destaque do título (ex.: "Esmeralda"). */
+  name: string;
+  count: number;
+  /** Ex.: "copinhas ganhas". */
+  text: string;
+};
+
+/** O destaque do verso da carta: a categoria e o número que mais pesa nela. */
+export function cardHighlight(
+  tier: Tier,
+  s: { titles: number; finals: number; podiums: number; participations: number },
+): CardHighlight {
+  const name = s.participations ? BACK_NAMES[tier] : "Estreante";
+  const pick = (count: number, one: string, many: string) => ({
+    title: `Jogador ${name}`,
+    name,
+    count,
+    text: count === 1 ? one : many,
+  });
+  if (s.titles > 0) return pick(s.titles, "copinha ganha", "copinhas ganhas");
+  if (tier === "vice") return pick(s.finals, "final disputada", "finais disputadas");
+  if (tier === "podio") return pick(s.podiums, "pódio", "pódios");
+  return pick(s.participations, "copinha disputada", "copinhas disputadas");
+}

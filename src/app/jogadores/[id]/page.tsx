@@ -7,8 +7,9 @@ import { Avatar } from "@/components/Avatar";
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { Disclosure, Empty, Section } from "@/components/ui";
 import { PencilIcon, SwordsIcon, TrophyIcon } from "@/components/icons";
-import { Ball3D, Podium3D, Star3D, Trophy3D } from "@/components/icons3d";
-import { TIER_LABELS, tierOf } from "@/lib/tier";
+import { Ball3D, Gem3D, Podium3D, Star3D, Trophy3D } from "@/components/icons3d";
+import { ProfileCard } from "@/components/ProfileCard";
+import { cardHighlight, TIER_LABELS, tierOf, type CardHighlight, type Tier } from "@/lib/tier";
 import type { Edition, Entry, Team } from "@/db/schema";
 import type { ReactNode } from "react";
 import { currentPlayerId, isAdmin } from "@/lib/auth";
@@ -40,6 +41,48 @@ function StatTile({
       </span>
       <span className="text-[12px] font-bold text-muted">{label}</span>
     </div>
+  );
+}
+
+/** Verso da carta: a categoria do jogador em destaque e o número que a define. */
+function CardBack({
+  tier,
+  highlight,
+  name,
+}: {
+  tier: Tier;
+  highlight: CardHighlight;
+  name: string;
+}) {
+  const icon =
+    tier === "rubi" || tier === "esmeralda" ? (
+      <Gem3D tone={tier} />
+    ) : tier === "campeao" ? (
+      <Trophy3D />
+    ) : tier === "vice" ? (
+      <Star3D />
+    ) : tier === "podio" ? (
+      <Podium3D />
+    ) : (
+      <Ball3D />
+    );
+  return (
+    <>
+      <span className="card-back-emblem">{icon}</span>
+      <span className="card-back-title">
+        <span className="card-back-kicker">Jogador</span>
+        <span className="font-pixel text-outline block text-[21px] leading-none">
+          {highlight.name}
+        </span>
+      </span>
+      <span className="card-back-count">
+        <span className="num text-outline font-pixel text-[28px] leading-none">
+          {highlight.count}
+        </span>
+        <span className="text-[10px] font-black uppercase tracking-wide">{highlight.text}</span>
+      </span>
+      <span className="card-back-name">{name}</span>
+    </>
   );
 }
 
@@ -134,6 +177,7 @@ export default async function PlayerPage(props: PageProps<"/jogadores/[id]">) {
     allCampaigns.find((c) => c.edition.status !== "inscricoes") ??
     allCampaigns[0];
   const tier = tierOf(stats.bestResult, stats.titles);
+  const highlight = cardHighlight(tier, stats);
   const rivals = computeHeadToHead(data, player.id);
   const hasHistory = data.entries.some((e) => e.playerId === player.id);
 
@@ -143,7 +187,11 @@ export default async function PlayerPage(props: PageProps<"/jogadores/[id]">) {
       <header className="grid grid-cols-[minmax(0,148px)_minmax(0,1fr)] items-start gap-4 sm:grid-cols-[180px_minmax(0,1fr)]">
         {/* Mesma carta da lista de jogadores, maior. */}
         <div className="flex flex-col gap-3">
-          <div className={`player-card profile-card tier-${tier}`}>
+          <ProfileCard
+            tier={tier}
+            label={`${highlight.title}: ${highlight.count} ${highlight.text}`}
+            back={<CardBack tier={tier} highlight={highlight} name={player.name} />}
+          >
             <span className="flex w-full items-center justify-between gap-1">
               <span className="player-badge" title="Nível: edições disputadas">
                 Nv {stats.participations}
@@ -167,7 +215,7 @@ export default async function PlayerPage(props: PageProps<"/jogadores/[id]">) {
             <span className="player-plate whitespace-nowrap text-[12px] font-black uppercase tracking-wide text-accent">
               {stats.participations ? TIER_LABELS[tier] : "Estreante"}
             </span>
-          </div>
+          </ProfileCard>
           {(admin || isMe) && (
             <Link
               href={`/jogadores/${player.id}/editar`}

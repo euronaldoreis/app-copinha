@@ -752,6 +752,192 @@ fieldset label:has(input[type="radio"]:checked) {
     font-weight: 900;
   }
 
+  /* Carta do perfil: um toque e ela vira no meio da tela (ProfileCard). */
+  .profile-card-origin {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    border-radius: 12px;
+    background: none;
+    color: inherit;
+    text-align: inherit;
+    cursor: pointer;
+    transition: transform 0.15s ease;
+  }
+  .profile-card-origin > .player-card {
+    width: 100%;
+  }
+  .profile-card-origin:hover {
+    transform: translateY(-2px) rotate(-1.5deg);
+  }
+  .profile-card-origin:active {
+    transform: scale(0.97);
+  }
+  .profile-card-origin:focus-visible {
+    outline: 3px solid var(--color-accent);
+    outline-offset: 4px;
+  }
+
+  .card-stage {
+    --ray: 110 160 245;
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+  }
+  .card-stage-rubi {
+    --ray: 255 77 109;
+  }
+  .card-stage-esmeralda {
+    --ray: 63 217 138;
+  }
+  .card-stage-campeao {
+    --ray: 255 210 63;
+  }
+  .card-stage-vice {
+    --ray: 165 139 255;
+  }
+  .card-stage-podio {
+    --ray: 111 178 255;
+  }
+  .card-stage-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgb(4 10 40 / 0.84);
+    backdrop-filter: blur(4px);
+    opacity: 0;
+  }
+  /* Raios de luz girando atrás da carta, quando ela chega ao centro. */
+  .card-stage-rays {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: min(160vw, 820px);
+    aspect-ratio: 1;
+    translate: -50% -50%;
+    pointer-events: none;
+    opacity: 0;
+    scale: 0.5;
+    background:
+      radial-gradient(circle, rgb(var(--ray) / 0.6), transparent 42%),
+      repeating-conic-gradient(
+        rgb(var(--ray) / 0.45) 0 8deg,
+        transparent 8deg 22.5deg
+      );
+    mask: radial-gradient(circle, #000 12%, transparent 66%);
+    transition:
+      opacity 0.5s ease,
+      scale 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.25);
+    animation: rays-spin 26s linear infinite;
+  }
+  .card-stage.is-arrived .card-stage-rays {
+    opacity: 1;
+    scale: 1;
+  }
+  @keyframes rays-spin {
+    to {
+      rotate: 360deg;
+    }
+  }
+  .card-flip {
+    position: absolute;
+    transform-style: preserve-3d;
+    cursor: pointer;
+    will-change: transform;
+  }
+  .card-flip .card-face {
+    position: absolute;
+    inset: 0;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+  .card-flip .card-back {
+    justify-content: center;
+    gap: 5px;
+    padding: 10px 9px;
+    text-align: center;
+    transform: rotateY(180deg);
+  }
+  /* filete por dentro da moldura, como no verso de uma carta */
+  .card-back::before {
+    content: "";
+    position: absolute;
+    inset: 5px;
+    border: 1.5px solid rgb(255 255 255 / 0.4);
+    border-radius: 8px;
+    pointer-events: none;
+  }
+  .card-back-emblem svg {
+    width: 48px;
+    height: 48px;
+    filter: drop-shadow(0 3px 0 rgb(10 26 82 / 0.55));
+  }
+  .card-back-title {
+    display: block;
+  }
+  .card-back-kicker {
+    display: block;
+    margin-bottom: 2px;
+    font-size: 10px;
+    font-weight: 900;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    text-shadow: 0 1px 0 var(--color-night);
+  }
+  .card-back-count {
+    align-self: stretch;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 4px 7px;
+    background: rgb(10 26 82 / 0.78);
+    border-radius: 8px;
+    color: #ffffff;
+  }
+  .card-back-name {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.06em;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+    text-shadow: 0 1px 0 var(--color-night);
+  }
+  /* no ouro, letra escura em vez de sombra */
+  .tier-campeao .card-back-kicker,
+  .tier-campeao .card-back-name {
+    color: #5b3600;
+    text-shadow: none;
+  }
+  .card-stage-hint {
+    position: absolute;
+    inset-inline: 0;
+    bottom: calc(28px + env(safe-area-inset-bottom));
+    color: #dbe7ff;
+    font-size: 13px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-align: center;
+    text-transform: uppercase;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease 0.2s;
+  }
+  .card-stage.is-arrived .card-stage-hint {
+    opacity: 0.8;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .card-stage-rays {
+      animation: none;
+    }
+    .profile-card-origin:hover {
+      transform: none;
+    }
+  }
+
   /* Faixa dourada de título (abertura, premiação). */
   .ribbon {
     display: inline-flex;

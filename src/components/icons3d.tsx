@@ -113,6 +113,35 @@ export function Podium3D(props: P) {
   );
 }
 
+const GEMS = {
+  rubi: { hi: "#ffe0e6", light: "#ff7a94", mid: "#e0234a", dark: "#8a0d29" },
+  esmeralda: { hi: "#dcffeb", light: "#5ef0a0", mid: "#17a85e", dark: "#075c32" },
+};
+
+/** Pedra lapidada, vista de lado: coroa com facetas em cima, pavilhão embaixo. */
+export function Gem3D({ tone, ...props }: P & { tone: keyof typeof GEMS }) {
+  const c = GEMS[tone];
+  return (
+    <svg width="24" height="24" viewBox="0 0 32 32" aria-hidden="true" {...props}>
+      {/* coroa */}
+      <polygon points="9,5 3,12 11,12" fill={c.light} />
+      <polygon points="9,5 11,12 16,5" fill={c.hi} />
+      <polygon points="16,5 11,12 21,12" fill={c.light} />
+      <polygon points="16,5 21,12 23,5" fill={c.hi} />
+      <polygon points="23,5 21,12 29,12" fill={c.mid} />
+      {/* pavilhão */}
+      <polygon points="3,12 11,12 16,28" fill={c.mid} />
+      <polygon points="11,12 21,12 16,28" fill={c.light} />
+      <polygon points="21,12 29,12 16,28" fill={c.dark} />
+      <path d="M3 12h26M11 12l5 16M21 12l-5 16M9 5l2 7M23 5l-2 7M16 5l-5 7M16 5l5 7" fill="none" stroke={c.dark} strokeWidth="0.6" opacity="0.7" />
+      <path d="M9 5h14l6 7-13 16L3 12Z" fill="none" stroke={OUTLINE} strokeWidth="1.5" strokeLinejoin="round" />
+      {/* brilho */}
+      <path d="M7.4 10.6 9.6 7" stroke="#ffffff" strokeWidth="1.4" strokeLinecap="round" opacity="0.9" />
+      <path d="m26.5 1.5.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7Z" fill="#ffffff" />
+    </svg>
+  );
+}
+
 export function Ball3D(props: P) {
   const outer = [0, 72, 144, 216, 288].map((deg) => {
     const a = ((deg - 90) * Math.PI) / 180;
