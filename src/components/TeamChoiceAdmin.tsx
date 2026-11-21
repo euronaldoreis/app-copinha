@@ -5,8 +5,10 @@ import { useMemo, useState, useTransition } from "react";
 import {
   addTeamPickAction,
   banTeamAction,
+  drawRemainingTeamsAction,
   removeTeamChoiceAction,
   resetTeamChoicesAction,
+  resetTeamDrawAction,
 } from "@/app/actions";
 import type { AvatarLook } from "@/lib/sprite";
 import {
@@ -21,6 +23,7 @@ import { useConfirm } from "./ConfirmDialog";
 import { TeamAutocomplete } from "./TeamAutocomplete";
 import { TeamShield } from "./TeamShield";
 import { ChoiceSteps } from "./TeamChoiceSteps";
+import { ShuffleIcon } from "./icons";
 
 export interface ChoicePlayer {
   id: number;
@@ -61,11 +64,15 @@ function UndoButton({ label, onClick, disabled }: { label: string; onClick: () =
  */
 export function TeamChoiceAdmin({
   editionId,
+  previousName,
   players,
   choices,
   knownTeams,
 }: {
   editionId: number;
+  /** Edição que define a ordem da vez (null = sem anterior encerrada). */
+  previousName: string | null;
+  /** Já na ordem da vez. */
   players: ChoicePlayer[];
   choices: ChoiceRow[];
   knownTeams: string[];
@@ -74,8 +81,8 @@ export function TeamChoiceAdmin({
     () => choiceState(players.map((p) => p.id), choices),
     [players, choices],
   );
-  const [picked, setPicked] = useState<number | null>(null);
   const [team, setTeam] = useState("");
+  const [showDraws, setShowDraws] = useState(false);
   const [banTarget, setBanTarget] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -85,17 +92,12 @@ export function TeamChoiceAdmin({
   const banOf = (id: number) => state.bans.find((b) => b.playerId === id);
   const nameOf = (id: number) => players.find((p) => p.id === id)?.name ?? "";
 
-  // Quem ainda pode agir nesta fase; a vez sugerida é quem fez menos até agora.
-  const canAct = (id: number) =>
+  // A vez é fixa: a ordem da colocação na edição anterior (players já vem nela).
+  const turn = state.turn;
+  const doneWith = (id: number) =>
     state.phase === "escolha"
-      ? picksOf(id).length < PICKS_PER_PLAYER
-      : state.phase === "banimento"
-        ? !banOf(id)
-        : false;
-  const suggested = [...players]
-    .filter((p) => canAct(p.id))
-    .sort((a, b) => picksOf(a.id).length - picksOf(b.id).length)[0]?.id;
-  const turn = picked != null && canAct(picked) ? picked : (suggested ?? null);
+      ? picksOf(id).length >= PICKS_PER_PLAYER
+      : banOf(id) != null;
 
   const act = (fn: () => Promise<{ error?: string } | null>, after?: () => void) =>
     startTransition(async () => {
@@ -110,10 +112,7 @@ export function TeamChoiceAdmin({
     if (turn == null || !team.trim()) return;
     act(
       () => addTeamPickAction(editionId, turn, team),
-      () => {
-        setTeam("");
-        setPicked(null);
-      },
+      () => setTeam(""),
     );
   };
 
@@ -121,10 +120,7 @@ export function TeamChoiceAdmin({
     if (turn == null || !banTarget) return;
     act(
       () => banTeamAction(editionId, turn, banTarget),
-      () => {
-        setBanTarget(null);
-        setPicked(null);
-      },
+      () => setBanTarget(null),
     );
   };
 
@@ -139,6 +135,23 @@ export function TeamChoiceAdmin({
     if (ok) act(() => resetTeamChoicesAction(editionId));
   };
 
+  const drawAll = () => act(() => drawRemainingTeamsAction(editionId));
+
+  const resetDraw = async () => {
+    const ok = await ask({
+      title: "Refazer sorteio",
+      message:
+        "Tirar os times sorteados de todos os jogadores e sortear de novo? Os times citados e os banimentos continuam.",
+      confirmLabel: "Refazer",
+      danger: true,
+    });
+    if (ok) act(() => resetTeamDrawAction(editionId));
+  };
+
+  // Os times sorteados só aparecem aqui quando o admin pede, para não estragar
+  // a revelação na TV.
+  const drawOf = (id: number) =>
+    showDraws ? state.draws.find((d) => d.playerId === id) : undefined;
   const pickedNames = state.picks.map((p) => p.team);
   const open = state.picks.filter((p) => !state.bannedBy.has(foldTeam(p.team)));
 
@@ -163,43 +176,42 @@ export function TeamChoiceAdmin({
         </div>
       </div>
 
-      {state.phase !== "concluida" && (
+      {(state.phase === "escolha" || state.phase === "banimento") && (
         <div className="card flex flex-col gap-4 p-4">
           <div>
             <p className="label">
-              {state.phase === "escolha" ? "Quem está citando?" : "Quem vai banir?"}
+              {state.phase === "escolha" ? "Ordem da escolha" : "Ordem do banimento"}
             </p>
-            <div className="-mx-1 flex flex-wrap gap-1.5">
-              {players.map((p) => {
-                const done = !canAct(p.id);
+            <ol className="choice-order">
+              {players.map((p, i) => {
                 const count =
                   state.phase === "escolha"
                     ? `${picksOf(p.id).length}/${PICKS_PER_PLAYER}`
                     : `${banOf(p.id) ? 1 : 0}/${BANS_PER_PLAYER}`;
                 return (
-                  <button
+                  <li
                     key={p.id}
-                    type="button"
-                    className="chip gap-2 !px-3 disabled:opacity-45"
-                    aria-pressed={turn === p.id}
-                    disabled={done || pending}
-                    onClick={() => {
-                      setPicked(p.id);
-                      setError(null);
-                    }}
+                    className={turn === p.id ? "is-turn" : doneWith(p.id) ? "is-done" : ""}
+                    aria-current={turn === p.id ? "step" : undefined}
                   >
-                    {p.name}
-                    <span className="num font-sans text-[12px] font-black opacity-80">{count}</span>
-                  </button>
+                    <span className="num choice-order-pos">{i + 1}º</span>
+                    <span className="min-w-0 truncate">{p.name}</span>
+                    <span className="num choice-order-count">{count}</span>
+                  </li>
                 );
               })}
-            </div>
+            </ol>
+            <p className="mt-2 text-[13px] font-bold text-muted">
+              {previousName
+                ? `Pela colocação na ${previousName}. Quem não jogou ou é estreante vai por último.`
+                : "Sem edição anterior encerrada: vale a ordem de inscrição."}
+            </p>
           </div>
 
           {state.phase === "escolha" && turn != null && (
             <form onSubmit={cite} className="flex flex-col gap-2">
               <label className="label" htmlFor="choice-team">
-                Time citado por {nameOf(turn)}
+                Vez de {nameOf(turn)} · {picksOf(turn).length + 1}º time
               </label>
               <div className="flex gap-2">
                 <TeamAutocomplete
@@ -220,7 +232,7 @@ export function TeamChoiceAdmin({
 
           {state.phase === "banimento" && turn != null && (
             <div className="flex flex-col gap-3">
-              <p className="label">Time que {nameOf(turn)} vai banir</p>
+              <p className="label">Vez de {nameOf(turn)} banir</p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {open.map((p) => (
                   <button
@@ -255,23 +267,65 @@ export function TeamChoiceAdmin({
         </div>
       )}
 
-      {state.phase === "concluida" && (
+      {(state.phase === "sorteio" || state.phase === "concluida") && (
         <div className="card flex flex-col gap-4 p-4">
-          <p className="label">Times do sorteio</p>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {state.remaining.map((t, i) => (
-              <span key={t} className="choice-pick anim-pop" style={{ "--i": i } as React.CSSProperties}>
-                <TeamShield team={t} size={30} />
-                <span className="min-w-0 flex-1 truncate">{t}</span>
-              </span>
-            ))}
-          </div>
-          <p className="text-body text-muted">
-            Esses times já estão na lista do sorteio da edição.
-          </p>
-          <Link href={`/edicoes/${editionId}`} className="btn btn-primary">
-            Ir para o sorteio
-          </Link>
+          {state.phase === "sorteio" ? (
+            <>
+              <p className="label">
+                {state.draws.length ? "Times que ainda vão sair" : "Times do sorteio"}
+              </p>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                {state.undrawn.map((t) => (
+                  <span key={t} className="choice-pick">
+                    <TeamShield team={t} size={30} />
+                    <span className="min-w-0 flex-1 truncate">{t}</span>
+                  </span>
+                ))}
+              </div>
+            </>
+          ) : (
+            <p className="label">Sorteio concluído</p>
+          )}
+          {state.phase === "sorteio" ? (
+            <>
+              <p className="text-body text-muted">
+                Um toque sorteia todos. A TV revela um por um, sozinha.
+              </p>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={drawAll}
+                disabled={pending}
+              >
+                <ShuffleIcon width={20} height={20} />
+                {pending ? "Sorteando..." : "Sortear times"}
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-body text-muted">
+                Os times já foram sorteados, e a TV está revelando um por um.
+                Aqui eles ficam escondidos para não estragar a surpresa.
+                Depois, na edição, é só gerar a tabela.
+              </p>
+              <button
+                type="button"
+                className="btn"
+                aria-pressed={showDraws}
+                onClick={() => setShowDraws((v) => !v)}
+              >
+                {showDraws ? "Esconder times sorteados" : "Ver times sorteados"}
+              </button>
+              <Link href={`/edicoes/${editionId}`} className="btn btn-primary">
+                Voltar para a edição
+              </Link>
+            </>
+          )}
+          {state.draws.length > 0 && (
+            <button type="button" className="btn btn-danger" onClick={resetDraw} disabled={pending}>
+              Refazer sorteio
+            </button>
+          )}
           {error && (
             <p role="alert" className="text-body font-bold text-danger">
               {error}
@@ -291,11 +345,13 @@ export function TeamChoiceAdmin({
                 {ban && (
                   <span className="choice-ban-tag">
                     Baniu {ban.team}
-                    <UndoButton
-                      label={`Desfazer banimento de ${ban.team}`}
-                      disabled={pending}
-                      onClick={() => act(() => removeTeamChoiceAction(ban.id))}
-                    />
+                    {state.draws.length === 0 && (
+                      <UndoButton
+                        label={`Desfazer banimento de ${ban.team}`}
+                        disabled={pending}
+                        onClick={() => act(() => removeTeamChoiceAction(ban.id))}
+                      />
+                    )}
                   </span>
                 )}
               </div>
@@ -324,6 +380,14 @@ export function TeamChoiceAdmin({
                   );
                 })}
               </div>
+              {drawOf(p.id) && (
+                <p className="choice-drawn">
+                  <TeamShield team={drawOf(p.id)!.team} size={26} />
+                  <span className="min-w-0 truncate">
+                    Vai jogar de <b>{drawOf(p.id)!.team}</b>
+                  </span>
+                </p>
+              )}
             </div>
           );
         })}

@@ -3892,3 +3892,292 @@ label:has(> input[type="date"]) {
     }
   }
 }
+
+/* ---- Sorteio dos times (TeamChoiceAdmin, TeamChoiceTv, TeamDrawReveal) --- */
+@layer components {
+  /* Celular: último sorteado e o time de cada jogador. */
+  .choice-last-draw,
+  .choice-drawn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    background: linear-gradient(#ffd95e, #f7a81d);
+    border: 2px solid #ffe9a3;
+    border-radius: 10px;
+    color: #5b3600;
+    font-size: 15px;
+    font-weight: 800;
+    box-shadow: inset 0 -3px 0 #d98a0c;
+  }
+  .choice-last-draw b,
+  .choice-drawn b {
+    font-weight: 900;
+  }
+  .choice-drawn {
+    padding: 6px 10px;
+    font-size: 14px;
+  }
+
+  /* TV: times que ainda estão na urna. */
+  .choice-tv-urn {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5em 0.7em;
+  }
+  .choice-tv-urn-label {
+    color: var(--color-accent);
+    font-family: var(--font-pixel);
+    font-size: 1.1em;
+    text-transform: uppercase;
+  }
+  .choice-tv-urn-team {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4em;
+    padding: 0.25em 0.8em 0.25em 0.35em;
+    background: #12307e;
+    border: 2px solid #4d7fe0;
+    border-radius: 999px;
+    font-family: var(--font-score);
+    font-size: 1.05em;
+    font-weight: 900;
+    text-transform: uppercase;
+  }
+  .choice-tv-urn-team svg {
+    width: 1.6em;
+    height: auto;
+  }
+  /* O time sorteado no cartão do jogador: dourado. */
+  .choice-tv-drawn {
+    min-height: 4.4em;
+    background: linear-gradient(#ffd95e, #f7a81d);
+    border-color: #ffe9a3;
+    color: #5b3600;
+  }
+  .choice-tv-drawn svg {
+    width: 3em;
+  }
+  .choice-tv-drawn .choice-tv-team {
+    font-size: 1.5em;
+  }
+  .choice-tv-card.has-team .choice-tv-slot.is-empty {
+    display: none;
+  }
+
+  /* Revelação: jogador, roleta de escudos e o time sorteado. */
+  .draw-reveal {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    background: rgb(4 10 40 / 0.88);
+    backdrop-filter: blur(4px);
+    animation: draw-fade 300ms ease-out both;
+  }
+  @keyframes draw-fade {
+    from {
+      opacity: 0;
+    }
+  }
+  .draw-reveal-rays {
+    position: absolute;
+    left: 50%;
+    top: 58%;
+    width: min(170vw, 1500px);
+    aspect-ratio: 1;
+    translate: -50% -50%;
+    pointer-events: none;
+    background:
+      radial-gradient(circle, rgb(255 200 61 / 0.55), transparent 40%),
+      repeating-conic-gradient(rgb(255 210 63 / 0.4) 0 8deg, transparent 8deg 22.5deg);
+    mask: radial-gradient(circle, #000 10%, transparent 64%);
+    opacity: 0;
+    scale: 0.4;
+    transition:
+      opacity 0.4s ease,
+      scale 0.7s cubic-bezier(0.2, 0.9, 0.3, 1.3);
+    animation: rays-spin 22s linear infinite;
+  }
+  .draw-reveal.is-reveal .draw-reveal-rays {
+    opacity: 1;
+    scale: 1;
+  }
+  .draw-reveal-body {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.8em;
+    padding: 1em;
+    text-align: center;
+  }
+  .draw-reveal-count {
+    color: var(--color-muted);
+    font-size: 1.1em;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+  .draw-reveal-player {
+    display: flex;
+    align-items: center;
+    gap: 0.8em;
+  }
+  .draw-reveal-player > span:first-child {
+    width: 4.4em !important;
+    height: 4.4em !important;
+  }
+  .draw-reveal-player .text-title {
+    font-size: 3.2em;
+    line-height: 1;
+  }
+  .draw-reveal-says {
+    color: var(--color-accent);
+    font-family: var(--font-pixel);
+    font-size: 1.5em;
+    text-transform: uppercase;
+    animation: blink 0.9s steps(2, jump-none) infinite;
+  }
+  .draw-reveal.is-reveal .draw-reveal-says {
+    animation: none;
+    opacity: 0;
+  }
+  .draw-reveal-shield {
+    display: grid;
+    place-items: center;
+    width: 10em;
+    height: 11.25em;
+  }
+  .draw-reveal-shield svg {
+    width: 10em;
+    height: auto;
+  }
+  .draw-reveal-shield .is-mystery {
+    animation: mystery 0.6s ease-in-out infinite alternate;
+  }
+  @keyframes mystery {
+    to {
+      translate: 0 -0.4em;
+      rotate: 4deg;
+    }
+  }
+  /* o escudo sorteado chega grande e assenta */
+  .draw-reveal-shield .is-final {
+    animation: shield-land 650ms cubic-bezier(0.25, 1.6, 0.45, 1) both;
+    filter: drop-shadow(0 0 1.2em rgb(255 210 63 / 0.85));
+  }
+  @keyframes shield-land {
+    from {
+      scale: 1.9;
+      rotate: -12deg;
+      opacity: 0;
+    }
+  }
+  .draw-reveal-team {
+    min-height: 1.2em;
+    font-size: 3em;
+    line-height: 1.1;
+  }
+  .draw-reveal.is-spin .draw-reveal-team {
+    opacity: 0.55;
+  }
+  .draw-reveal.is-reveal .draw-reveal-team {
+    color: var(--color-accent);
+  }
+  .draw-reveal.is-reveal .draw-reveal-team > span {
+    display: inline-block;
+    animation: rec-pop 500ms cubic-bezier(0.2, 0.9, 0.3, 1.4) both;
+  }
+  @media (max-width: 700px) {
+    .draw-reveal-body {
+      font-size: 10px;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .draw-reveal-rays,
+    .draw-reveal-says,
+    .draw-reveal-shield .is-mystery,
+    .draw-reveal-shield .is-final {
+      animation: none;
+    }
+  }
+}
+
+/* ---- Ordem da vez na escolha dos times ---------------------------------- */
+@layer components {
+  /* Celular: fila da vez. */
+  .choice-order {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .choice-order li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 38px;
+    padding: 4px 10px;
+    background: #12307e;
+    border: 2px solid #4d7fe0;
+    border-radius: 10px;
+    font-weight: 900;
+  }
+  .choice-order li.is-turn {
+    background: linear-gradient(#ffd95e, #f7a81d);
+    border-color: #ffe9a3;
+    color: #5b3600;
+    box-shadow: inset 0 -3px 0 #d98a0c;
+  }
+  .choice-order li.is-done {
+    opacity: 0.5;
+  }
+  .choice-order-pos {
+    width: 2em;
+    font-family: var(--font-pixel);
+    font-weight: 400;
+  }
+  .choice-order-count {
+    margin-left: auto;
+    font-size: 13px;
+  }
+
+  /* TV: posição na ordem e quem está na vez. */
+  .choice-tv-pos {
+    flex-shrink: 0;
+    color: var(--color-accent);
+    font-size: 0.8em;
+  }
+  .choice-tv-turn {
+    flex-shrink: 0;
+    margin-left: auto;
+    padding: 0.25em 0.6em;
+    background: var(--color-pitch);
+    border: 2px solid #8cf06a;
+    border-radius: 999px;
+    color: #ffffff;
+    font-family: var(--font-sans);
+    font-size: 0.5em;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-shadow: none;
+    animation: blink 1s steps(2, jump-none) infinite;
+  }
+  .choice-tv-card.is-turn {
+    border-color: #8cf06a;
+    box-shadow:
+      inset 0 0 0 2px #1d6b25,
+      0 0 0 2px var(--color-night),
+      0 5px 0 2px var(--color-night),
+      0 0 1.4em rgb(140 240 106 / 0.75);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .choice-tv-turn {
+      animation: none;
+    }
+  }
+}

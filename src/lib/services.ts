@@ -17,11 +17,12 @@ import {
   type Player,
   type Team,
 } from "@/db/schema";
-import { RESULT_ORDER } from "./labels";
+import { RESULT_ORDER, resultRank } from "./labels";
 import {
   BANS_PER_PLAYER,
   PICKS_PER_PLAYER,
   choiceState,
+  turnOrder,
   foldTeam,
 } from "./teamChoice";
 import { PHOTO_MAX_BYTES, isUploadedPhoto, photoPath } from "./photo";
@@ -33,6 +34,7 @@ import {
   knockoutRounds,
   assignGroups,
   computeResults,
+  computeStandings,
   normalizeConfig,
   planMatches,
   resolveKnockout,
@@ -579,6 +581,43 @@ export async function listTeamChoices(db: Db, editionId: number) {
     .orderBy(teamChoices.id);
 }
 
+/**
+ * Ordem de jogada da escolha dos times: pela colocação final na edição
+ * anterior já encerrada (empates na mesma fase pela campanha na edição);
+ * quem não jogou a anterior ou é estreante vai por último.
+ */
+export function choiceTurnOrder(data: AllData, editionId: number) {
+  const sorted = sortEditions(data.editions);
+  const at = sorted.findIndex((e) => e.id === editionId);
+  const previous =
+    sorted
+      .slice(at + 1)
+      .find(
+        (e) =>
+          e.status === "encerrada" &&
+          data.entries.some((en) => en.editionId === e.id && en.result),
+      ) ?? null;
+  let finish: number[] = [];
+  if (previous) {
+    const prevEntries = data.entries.filter((e) => e.editionId === previous.id);
+    const table = computeStandings(
+      prevEntries,
+      data.matches.filter((m) => m.editionId === previous.id),
+    );
+    const campaign = new Map(table.map((row, i) => [row.entryId, i]));
+    finish = [...prevEntries]
+      .sort(
+        (a, b) =>
+          resultRank(a.result) - resultRank(b.result) ||
+          (campaign.get(a.id) ?? 0) - (campaign.get(b.id) ?? 0) ||
+          a.seed - b.seed,
+      )
+      .map((e) => e.playerId);
+  }
+  const participants = data.entries.filter((e) => e.editionId === editionId);
+  return { previous, order: turnOrder(participants, finish) };
+}
+
 async function choiceContext(db: Db, editionId: number) {
   const edition = await getEdition(db, editionId);
   if (!edition.useTeams)
@@ -587,14 +626,19 @@ async function choiceContext(db: Db, editionId: number) {
     throw new UserError(
       "A escolha dos times só pode ser feita antes de gerar a tabela.",
     );
-  const playerIds = (
-    await db
-      .select({ playerId: entries.playerId })
-      .from(entries)
-      .where(eq(entries.editionId, editionId))
-  ).map((e) => e.playerId);
+  const { order: playerIds } = choiceTurnOrder(await loadAll(db), editionId);
   const state = choiceState(playerIds, await listTeamChoices(db, editionId));
   return { playerIds, state };
+}
+
+/** Recusa quem tenta jogar fora da vez. */
+async function requireTurn(
+  db: Db,
+  state: ReturnType<typeof choiceState>,
+  playerId: number,
+) {
+  if (state.turn != null && state.turn !== playerId)
+    throw new UserError(`Agora é a vez de ${await playerName(db, state.turn)}.`);
 }
 
 async function playerName(db: Db, playerId: number) {
@@ -608,7 +652,7 @@ async function playerName(db: Db, playerId: number) {
 /** Com todos os banimentos feitos, os times que sobraram vão para o sorteio. */
 async function syncChoicePool(db: Db, editionId: number) {
   const { state } = await choiceContext(db, editionId);
-  if (state.phase !== "concluida") return;
+  if (state.phase !== "sorteio" || state.draws.length > 0) return;
   await db
     .update(editions)
     .set({ teamPool: cleanTeamList(state.remaining) })
@@ -629,6 +673,7 @@ export async function addTeamPick(
     throw new UserError("Esse jogador não está nesta edição.");
   if (state.phase !== "escolha")
     throw new UserError("Todos já citaram seus times. Agora é o banimento.");
+  await requireTurn(db, state, playerId);
   let team = clean(rawTeam, 60);
   if (!team) throw new UserError("Informe o time.");
   // Usa a grafia do time já cadastrado, se houver.
@@ -665,8 +710,9 @@ export async function banTeam(
     throw new UserError("Esse jogador não está nesta edição.");
   if (state.phase === "escolha")
     throw new UserError("O banimento começa quando todos citarem seus times.");
-  if (state.phase === "concluida")
+  if (state.phase !== "banimento")
     throw new UserError("Todos já baniram. Os times estão definidos.");
+  await requireTurn(db, state, playerId);
   if (state.bans.filter((b) => b.playerId === playerId).length >= BANS_PER_PLAYER)
     throw new UserError(`${await playerName(db, playerId)} já baniu um time.`);
   const pick = state.picks.find(
@@ -692,6 +738,12 @@ export async function removeTeamChoice(db: Db, choiceId: number) {
     .where(eq(teamChoices.id, choiceId));
   if (!row) throw new UserError("Essa escolha já foi desfeita.");
   const { state } = await choiceContext(db, row.editionId);
+  if (row.kind === "sorteio")
+    throw new UserError("Para mudar o sorteio, use Refazer sorteio.");
+  if (state.draws.length > 0)
+    throw new UserError(
+      "O sorteio já começou. Refaça o sorteio antes de mudar os times.",
+    );
   if (row.kind === "escolha" && state.bans.length > 0)
     throw new UserError(
       "O banimento já começou. Desfaça os banimentos antes de trocar um time citado.",
@@ -699,10 +751,72 @@ export async function removeTeamChoice(db: Db, choiceId: number) {
   await db.delete(teamChoices).where(eq(teamChoices.id, choiceId));
 }
 
-/** Apaga todas as escolhas e banimentos da edição, para começar de novo. */
+/** Apaga todas as escolhas, banimentos e o sorteio da edição, para começar de novo. */
 export async function resetTeamChoices(db: Db, editionId: number) {
+  const { state } = await choiceContext(db, editionId);
+  await db.transaction(async (tx) => {
+    if (state.draws.length > 0) await clearEditionTeams(tx, editionId);
+    await tx.delete(teamChoices).where(eq(teamChoices.editionId, editionId));
+  });
+}
+
+/** Tira o time de todos os participantes da edição. */
+async function clearEditionTeams(db: Db, editionId: number) {
+  await db
+    .update(entries)
+    .set({ teamId: null })
+    .where(eq(entries.editionId, editionId));
+}
+
+/**
+ * Sorteia os times de todos os jogadores que ainda estão sem time, em ordem
+ * aleatória. Cada sorteio fica gravado na ordem em que saiu, para a TV revelar
+ * um por um. No primeiro sorteio, os times que os participantes tinham antes
+ * são apagados.
+ */
+export async function drawRemainingTeams(db: Db, editionId: number) {
+  const { playerIds, state } = await choiceContext(db, editionId);
+  if (state.phase === "escolha" || state.phase === "banimento")
+    throw new UserError("O sorteio começa depois dos banimentos.");
+  if (state.phase === "concluida")
+    throw new UserError("Todos os times já foram sorteados.");
+  const drawnPlayers = new Set(state.draws.map((d) => d.playerId));
+  const waiting = shuffle(playerIds.filter((id) => !drawnPlayers.has(id)));
+  const pool = shuffle(state.undrawn);
+  return db.transaction(async (tx) => {
+    if (state.draws.length === 0) await clearEditionTeams(tx, editionId);
+    const out: { playerId: number; team: string }[] = [];
+    for (const [i, playerId] of waiting.entries()) {
+      const team = await ensureTeam(tx, pool[i]);
+      await tx
+        .update(entries)
+        .set({ teamId: team.id })
+        .where(
+          and(eq(entries.editionId, editionId), eq(entries.playerId, playerId)),
+        );
+      await tx
+        .insert(teamChoices)
+        .values({ editionId, playerId, kind: "sorteio", team: team.name });
+      out.push({ playerId, team: team.name });
+    }
+    return out;
+  });
+}
+
+/** Desfaz o sorteio dos times (as escolhas e os banimentos continuam). */
+export async function resetTeamDraw(db: Db, editionId: number) {
   await choiceContext(db, editionId);
-  await db.delete(teamChoices).where(eq(teamChoices.editionId, editionId));
+  await db.transaction(async (tx) => {
+    await clearEditionTeams(tx, editionId);
+    await tx
+      .delete(teamChoices)
+      .where(
+        and(
+          eq(teamChoices.editionId, editionId),
+          eq(teamChoices.kind, "sorteio"),
+        ),
+      );
+  });
 }
 
 async function getEntry(db: Db, entryId: number) {

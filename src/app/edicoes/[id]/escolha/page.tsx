@@ -20,7 +20,7 @@ export default async function TeamChoicePage(
   if (!admin) redirect("/admin");
   const loaded = await loadChoice(id);
   if (!loaded) notFound();
-  const { edition, players, choices, knownTeams } = loaded;
+  const { edition, previousName, players, choices, knownTeams } = loaded;
 
   const problem = !edition.useTeams
     ? "Esta edição é só com os jogadores, sem times."
@@ -45,6 +45,7 @@ export default async function TeamChoicePage(
       ) : (
         <TeamChoiceAdmin
           editionId={edition.id}
+          previousName={previousName}
           players={players}
           choices={choices}
           knownTeams={knownTeams}

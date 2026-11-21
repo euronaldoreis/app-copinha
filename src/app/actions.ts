@@ -280,6 +280,14 @@ export async function resetTeamChoicesAction(editionId: number) {
   return run(() => svc.resetTeamChoices(getDb(), editionId));
 }
 
+export async function drawRemainingTeamsAction(editionId: number) {
+  return run(() => svc.drawRemainingTeams(getDb(), editionId));
+}
+
+export async function resetTeamDrawAction(editionId: number) {
+  return run(() => svc.resetTeamDraw(getDb(), editionId));
+}
+
 /** Time do participante e, nas edições de registro histórico, a colocação. */
 export async function saveEntryAction(_prev: ActionState, fd: FormData) {
   return run(async () => {
