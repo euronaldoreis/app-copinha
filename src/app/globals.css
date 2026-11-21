@@ -4321,3 +4321,10 @@ label:has(> input[type="date"]) {
     }
   }
 }
+/* Escudo cadastrado no lugar do padrão: contorno claro para os escudos escuros
+   não sumirem no fundo azul, e a mesma sombra do escudo padrão. */
+.team-badge-img {
+  object-fit: contain;
+  filter: drop-shadow(0 0 1px rgb(255 255 255 / 0.75))
+    drop-shadow(0 3px 0 rgb(10 26 82 / 0.35));
+}

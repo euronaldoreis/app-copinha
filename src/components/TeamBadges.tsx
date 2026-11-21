@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element -- escudos vêm da API-Football ou de links quaisquer */
 "use client";
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
@@ -23,10 +24,22 @@ export function useTeamBadge(team: string | null) {
 }
 
 /**
- * Escudo do time dentro da moldura do TeamShield (coordenadas do viewBox
- * 48x54). Sem escudo, ou se a imagem não carregar, some e fica a sigla.
+ * Mostra o escudo cadastrado do time no lugar do escudo padrão (children), no
+ * mesmo tamanho. Sem escudo, ou se a imagem não carregar, fica o padrão.
  */
-export function ShieldLogo({ team, url }: { team: string | null; url?: string | null }) {
+export function BadgeOrShield({
+  team,
+  url,
+  width,
+  height,
+  children,
+}: {
+  team: string | null;
+  url?: string | null;
+  width: number;
+  height: number;
+  children: ReactNode;
+}) {
   const fromContext = useTeamBadge(team);
   const src = url ?? fromContext;
   const [failed, setFailed] = useState<string | null>(null);
@@ -42,25 +55,19 @@ export function ShieldLogo({ team, url }: { team: string | null; url?: string | 
       probe.onerror = null;
     };
   }, [src]);
-  if (!src || failed === src) return null;
+  if (!src || failed === src) return children;
   return (
-    <g>
-      <path
-        d="M11 8h26a2.5 2.5 0 0 1 2.5 2.5v20.8L24 45 8.5 31.3V10.5A2.5 2.5 0 0 1 11 8Z"
-        fill="#f6f7fb"
-        stroke="#b8860b"
-        strokeWidth="1"
-        strokeLinejoin="round"
-      />
-      <image
-        href={src}
-        x="12"
-        y="10"
-        width="24"
-        height="24"
-        preserveAspectRatio="xMidYMid meet"
-        onError={() => setFailed(src)}
-      />
-    </g>
+    <img
+      src={src}
+      alt=""
+      aria-hidden="true"
+      width={width}
+      height={height}
+      loading="lazy"
+      decoding="async"
+      onError={() => setFailed(src)}
+      className="team-badge-img shrink-0"
+      style={{ width, height }}
+    />
   );
 }
