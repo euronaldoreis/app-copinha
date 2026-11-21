@@ -78,6 +78,8 @@ export function GroupDraw3D({
   onClose,
   onFail,
   closeLabel = "Ver tabela de jogos",
+  autoPlay = false,
+  onFinished,
 }: {
   draw: GroupDrawItem[];
   closing: boolean;
@@ -86,6 +88,10 @@ export function GroupDraw3D({
   onClose: () => void;
   /** A cena não pôde ser montada: quem chama mostra o sorteio em 2D. */
   onFail: () => void;
+  /** Começa sozinho, sem o botão "Começar sorteio" (tela da TV). */
+  autoPlay?: boolean;
+  /** Chamado quando o último sorteado chega ao grupo. */
+  onFinished?: () => void;
 }) {
   const stage = useRef<HTMLDivElement>(null);
   const tags = useRef<HTMLDivElement>(null);
@@ -107,9 +113,12 @@ export function GroupDraw3D({
   // A lista só muda se o sorteio for refeito; a cena é montada uma vez por sorteio.
   const items = useRef(draw);
   const fail = useRef(onFail);
+  const finished = useRef(onFinished);
+  const auto = useRef(autoPlay);
   useEffect(() => {
     fail.current = onFail;
-  }, [onFail]);
+    finished.current = onFinished;
+  }, [onFail, onFinished]);
 
   useEffect(() => {
     let cancelled = false;
@@ -130,10 +139,17 @@ export function GroupDraw3D({
           }),
           onBoard: setState,
           onIntro: (active, fading) => setIntro(active ? "on" : fading ? "crane" : "off"),
-          onDone: () => setDone(true),
+          onDone: () => {
+            setDone(true);
+            finished.current?.();
+          },
         });
         scene.current = created;
         setLoading(false);
+        if (auto.current) {
+          setStarted(true);
+          created.start();
+        }
       })
       .catch(() => {
         if (!cancelled) fail.current();

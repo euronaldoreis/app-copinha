@@ -38,7 +38,17 @@ import {
   setEntryResult,
   setEntryTeam,
   startEdition,
+  addTeamPick,
+  banTeam,
+  listTeamChoices,
+  removeTeamChoice,
+  resetTeamChoices,
+  drawRemainingTeams,
+  resetTeamDraw,
+  choiceTurnOrder,
+  drawChoiceTeams,
 } from "@/lib/services";
+import { choiceState } from "@/lib/teamChoice";
 import { computeHeadToHead, computeRanking, computeRecords } from "@/lib/stats";
 
 const dir = mkdtempSync(join(tmpdir(), "copinha-test-"));
@@ -1420,5 +1430,124 @@ describe("repescagem", () => {
     v = await view(id);
     expect(v.edition.status).toBe("encerrada");
     expect(v.entries.filter((e) => e.result === "campeao")).toHaveLength(1);
+  });
+});
+
+describe("escolha dos times (citar e banir)", () => {
+  it("cada um cita 2, cada um bane 1 e sobra um time por jogador", async () => {
+    const edition = await createEdition(db, {
+      ...baseEdition,
+      name: "Copinha da escolha",
+      number: 70,
+      config: { ...baseEdition.config, format: "liga", groupsCount: 0, qualifiers: 0 },
+      playerIds: playerIds.slice(0, 3),
+    });
+    const id = edition.id;
+    // a vez segue a colocação na edição anterior
+    const [a, b, c] = choiceTurnOrder(await loadAll(db), id).order;
+    const nameOf = (pid: number) => NAMES[playerIds.indexOf(pid)];
+    const state = async () =>
+      choiceState([a, b, c], await listTeamChoices(db, id));
+    expect((await state()).turn).toBe(a);
+
+    // banir antes de todos citarem não pode
+    await expect(banTeam(db, id, a, "Íbis")).rejects.toThrow(/banimento começa/);
+    // fora da vez não pode
+    await expect(addTeamPick(db, id, b, "Íbis")).rejects.toThrow(`vez de ${nameOf(a)}`);
+
+    await addTeamPick(db, id, a, "Íbis");
+    await expect(addTeamPick(db, id, a, "ibis")).rejects.toThrow(/já está na lista dele/);
+    // cada um cita os 2 seguidos
+    expect((await state()).turn).toBe(a);
+    await addTeamPick(db, id, a, "Tabajara");
+    expect((await state()).turn).toBe(b);
+    await expect(addTeamPick(db, id, a, "Bangu")).rejects.toThrow(`vez de ${nameOf(b)}`);
+    // mesmo time, sem acento: já citado
+    await expect(addTeamPick(db, id, b, "ibis")).rejects.toThrow(`já foi citado por ${nameOf(a)}`);
+    await addTeamPick(db, id, b, "Bangu");
+    await addTeamPick(db, id, b, "Olaria");
+    await addTeamPick(db, id, c, "Andorra");
+    // desfazer uma escolha enquanto ninguém baniu
+    const last = (await listTeamChoices(db, id)).at(-1)!;
+    await removeTeamChoice(db, last.id);
+    await addTeamPick(db, id, c, "Gibraltar");
+    await addTeamPick(db, id, c, "San Marino");
+    expect((await state()).phase).toBe("banimento");
+    expect((await state()).turn).toBe(a);
+    await expect(addTeamPick(db, id, c, "Liechtenstein")).rejects.toBeInstanceOf(UserError);
+
+    // banimento na mesma ordem; pode banir qualquer citado, inclusive o próprio
+    await expect(banTeam(db, id, b, "Bangu")).rejects.toThrow(/Agora é a vez/);
+    await banTeam(db, id, a, "tabajara");
+    await expect(banTeam(db, id, b, "Tabajara")).rejects.toThrow(`já foi banido por ${nameOf(a)}`);
+    await expect(banTeam(db, id, a, "Bangu")).rejects.toThrow(/Agora é a vez/);
+    await expect(banTeam(db, id, b, "Flamengo")).rejects.toThrow(/times citados/);
+    // trocar time citado depois do banimento começar não pode
+    const pick = (await listTeamChoices(db, id)).find((r) => r.team === "Bangu")!;
+    await expect(removeTeamChoice(db, pick.id)).rejects.toThrow(/Desfaça os banimentos/);
+    await banTeam(db, id, b, "Gibraltar");
+    await banTeam(db, id, c, "Olaria");
+
+    const ready = await state();
+    expect(ready.phase).toBe("sorteio");
+    expect(ready.remaining).toEqual(["Íbis", "Bangu", "San Marino"]);
+    // o que sobrou vira a lista do sorteio
+    expect((await view(id)).edition.teamPool).toEqual(["Íbis", "Bangu", "San Marino"]);
+
+    // um toque sorteia todos; a ordem fica gravada para a TV revelar um por um
+    const drawn = await drawRemainingTeams(db, id);
+    expect(drawn).toHaveLength(3);
+    expect(new Set(drawn.map((d) => d.team))).toEqual(new Set(["Íbis", "Bangu", "San Marino"]));
+    expect(new Set(drawn.map((d) => d.playerId))).toEqual(new Set([a, b, c]));
+    await expect(removeTeamChoice(db, (await listTeamChoices(db, id)).find((r) => r.kind === "veto")!.id)).rejects.toThrow(/Refaça o sorteio/);
+    await expect(drawRemainingTeams(db, id)).rejects.toThrow(/já foram sorteados/);
+    const done = await state();
+    expect(done.draws.map((d) => d.team)).toEqual(drawn.map((d) => d.team));
+    expect(done.phase).toBe("concluida");
+    expect(done.undrawn).toEqual([]);
+    let v = await view(id);
+    expect(new Set(v.entries.map((e) => e.team?.name))).toEqual(new Set(["Íbis", "Bangu", "San Marino"]));
+    for (const d of done.draws)
+      expect(v.entries.find((e) => e.playerId === d.playerId)?.team?.name).toBe(d.team);
+
+    // refazer o sorteio tira os times e volta para a fase de sorteio
+    await resetTeamDraw(db, id);
+    expect((await state()).phase).toBe("sorteio");
+    v = await view(id);
+    expect(v.entries.every((e) => e.teamId == null)).toBe(true);
+
+    await drawRemainingTeams(db, id);
+    await resetTeamChoices(db, id);
+    expect(await listTeamChoices(db, id)).toHaveLength(0);
+    expect((await view(id)).entries.every((e) => e.teamId == null)).toBe(true);
+  });
+});
+
+describe("escolha dos times numa edição com grupos", () => {
+  it("o sorteio dos times já sorteia os grupos e gera a tabela", async () => {
+    const edition = await createEdition(db, {
+      ...baseEdition,
+      name: "Copinha com grupos",
+      number: 71,
+      config: { ...baseEdition.config, groupsCount: 2, qualifiers: 2 },
+      playerIds: playerIds.slice(0, 4),
+    });
+    const id = edition.id;
+    const order = choiceTurnOrder(await loadAll(db), id).order;
+    const teams = ["Íbis", "Tabajara", "Bangu", "Olaria", "Andorra", "Gibraltar", "Liechtenstein", "San Marino"];
+    let t = 0;
+    for (const p of order) {
+      await addTeamPick(db, id, p, teams[t++]);
+      await addTeamPick(db, id, p, teams[t++]);
+    }
+    for (const [i, p] of order.entries()) await banTeam(db, id, p, teams[i * 2]);
+
+    await drawChoiceTeams(db, id);
+    const v = await view(id);
+    expect(v.edition.status).toBe("andamento");
+    expect(v.entries.every((e) => e.team != null && e.groupLabel != null)).toBe(true);
+    expect(new Set(v.entries.map((e) => e.team!.name))).toEqual(new Set(["Tabajara", "Olaria", "Gibraltar", "San Marino"]));
+    expect(v.matches.length).toBeGreaterThan(0);
+    expect(drawReplay(await loadAll(db), id)).toHaveLength(4);
   });
 });

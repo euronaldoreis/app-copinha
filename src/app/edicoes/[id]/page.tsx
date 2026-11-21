@@ -620,6 +620,11 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
             )}
             <div className="flex flex-wrap items-center gap-2">
               {edition.useTeams && (
+                <Link href={`/edicoes/${edition.id}/escolha`} className="btn">
+                  Escolha dos times
+                </Link>
+              )}
+              {edition.useTeams && (
                 <DrawPanel
                   editionId={edition.id}
                   hasTeams={entries.some((e) => e.teamId != null)}

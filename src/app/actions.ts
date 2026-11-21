@@ -255,6 +255,45 @@ export async function setTeamPoolAction(_prev: ActionState, fd: FormData) {
   );
 }
 
+// --- Escolha dos times (citar e banir) -------------------------------------
+
+export async function addTeamPickAction(
+  editionId: number,
+  playerId: number,
+  team: string,
+) {
+  return run(() => svc.addTeamPick(getDb(), editionId, playerId, team));
+}
+
+export async function banTeamAction(
+  editionId: number,
+  playerId: number,
+  team: string,
+) {
+  return run(() => svc.banTeam(getDb(), editionId, playerId, team));
+}
+
+export async function removeTeamChoiceAction(choiceId: number) {
+  return run(() => svc.removeTeamChoice(getDb(), choiceId));
+}
+
+export async function resetTeamChoicesAction(editionId: number) {
+  return run(() => svc.resetTeamChoices(getDb(), editionId));
+}
+
+export async function drawChoiceTeamsAction(editionId: number) {
+  return run(() => svc.drawChoiceTeams(getDb(), editionId));
+}
+
+/** Sorteia os grupos depois do sorteio dos times (quando não saiu junto). */
+export async function drawChoiceGroupsAction(editionId: number) {
+  return run(() => svc.startEdition(getDb(), editionId));
+}
+
+export async function resetTeamDrawAction(editionId: number) {
+  return run(() => svc.resetTeamDraw(getDb(), editionId));
+}
+
 /** Time do participante e, nas edições de registro histórico, a colocação. */
 export async function saveEntryAction(_prev: ActionState, fd: FormData) {
   return run(async () => {

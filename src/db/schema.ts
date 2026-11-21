@@ -140,9 +140,33 @@ export const matches = sqliteTable(
   (t) => [index("matches_edition_idx").on(t.editionId)],
 );
 
+/**
+ * Escolha dos times de uma edição, antes do sorteio: cada jogador cita times
+ * ("escolha") e depois bane um dos citados ("veto"). O que sobra vira a lista
+ * de times do sorteio (editions.teamPool).
+ */
+export const teamChoices = sqliteTable(
+  "team_choices",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    editionId: integer("edition_id")
+      .notNull()
+      .references(() => editions.id, { onDelete: "cascade" }),
+    playerId: integer("player_id")
+      .notNull()
+      .references(() => players.id, { onDelete: "cascade" }),
+    /** escolha | veto */
+    kind: text("kind").notNull(),
+    team: text("team").notNull(),
+    createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  },
+  (t) => [index("team_choices_edition_idx").on(t.editionId)],
+);
+
 /** Jogador como o site o usa: sem o hash de acesso, que não deve sair do servidor. */
 export type Player = Omit<typeof players.$inferSelect, "accessHash">;
 export type Team = typeof teams.$inferSelect;
 export type Edition = typeof editions.$inferSelect;
 export type Entry = typeof entries.$inferSelect;
 export type Match = typeof matches.$inferSelect;
+export type TeamChoice = typeof teamChoices.$inferSelect;
