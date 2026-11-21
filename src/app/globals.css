@@ -4329,3 +4329,34 @@ label:has(> input[type="date"]) {
   filter: drop-shadow(0 0 1px rgb(255 255 255 / 0.75))
     drop-shadow(0 3px 0 rgb(10 26 82 / 0.35));
 }
+
+/* Boas-vindas do jogador (link de acesso). */
+.welcome-kicker {
+  display: inline-block;
+  padding: 6px 14px;
+  border: 2px solid var(--color-night);
+  border-radius: 999px;
+  background: var(--color-night);
+  color: var(--color-accent);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.player-card.welcome-card {
+  width: 168px;
+  gap: 10px;
+  padding: 10px 10px 12px;
+}
+.welcome-step-icon {
+  display: grid;
+  flex-shrink: 0;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 2px solid var(--color-night);
+  border-radius: 12px;
+  background: linear-gradient(#ffd95e, #f7a81d);
+  color: #5b3600;
+  box-shadow: 0 3px 0 var(--color-night);
+}

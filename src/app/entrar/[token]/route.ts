@@ -1,4 +1,5 @@
-// Link de acesso do jogador: confere o código, abre a sessão e leva ao perfil.
+// Link de acesso do jogador: confere o código, abre a sessão e leva à tela de
+// boas-vindas.
 import { NextResponse } from "next/server";
 import { getDb } from "@/db";
 import { startPlayerSession } from "@/lib/auth";
@@ -16,7 +17,7 @@ export async function GET(
     player?.accessHash != null &&
     (await startPlayerSession(player.id, player.accessHash));
   const res = NextResponse.redirect(
-    new URL(ok ? "/meu-perfil" : "/meu-perfil?link=invalido", request.url),
+    new URL(ok ? "/bem-vindo" : "/meu-perfil?link=invalido", request.url),
   );
   // O código não deve vazar para outros sites pelo cabeçalho Referer.
   res.headers.set("Referrer-Policy", "no-referrer");
