@@ -49,11 +49,7 @@ export function PlayerMedia({
   tier: string;
   size?: number;
 }) {
-  return (
-    <span className={`lb-avatar lb-ring-${tier}`}>
-      <Avatar name={name} photoUrl={photoUrl} avatar={avatar} size={size} />
-    </span>
-  );
+  return <Avatar name={name} photoUrl={photoUrl} avatar={avatar} size={size} tier={tier} />;
 }
 
 /**

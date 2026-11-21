@@ -198,6 +198,7 @@ export default async function HomePage() {
                   photoUrl={entry.player.photoUrl}
                   avatar={entry.player.avatar}
                   size={64}
+                  tier={false}
                 />
                 <span className="text-title w-full truncate text-center !text-[15px]">
                   {entry.player.name}

@@ -4,6 +4,7 @@
 // para o mesmo nome (ver src/lib/sprite.ts).
 import { HAIR_PATHS, PORTRAIT_BG } from "@/lib/portrait";
 import { spriteLook, type AvatarLook } from "@/lib/sprite";
+import { TierRing } from "./PlayerTiers";
 
 function Portrait({ name, avatar }: { name: string; avatar?: AvatarLook | null }) {
   const look = spriteLook(name, avatar);
@@ -30,14 +31,21 @@ export function Avatar({
   photoUrl,
   avatar,
   size = 44,
+  tier,
 }: {
   name: string;
   photoUrl?: string | null;
   /** Aparência escolhida do boneco; sem ela, vale a automática do nome. */
   avatar?: AvatarLook | null;
   size?: number;
+  /**
+   * Cor da moldura (categoria do jogador). Sem informar, vem da categoria do
+   * jogador pelo nome; `false` tira a moldura (ex.: dentro da carta, que já
+   * tem a cor da categoria).
+   */
+  tier?: string | false;
 }) {
-  return (
+  const face = (
     <span
       style={{ width: size, height: size }}
       className="block shrink-0 overflow-hidden rounded-[22%] border-2 border-night bg-wash shadow-soft"
@@ -54,5 +62,11 @@ export function Avatar({
         <Portrait name={name} avatar={avatar} />
       )}
     </span>
+  );
+  if (tier === false) return face;
+  return (
+    <TierRing name={name} tier={tier} size={size}>
+      {face}
+    </TierRing>
   );
 }

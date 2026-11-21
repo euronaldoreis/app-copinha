@@ -87,6 +87,7 @@ export function PlayersList({ players }: { players: PlayerItem[] }) {
                 photoUrl={p.photoUrl}
                 avatar={p.avatar}
                 size={68}
+                tier={false}
               />
               <span className="player-plate">
                 <span className="text-title w-full truncate text-center !text-[16px] !leading-tight">
