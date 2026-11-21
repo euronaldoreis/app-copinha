@@ -4360,3 +4360,29 @@ label:has(> input[type="date"]) {
   color: #5b3600;
   box-shadow: 0 3px 0 var(--color-night);
 }
+
+/* QR code do link de acesso do jogador. */
+.access-qr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 14px;
+  border: 2px solid var(--color-night);
+  border-radius: 14px;
+  background: rgb(10 26 82 / 0.35);
+  text-align: center;
+}
+.access-qr-code {
+  width: min(240px, 100%);
+  padding: 8px;
+  border: 3px solid var(--color-night);
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 4px 0 var(--color-night);
+}
+.access-qr-code svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
