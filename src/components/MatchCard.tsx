@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { useCallback, useState } from "react";
+import { Avatar } from "./Avatar";
 import { CheckIcon, PencilIcon } from "./icons";
 import { ScoreDialog } from "./ScoreDialog";
-import { TeamBadge, TeamShield, type MatchSide } from "./TeamShield";
+import type { MatchSide } from "./TeamShield";
 
 export type { MatchSide } from "./TeamShield";
 
@@ -27,6 +28,9 @@ export interface MatchCardProps {
   admin: boolean;
 }
 
+/** Tamanho do cartão do jogador nos confrontos. */
+const CARD_SIZE = 56;
+
 function Side({
   side,
   placeholder,
@@ -39,7 +43,14 @@ function Side({
   if (!side) {
     return (
       <div className="flex min-w-0 flex-col items-center gap-1.5 text-center">
-        <TeamShield team={null} />
+        {/* vaga ainda sem dono: cartão vazio com "?" */}
+        <span
+          style={{ width: CARD_SIZE, height: CARD_SIZE }}
+          className="grid shrink-0 place-items-center rounded-[22%] border-2 border-night bg-[#c5d0ea] font-pixel text-[24px] text-[#4a6cb8] shadow-soft"
+          aria-hidden="true"
+        >
+          ?
+        </span>
         <span className="font-score text-[14px] font-bold leading-tight text-[#4a6cb8]">
           {placeholder}
         </span>
@@ -51,7 +62,12 @@ function Side({
       href={`/jogadores/${side.playerId}`}
       className={`flex min-w-0 flex-col items-center gap-1.5 text-center ${dimmed ? "opacity-55" : ""}`}
     >
-      <TeamBadge side={side} />
+      <Avatar
+        name={side.name}
+        photoUrl={side.photoUrl}
+        avatar={side.avatar}
+        size={CARD_SIZE}
+      />
       <span className="max-w-full truncate font-score text-[17px] font-black leading-tight text-[#1c3a6d]">
         {side.name}
       </span>
@@ -64,7 +80,10 @@ function Side({
   );
 }
 
-/** Cartão de um jogo: faixa com a fase, escudos, placar e botão de placar. */
+/**
+ * Cartão de um jogo: faixa com a fase, o cartão de cada jogador com o nome e o
+ * time embaixo, placar e botão de placar.
+ */
 export function MatchCard(props: MatchCardProps) {
   const { home, away, homeScore, awayScore, homePens, awayPens } = props;
   const played = homeScore != null && awayScore != null;
