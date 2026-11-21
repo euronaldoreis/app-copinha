@@ -3,7 +3,8 @@
 // fica em API_FOOTBALL_KEY e só é usada no servidor.
 import catalog from "../../scripts/times.json";
 
-// API_FOOTBALL_URL só existe para testes locais com uma API simulada.
+// API_FOOTBALL_URL e API_FOOTBALL_MEDIA_URL só existem para testes locais com
+// uma API simulada.
 const base = () => process.env.API_FOOTBALL_URL || "https://v3.football.api-sports.io";
 
 export interface BadgeCandidate {
@@ -293,4 +294,47 @@ export function currentSeason(league: string, now = new Date()) {
 /** Todos os times de uma liga numa temporada (1 consulta). */
 export function leagueTeams(league: number, season: number, fetcher?: typeof fetch) {
   return getTeams({ league, season }, fetcher);
+}
+
+// ---------------------------------------------------------------------------
+// Imagens
+
+/** Tamanho máximo da imagem de um escudo (os da API têm uns 10 KB). */
+export const BADGE_MAX_BYTES = 300_000;
+
+const IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+
+/** Link da imagem de um time da API-Football pelo id dele na API. */
+export const apiLogoUrl = (apiTeamId: number) =>
+  `${process.env.API_FOOTBALL_MEDIA_URL || "https://media.api-sports.io"}/football/teams/${apiTeamId}.png`;
+
+/**
+ * Baixa a imagem de um escudo no servidor, para guardar no banco. Só aceita
+ * PNG, JPEG, WebP e GIF (SVG pode carregar código) de até BADGE_MAX_BYTES.
+ */
+export async function downloadBadge(url: string, fetcher: typeof fetch = fetch) {
+  if (!/^https:\/\//i.test(url))
+    throw new ApiFootballError("O link do escudo precisa começar com https://", "outro");
+  let res: Response;
+  try {
+    res = await fetcher(url, {
+      headers: { "User-Agent": "Mozilla/5.0 (CopinhaDosLixos)", Accept: "image/*" },
+      cache: "no-store",
+      signal: AbortSignal.timeout(15000),
+    });
+  } catch {
+    throw new ApiFootballError("Não foi possível baixar a imagem do escudo agora.", "outro");
+  }
+  if (!res.ok)
+    throw new ApiFootballError(
+      `Não foi possível baixar a imagem do escudo (erro ${res.status}).`,
+      res.status === 429 ? "minuto" : "outro",
+    );
+  const contentType = (res.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
+  if (!IMAGE_TYPES.includes(contentType))
+    throw new ApiFootballError("O link não é de uma imagem PNG, JPG, WebP ou GIF.", "outro");
+  const bytes = Buffer.from(await res.arrayBuffer());
+  if (bytes.length === 0 || bytes.length > BADGE_MAX_BYTES)
+    throw new ApiFootballError("A imagem do escudo é grande demais (máximo 300 KB).", "outro");
+  return { contentType, data: bytes.toString("base64") };
 }

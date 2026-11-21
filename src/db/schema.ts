@@ -55,6 +55,23 @@ export const teams = sqliteTable(
   (t) => [uniqueIndex("teams_name_idx").on(t.name)],
 );
 
+/**
+ * Imagem do escudo de cada time, guardada no banco e servida em /escudo/<id>.
+ * O servidor de imagens da API-Football não serve bem para ser usado direto
+ * nas páginas; a própria API recomenda guardar as imagens do seu lado.
+ */
+export const teamBadges = sqliteTable("team_badges", {
+  teamId: integer("team_id")
+    .primaryKey()
+    .references(() => teams.id, { onDelete: "cascade" }),
+  contentType: text("content_type").notNull(),
+  /** Imagem em base64. */
+  data: text("data").notNull(),
+  /** De onde a imagem foi baixada (o mesmo link de teams.badge_url). */
+  sourceUrl: text("source_url").notNull(),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const editions = sqliteTable("editions", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   number: integer("number").notNull(),

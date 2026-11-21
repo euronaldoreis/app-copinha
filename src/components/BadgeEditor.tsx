@@ -105,7 +105,13 @@ export function BadgeEditor({
                 onClick={() => choose(c.logo)}
                 title={`Usar o escudo de ${c.name}`}
               >
-                <img src={c.logo} alt="" width={44} height={44} loading="lazy" />
+                <img
+                  src={`/escudo/previa/${c.id}`}
+                  alt=""
+                  width={44}
+                  height={44}
+                  loading="lazy"
+                />
                 <span className="min-w-0">
                   <span className="block truncate font-black">{c.name}</span>
                   <span className="badge-country block truncate">{c.country}</span>

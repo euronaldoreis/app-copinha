@@ -9,6 +9,7 @@ import { Empty, PageTitle, Section } from "@/components/ui";
 import { isAdmin } from "@/lib/auth";
 import { getData } from "@/lib/data";
 import { plural } from "@/lib/labels";
+import { badgePath } from "@/lib/teamBadge";
 import { badgeCoverage } from "@/lib/services";
 
 export const metadata: Metadata = { title: "Times" };
@@ -63,6 +64,7 @@ export default async function TeamsAdminPage() {
             uses: uses.get(t.id) ?? 0,
             titles: titles.get(t.id) ?? 0,
             badgeUrl: t.badgeUrl,
+            badgeSrc: t.badgeUrl ? badgePath(t.id, t.badgeUrl) : null,
             searchTerm: suggestedTerm(t.name),
           }))}
         />

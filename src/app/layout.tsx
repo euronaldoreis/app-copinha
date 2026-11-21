@@ -10,7 +10,7 @@ import { LockIcon, SettingsIcon } from "@/components/icons";
 import { Ball3D, Trophy3D } from "@/components/icons3d";
 import { isAdmin } from "@/lib/auth";
 import { getData } from "@/lib/data";
-import { badgeKey } from "@/lib/teamBadge";
+import { badgeKey, badgePath } from "@/lib/teamBadge";
 import "./globals.css";
 
 // Texto corrido: redonda e legível, com peso para os destaques.
@@ -81,7 +81,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
     (e) => e.status !== "inscricoes",
   ).length;
   const badges = Object.fromEntries(
-    data.teams.filter((t) => t.badgeUrl).map((t) => [badgeKey(t.name), t.badgeUrl!]),
+    data.teams
+      .filter((t) => t.badgeUrl)
+      .map((t) => [badgeKey(t.name), badgePath(t.id, t.badgeUrl!)]),
   );
   const games = data.matches.filter((m) => m.homeScore != null).length;
   return (
