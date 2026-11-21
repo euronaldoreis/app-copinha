@@ -46,6 +46,7 @@ import {
   drawRemainingTeams,
   resetTeamDraw,
   choiceTurnOrder,
+  drawChoiceTeams,
 } from "@/lib/services";
 import { choiceState } from "@/lib/teamChoice";
 import { computeHeadToHead, computeRanking, computeRecords } from "@/lib/stats";
@@ -1519,5 +1520,34 @@ describe("escolha dos times (citar e banir)", () => {
     await resetTeamChoices(db, id);
     expect(await listTeamChoices(db, id)).toHaveLength(0);
     expect((await view(id)).entries.every((e) => e.teamId == null)).toBe(true);
+  });
+});
+
+describe("escolha dos times numa edição com grupos", () => {
+  it("o sorteio dos times já sorteia os grupos e gera a tabela", async () => {
+    const edition = await createEdition(db, {
+      ...baseEdition,
+      name: "Copinha com grupos",
+      number: 71,
+      config: { ...baseEdition.config, groupsCount: 2, qualifiers: 2 },
+      playerIds: playerIds.slice(0, 4),
+    });
+    const id = edition.id;
+    const order = choiceTurnOrder(await loadAll(db), id).order;
+    const teams = ["Íbis", "Tabajara", "Bangu", "Olaria", "Andorra", "Gibraltar", "Liechtenstein", "San Marino"];
+    let t = 0;
+    for (const p of order) {
+      await addTeamPick(db, id, p, teams[t++]);
+      await addTeamPick(db, id, p, teams[t++]);
+    }
+    for (const [i, p] of order.entries()) await banTeam(db, id, p, teams[i * 2]);
+
+    await drawChoiceTeams(db, id);
+    const v = await view(id);
+    expect(v.edition.status).toBe("andamento");
+    expect(v.entries.every((e) => e.team != null && e.groupLabel != null)).toBe(true);
+    expect(new Set(v.entries.map((e) => e.team!.name))).toEqual(new Set(["Tabajara", "Olaria", "Gibraltar", "San Marino"]));
+    expect(v.matches.length).toBeGreaterThan(0);
+    expect(drawReplay(await loadAll(db), id)).toHaveLength(4);
   });
 });

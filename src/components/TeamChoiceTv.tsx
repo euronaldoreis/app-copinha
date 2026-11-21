@@ -18,11 +18,15 @@ import { ChoiceSteps } from "./TeamChoiceSteps";
 import type { ChoicePlayer } from "./TeamChoiceAdmin";
 import { TeamDrawReveal } from "./TeamDrawReveal";
 import { useWakeLock } from "./drawHooks";
+import { TvGroupDraw } from "./GroupDraw";
+import type { GroupDrawItem } from "@/lib/services";
 
 /** De quanto em quanto tempo a TV busca as novidades lançadas no celular. */
 const REFRESH_MS = 1500;
 /** Pausa entre a revelação de um sorteio e a do próximo. */
 const REST_MS = 1400;
+/** Depois do último time revelado, quanto esperar até o sorteio dos grupos. */
+const GROUPS_PAUSE_MS = 3500;
 
 /** Colunas da grade, para caber todo mundo numa tela de TV (até 2 fileiras). */
 const columns = (n: number) =>
@@ -30,9 +34,23 @@ const columns = (n: number) =>
 
 function SoundIcon({ off }: { off: boolean }) {
   return (
-    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+    <svg
+      viewBox="0 0 24 24"
+      width="20"
+      height="20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
       <path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4Z" fill="currentColor" />
-      {off ? <path d="m16 9.5 5 5M21 9.5l-5 5" /> : <path d="M16 9a4.5 4.5 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11" />}
+      {off ? (
+        <path d="m16 9.5 5 5M21 9.5l-5 5" />
+      ) : (
+        <path d="M16 9a4.5 4.5 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11" />
+      )}
     </svg>
   );
 }
@@ -47,11 +65,17 @@ export function TeamChoiceTv({
   editionName,
   players,
   choices,
+  withGroups,
+  groups,
 }: {
   editionId: number;
   editionName: string;
   players: ChoicePlayer[];
   choices: ChoiceRow[];
+  /** Edição com grupos: depois dos times, vem o sorteio dos grupos. */
+  withGroups: boolean;
+  /** Grupos sorteados, na ordem do sorteio (null enquanto não saíram). */
+  groups: GroupDrawItem[] | null;
 }) {
   const router = useRouter();
   const [fullscreen, setFullscreen] = useState(false);
@@ -75,7 +99,11 @@ export function TeamChoiceTv({
   }, []);
 
   const state = useMemo(
-    () => choiceState(players.map((p) => p.id), choices),
+    () =>
+      choiceState(
+        players.map((p) => p.id),
+        choices,
+      ),
     [players, choices],
   );
   const playerById = new Map(players.map((p) => [p.id, p]));
@@ -85,7 +113,8 @@ export function TeamChoiceTv({
   const [shown, setShown] = useState(state.draws.length);
   // pausa curta entre uma revelação e a próxima, para ver o quadro atualizar
   const [resting, setResting] = useState(false);
-  const drawing = !resting && state.draws.length > shown ? state.draws[shown] : null;
+  const drawing =
+    !resting && state.draws.length > shown ? state.draws[shown] : null;
   const revealed = () => {
     setShown((s) => s + 1);
     setResting(true);
@@ -102,6 +131,30 @@ export function TeamChoiceTv({
   const shownTeams = new Set(shownDraws.map((d) => foldTeam(d.team)));
   const inUrn = state.remaining.filter((t) => !shownTeams.has(foldTeam(t)));
   const allShown = state.phase === "concluida" && shown >= state.draws.length;
+
+  // Sorteio dos grupos: espera os times serem revelados, roda no estádio e
+  // termina no quadro dos grupos. Se a TV abrir com tudo pronto, vai direto
+  // para o quadro, sem repetir a animação.
+  const [groupStage, setGroupStage] = useState<"wait" | "play" | "show">(
+    groups && state.draws.length > 0 ? "show" : "wait",
+  );
+  // Só importa se os grupos existem: a lista chega nova a cada atualização da
+  // TV e, se fosse dependência, a espera recomeçaria sem nunca terminar.
+  const hasGroups = groups != null;
+  useEffect(() => {
+    if (!hasGroups) {
+      // tabela desfeita no celular: volta a esperar
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setGroupStage("wait");
+      return;
+    }
+    if (groupStage !== "wait" || !allShown) return;
+    const go = setTimeout(() => setGroupStage("play"), GROUPS_PAUSE_MS);
+    return () => clearTimeout(go);
+  }, [hasGroups, groupStage, allShown]);
+  // O quadro dos grupos só aparece quando o admin toca em "Ver grupos" no fim
+  // do sorteio; até lá, a TV fica no estádio.
+  const groupsShown = groupStage === "show" && groups != null;
 
   const last = drawPhase
     ? shownDraws.at(-1)
@@ -120,15 +173,29 @@ export function TeamChoiceTv({
 
   return (
     // qualquer toque na TV libera o som do navegador
-    <div className="choice-tv fixed inset-0 z-50 overflow-y-auto" onPointerDown={unlockAudio}>
+    <div
+      className="choice-tv fixed inset-0 z-50 overflow-y-auto"
+      onPointerDown={unlockAudio}
+    >
       <div className="choice-tv-inner">
         <header className="choice-tv-head">
           <div className="flex min-w-0 items-center gap-[1.2vw]">
             {/* eslint-disable-next-line @next/next/no-img-element -- imagem pequena e fixa, sem otimização */}
             <img src="/brasao.png" alt="" className="choice-tv-emblem" />
             <div className="min-w-0">
-              <p className="choice-tv-kicker">{drawPhase ? "Sorteio dos times" : "Escolha dos times"}</p>
-              <h1 className="choice-tv-title text-title" aria-label={editionName}>
+              <p className="choice-tv-kicker">
+                {groupsShown
+                  ? "Grupos sorteados"
+                  : groupStage === "play"
+                    ? "Sorteio dos grupos"
+                    : drawPhase
+                      ? "Sorteio dos times"
+                      : "Escolha dos times"}
+              </p>
+              <h1
+                className="choice-tv-title text-title"
+                aria-label={editionName}
+              >
                 <Arcade>{editionName}</Arcade>
               </h1>
             </div>
@@ -144,32 +211,74 @@ export function TeamChoiceTv({
               <SoundIcon off={muted} />
             </button>
             {!fullscreen && (
-              <button type="button" className="btn-hud" onClick={toggleFullscreen} aria-label="Tela cheia" title="Tela cheia">
+              <button
+                type="button"
+                className="btn-hud"
+                onClick={toggleFullscreen}
+                aria-label="Tela cheia"
+                title="Tela cheia"
+              >
                 <ExpandIcon width={20} height={20} />
               </button>
             )}
             {!fullscreen && (
-              <Link href={`/edicoes/${editionId}`} className="btn-hud" aria-label="Sair" title="Sair">
-                <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-                  <path d="M6 6l12 12M18 6 6 18" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+              <Link
+                href={`/edicoes/${editionId}`}
+                className="btn-hud"
+                aria-label="Sair"
+                title="Sair"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  width="20"
+                  height="20"
+                  aria-hidden="true"
+                >
+                  <path
+                    d="M6 6l12 12M18 6 6 18"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                  />
                 </svg>
               </Link>
             )}
           </div>
         </header>
 
-        <ChoiceSteps state={state} tv shownDraws={drawPhase ? shown : undefined} />
+        <ChoiceSteps
+          state={state}
+          tv
+          shownDraws={drawPhase ? shown : undefined}
+          withGroups={withGroups}
+          groupsDone={groupsShown}
+        />
 
         {/* Última jogada, em destaque; a chave faz a animação repetir. */}
         <div className="choice-tv-news" aria-live="polite">
-          {allShown ? (
-            <p className="choice-tv-event">Todos os times sorteados!</p>
+          {groupsShown ? (
+            <p className="choice-tv-event anim-pop">
+              Grupos definidos! Que comece a Copinha!
+            </p>
+          ) : allShown ? (
+            <p className="choice-tv-event">
+              {withGroups
+                ? "Todos os times sorteados! Agora, os grupos…"
+                : "Todos os times sorteados!"}
+            </p>
           ) : last ? (
-            <p key={last.id} className={`choice-tv-event anim-pop ${last.kind === "veto" ? "is-ban" : ""}`}>
+            <p
+              key={last.id}
+              className={`choice-tv-event anim-pop ${last.kind === "veto" ? "is-ban" : ""}`}
+            >
               <TeamShield team={last.team} size={44} />
               <span>
                 <b>{nameOf(last.playerId)}</b>{" "}
-                {last.kind === "veto" ? "baniu" : last.kind === "sorteio" ? "vai jogar de" : "escolheu"}{" "}
+                {last.kind === "veto"
+                  ? "baniu"
+                  : last.kind === "sorteio"
+                    ? "vai jogar de"
+                    : "escolheu"}{" "}
                 <b>{last.team}</b>
               </span>
             </p>
@@ -182,7 +291,9 @@ export function TeamChoiceTv({
           )}
         </div>
 
-        {drawPhase ? (
+        {groupsShown ? (
+          <GroupsBoard groups={groups} players={players} />
+        ) : drawPhase ? (
           <>
             {inUrn.length > 0 && (
               <div className="choice-tv-urn">
@@ -195,18 +306,32 @@ export function TeamChoiceTv({
                 ))}
               </div>
             )}
-            <div className="choice-tv-grid" style={{ "--cols": columns(players.length) } as CSSProperties}>
+            <div
+              className="choice-tv-grid"
+              style={{ "--cols": columns(players.length) } as CSSProperties}
+            >
               {players.map((p) => {
                 const draw = shownDraws.find((d) => d.playerId === p.id);
                 const fresh = last?.playerId === p.id && !allShown;
                 return (
-                  <article key={p.id} className={`choice-tv-card ${fresh ? "is-fresh" : ""} ${draw ? "has-team" : ""}`}>
+                  <article
+                    key={p.id}
+                    className={`choice-tv-card ${fresh ? "is-fresh" : ""} ${draw ? "has-team" : ""}`}
+                  >
                     <div className="choice-tv-player">
-                      <Avatar name={p.name} photoUrl={p.photoUrl} avatar={p.avatar} size={48} />
+                      <Avatar
+                        name={p.name}
+                        photoUrl={p.photoUrl}
+                        avatar={p.avatar}
+                        size={48}
+                      />
                       <span className="truncate">{p.name}</span>
                     </div>
                     {draw ? (
-                      <div key={draw.id} className="choice-tv-slot choice-tv-drawn anim-pop">
+                      <div
+                        key={draw.id}
+                        className="choice-tv-slot choice-tv-drawn anim-pop"
+                      >
                         <TeamShield team={draw.team} size={48} />
                         <span className="choice-tv-team">{draw.team}</span>
                       </div>
@@ -221,17 +346,28 @@ export function TeamChoiceTv({
             </div>
           </>
         ) : (
-          <div className="choice-tv-grid" style={{ "--cols": columns(players.length) } as CSSProperties}>
+          <div
+            className="choice-tv-grid"
+            style={{ "--cols": columns(players.length) } as CSSProperties}
+          >
             {players.map((p, i) => {
               const picks = state.picks.filter((c) => c.playerId === p.id);
               const ban = state.bans.find((b) => b.playerId === p.id);
               const isTurn = state.turn === p.id;
               const fresh = !isTurn && last?.playerId === p.id;
               return (
-                <article key={p.id} className={`choice-tv-card ${fresh ? "is-fresh" : ""} ${isTurn ? "is-turn" : ""}`}>
+                <article
+                  key={p.id}
+                  className={`choice-tv-card ${fresh ? "is-fresh" : ""} ${isTurn ? "is-turn" : ""}`}
+                >
                   <div className="choice-tv-player">
                     <span className="choice-tv-pos num">{i + 1}º</span>
-                    <Avatar name={p.name} photoUrl={p.photoUrl} avatar={p.avatar} size={48} />
+                    <Avatar
+                      name={p.name}
+                      photoUrl={p.photoUrl}
+                      avatar={p.avatar}
+                      size={48}
+                    />
                     <span className="truncate">{p.name}</span>
                     {isTurn && (
                       <span className="choice-tv-turn">
@@ -249,7 +385,10 @@ export function TeamChoiceTv({
                       );
                     const by = state.bannedBy.get(foldTeam(pick.team));
                     return (
-                      <div key={pick.id} className={`choice-tv-slot anim-pop ${by != null ? "is-banned" : ""}`}>
+                      <div
+                        key={pick.id}
+                        className={`choice-tv-slot anim-pop ${by != null ? "is-banned" : ""}`}
+                      >
                         <TeamShield team={pick.team} size={48} />
                         <span className="choice-tv-team">{pick.team}</span>
                         {by != null && (
@@ -289,7 +428,61 @@ export function TeamChoiceTv({
             onDone={revealed}
           />
         )}
+
+        {groupStage === "play" && groups && (
+          <TvGroupDraw
+            items={groups}
+            onClose={() => setGroupStage("show")}
+          />
+        )}
       </div>
     </div>
+  );
+}
+
+/** Quadro final: cada grupo com os jogadores e os times sorteados. */
+function GroupsBoard({
+  groups,
+  players,
+}: {
+  groups: GroupDrawItem[];
+  players: ChoicePlayer[];
+}) {
+  const labels = [...new Set(groups.map((g) => g.groupLabel ?? ""))].sort();
+  const photoOf = (name: string) =>
+    players.find((p) => p.name === name)?.photoUrl ?? null;
+  return (
+    <section>
+      <h2 className="choice-tv-section">Grupos sorteados</h2>
+      <div
+        className="choice-tv-groups"
+        style={{ "--cols": Math.min(labels.length, 4) } as CSSProperties}
+      >
+        {labels.map((label, i) => (
+          <div
+            key={label}
+            className="choice-tv-group anim-pop"
+            style={{ "--i": i } as CSSProperties}
+          >
+            <h3 className="choice-tv-group-title">Grupo {label}</h3>
+            {groups
+              .filter((g) => (g.groupLabel ?? "") === label)
+              .map((g) => (
+                <div key={g.entryId} className="choice-tv-group-row">
+                  <Avatar
+                    name={g.playerName}
+                    photoUrl={photoOf(g.playerName)}
+                    avatar={g.avatar}
+                    size={40}
+                  />
+                  <span className="choice-tv-group-name">{g.playerName}</span>
+                  <TeamShield team={g.teamName} size={36} />
+                  <span className="choice-tv-group-team">{g.teamName}</span>
+                </div>
+              ))}
+          </div>
+        ))}
+      </div>
+    </section>
   );
 }

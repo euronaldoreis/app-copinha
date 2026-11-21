@@ -1,24 +1,33 @@
 import type { ChoiceState } from "@/lib/teamChoice";
 
 const STEPS = [
-  { phase: "escolha", label: "Escolha" },
-  { phase: "banimento", label: "Banimento" },
-  { phase: "sorteio", label: "Sorteio" },
+  { key: "escolha", label: "Escolha" },
+  { key: "banimento", label: "Banimento" },
+  { key: "sorteio", label: "Sorteio" },
+  { key: "grupos", label: "Grupos" },
 ] as const;
 
-/** As três fases da escolha dos times, com o andamento da fase atual. */
+/** As fases da escolha dos times, com o andamento da fase atual. */
 export function ChoiceSteps({
   state,
   tv = false,
   shownDraws,
+  withGroups = false,
+  groupsDone = false,
 }: {
   state: ChoiceState;
   tv?: boolean;
   /** Na TV: sorteios já revelados (os outros ainda estão na animação). */
   shownDraws?: number;
+  /** Edição com grupos: há a quarta fase, o sorteio dos grupos. */
+  withGroups?: boolean;
+  /** Os grupos já foram sorteados (e, na TV, mostrados). */
+  groupsDone?: boolean;
 }) {
+  const steps = withGroups ? STEPS : STEPS.slice(0, 3);
   const drawn = shownDraws ?? state.draws.length;
   const players = state.bansTotal;
+  const teamsDone = state.phase === "concluida" && drawn >= players;
   const [done, total] =
     state.phase === "escolha"
       ? [state.picks.length, state.picksTotal]
@@ -30,24 +39,32 @@ export function ChoiceSteps({
       ? `${done} de ${total} times citados`
       : state.phase === "banimento"
         ? `${done} de ${total} banimentos`
-        : done === total
-          ? "Todos os times sorteados"
-          : `${done} de ${total} times sorteados`;
-  // Com tudo sorteado (e revelado, na TV), as três fases ficam concluídas.
+        : !teamsDone
+          ? `${done} de ${total} times sorteados`
+          : !withGroups
+            ? "Todos os times sorteados"
+            : groupsDone
+              ? "Grupos sorteados"
+              : "Sorteio dos grupos";
+  // Fase atual; com tudo pronto, todas ficam concluídas.
   const step =
     state.phase === "escolha"
       ? 0
       : state.phase === "banimento"
         ? 1
-        : state.phase === "concluida" && done === total
-          ? STEPS.length
-          : 2;
+        : !teamsDone
+          ? 2
+          : !withGroups
+            ? 3
+            : groupsDone
+              ? 4
+              : 3;
   return (
     <div className={tv ? "choice-steps choice-steps-tv" : "choice-steps"}>
-      <ol className="choice-steps-list">
-        {STEPS.map((s, i) => (
+      <ol className="choice-steps-list" style={{ gridTemplateColumns: `repeat(${steps.length}, minmax(0, 1fr))` }}>
+        {steps.map((s, i) => (
           <li
-            key={s.phase}
+            key={s.key}
             className={i < step ? "is-done" : i === step ? "is-on" : ""}
             aria-current={i === step ? "step" : undefined}
           >

@@ -803,6 +803,26 @@ export async function drawRemainingTeams(db: Db, editionId: number) {
   });
 }
 
+/**
+ * O botão do sorteio na escolha dos times: sorteia os times e, nas edições
+ * com grupos, já sorteia os grupos e gera a tabela (a TV mostra os dois, um
+ * depois do outro). O formato é conferido antes, para não parar no meio.
+ */
+export async function drawChoiceTeams(db: Db, editionId: number) {
+  const edition = await getEdition(db, editionId);
+  const withGroups = edition.format === "grupos";
+  if (withGroups) {
+    const count = (
+      await db.select().from(entries).where(eq(entries.editionId, editionId))
+    ).length;
+    const problem = validateConfig(configOf(edition), count);
+    if (problem) throw new UserError(problem);
+  }
+  const drawn = await drawRemainingTeams(db, editionId);
+  if (withGroups) await startEdition(db, editionId);
+  return drawn;
+}
+
 /** Desfaz o sorteio dos times (as escolhas e os banimentos continuam). */
 export async function resetTeamDraw(db: Db, editionId: number) {
   await choiceContext(db, editionId);

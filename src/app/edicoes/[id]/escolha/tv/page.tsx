@@ -18,6 +18,8 @@ export default async function TeamChoiceTvPage(
       editionName={loaded.edition.name}
       players={loaded.players}
       choices={loaded.choices}
+      withGroups={loaded.edition.format === "grupos"}
+      groups={loaded.groups}
     />
   );
 }

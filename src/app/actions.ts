@@ -280,8 +280,13 @@ export async function resetTeamChoicesAction(editionId: number) {
   return run(() => svc.resetTeamChoices(getDb(), editionId));
 }
 
-export async function drawRemainingTeamsAction(editionId: number) {
-  return run(() => svc.drawRemainingTeams(getDb(), editionId));
+export async function drawChoiceTeamsAction(editionId: number) {
+  return run(() => svc.drawChoiceTeams(getDb(), editionId));
+}
+
+/** Sorteia os grupos depois do sorteio dos times (quando não saiu junto). */
+export async function drawChoiceGroupsAction(editionId: number) {
+  return run(() => svc.startEdition(getDb(), editionId));
 }
 
 export async function resetTeamDrawAction(editionId: number) {

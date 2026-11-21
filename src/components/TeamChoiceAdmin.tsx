@@ -5,7 +5,8 @@ import { useMemo, useState, useTransition } from "react";
 import {
   addTeamPickAction,
   banTeamAction,
-  drawRemainingTeamsAction,
+  drawChoiceGroupsAction,
+  drawChoiceTeamsAction,
   removeTeamChoiceAction,
   resetTeamChoicesAction,
   resetTeamDrawAction,
@@ -65,6 +66,8 @@ function UndoButton({ label, onClick, disabled }: { label: string; onClick: () =
 export function TeamChoiceAdmin({
   editionId,
   previousName,
+  withGroups,
+  locked,
   players,
   choices,
   knownTeams,
@@ -72,6 +75,10 @@ export function TeamChoiceAdmin({
   editionId: number;
   /** Edição que define a ordem da vez (null = sem anterior encerrada). */
   previousName: string | null;
+  /** Edição com grupos: o sorteio dos times já sorteia os grupos também. */
+  withGroups: boolean;
+  /** A tabela já foi gerada: só dá para ver, não mudar. */
+  locked: boolean;
   /** Já na ordem da vez. */
   players: ChoicePlayer[];
   choices: ChoiceRow[];
@@ -135,7 +142,21 @@ export function TeamChoiceAdmin({
     if (ok) act(() => resetTeamChoicesAction(editionId));
   };
 
-  const drawAll = () => act(() => drawRemainingTeamsAction(editionId));
+  const drawAll = async () => {
+    if (
+      withGroups &&
+      !(await ask({
+        title: "Sortear times e grupos",
+        message:
+          "Sortear os times e, em seguida, os grupos? A tabela de jogos é gerada junto, e a TV mostra tudo, um por um.",
+        confirmLabel: "Sortear",
+      }))
+    )
+      return;
+    act(() => drawChoiceTeamsAction(editionId));
+  };
+  // Se os grupos não saíram junto (ex.: grupos montados pela metade), sorteia depois.
+  const drawGroups = () => act(() => drawChoiceGroupsAction(editionId));
 
   const resetDraw = async () => {
     const ok = await ask({
@@ -158,7 +179,7 @@ export function TeamChoiceAdmin({
   return (
     <div className="flex flex-col gap-5">
       <div className="card flex flex-col gap-4 p-4">
-        <ChoiceSteps state={state} />
+        <ChoiceSteps state={state} withGroups={withGroups} groupsDone={locked} />
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Link
             href={`/edicoes/${editionId}/escolha/tv`}
@@ -168,7 +189,7 @@ export function TeamChoiceAdmin({
             <TvIcon />
             Abrir na TV
           </Link>
-          {choices.length > 0 && (
+          {choices.length > 0 && !locked && (
             <button type="button" className="btn btn-danger" onClick={reset} disabled={pending}>
               Recomeçar
             </button>
@@ -289,7 +310,9 @@ export function TeamChoiceAdmin({
           {state.phase === "sorteio" ? (
             <>
               <p className="text-body text-muted">
-                Um toque sorteia todos. A TV revela um por um, sozinha.
+                {withGroups
+                  ? "Um toque sorteia os times e depois os grupos. A TV revela tudo, sozinha."
+                  : "Um toque sorteia todos. A TV revela um por um, sozinha."}
               </p>
               <button
                 type="button"
@@ -298,16 +321,22 @@ export function TeamChoiceAdmin({
                 disabled={pending}
               >
                 <ShuffleIcon width={20} height={20} />
-                {pending ? "Sorteando..." : "Sortear times"}
+                {pending ? "Sorteando..." : withGroups ? "Sortear times e grupos" : "Sortear times"}
               </button>
             </>
           ) : (
             <>
               <p className="text-body text-muted">
-                Os times já foram sorteados, e a TV está revelando um por um.
-                Aqui eles ficam escondidos para não estragar a surpresa.
-                Depois, na edição, é só gerar a tabela.
+                {withGroups && locked
+                  ? "Times e grupos sorteados, e a tabela de jogos já está pronta. A TV está revelando tudo; aqui fica escondido para não estragar a surpresa."
+                  : "Os times já foram sorteados, e a TV está revelando um por um. Aqui eles ficam escondidos para não estragar a surpresa. Depois, na edição, é só gerar a tabela."}
               </p>
+              {withGroups && !locked && (
+                <button type="button" className="btn btn-primary" onClick={drawGroups} disabled={pending}>
+                  <ShuffleIcon width={20} height={20} />
+                  {pending ? "Sorteando..." : "Sortear grupos"}
+                </button>
+              )}
               <button
                 type="button"
                 className="btn"
@@ -321,7 +350,7 @@ export function TeamChoiceAdmin({
               </Link>
             </>
           )}
-          {state.draws.length > 0 && (
+          {state.draws.length > 0 && !locked && (
             <button type="button" className="btn btn-danger" onClick={resetDraw} disabled={pending}>
               Refazer sorteio
             </button>

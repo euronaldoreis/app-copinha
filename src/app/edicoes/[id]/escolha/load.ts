@@ -1,6 +1,11 @@
 import { getDb } from "@/db";
 import { getData } from "@/lib/data";
-import { choiceTurnOrder, editionView, listTeamChoices } from "@/lib/services";
+import {
+  choiceTurnOrder,
+  drawReplay,
+  editionView,
+  listTeamChoices,
+} from "@/lib/services";
 import type { ChoicePlayer } from "@/components/TeamChoiceAdmin";
 
 /**
@@ -28,6 +33,8 @@ export async function loadChoice(id: string) {
   ].sort((a, b) => a.localeCompare(b, "pt-BR"));
   return {
     edition: view.edition,
+    /** Sorteio dos grupos, depois que a tabela foi gerada (null antes). */
+    groups: drawReplay(data, view.edition.id),
     previousName: previous?.name ?? null,
     players,
     choices,

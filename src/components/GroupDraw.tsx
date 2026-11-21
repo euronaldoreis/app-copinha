@@ -133,11 +133,14 @@ function GroupDrawOverlay({
   closing,
   onClose,
   closeLabel = "Ver tabela de jogos",
+  onFinished,
 }: {
   draw: GroupDrawItem[];
   closing: boolean;
   onClose: () => void;
   closeLabel?: string;
+  /** Chamado quando o último sorteado entra em campo. */
+  onFinished?: () => void;
 }) {
   // `placed`: quantos já foram sorteados por completo. O da vez entra em campo
   // assim que o grupo dele aparece no placar (fase "show").
@@ -176,6 +179,14 @@ function GroupDrawOverlay({
       window.removeEventListener("keydown", onKey);
     };
   }, [toggleFullscreen]);
+
+  const finished = useRef(onFinished);
+  useEffect(() => {
+    finished.current = onFinished;
+  }, [onFinished]);
+  useEffect(() => {
+    if (done) finished.current?.();
+  }, [done]);
 
   useEffect(() => {
     if (done) return;
@@ -450,5 +461,40 @@ export function DrawReplayButton({ items }: { items: GroupDrawItem[] }) {
           />
         ))}
     </>
+  );
+}
+
+/**
+ * Sorteio dos grupos para a tela da TV: começa sozinho, sem botão, e avisa
+ * quando termina. Usa o estádio 3D quando o aparelho desenha WebGL.
+ */
+export function TvGroupDraw({
+  items,
+  onClose,
+  onFinished,
+}: {
+  items: GroupDrawItem[];
+  onClose: () => void;
+  onFinished?: () => void;
+}) {
+  const [flat, setFlat] = useState(() => !supportsWebGL());
+  return flat ? (
+    <GroupDrawOverlay
+      draw={items}
+      closing={false}
+      onClose={onClose}
+      closeLabel="Ver grupos"
+      onFinished={onFinished}
+    />
+  ) : (
+    <GroupDraw3D
+      draw={items}
+      closing={false}
+      onClose={onClose}
+      onFail={() => setFlat(true)}
+      closeLabel="Ver grupos"
+      autoPlay
+      onFinished={onFinished}
+    />
   );
 }

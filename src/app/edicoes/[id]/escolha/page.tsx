@@ -22,9 +22,12 @@ export default async function TeamChoicePage(
   if (!loaded) notFound();
   const { edition, previousName, players, choices, knownTeams } = loaded;
 
+  // Tabela gerada pelo próprio sorteio daqui: a tela continua, só para ver.
+  const locked = edition.status !== "inscricoes";
+  const drawnHere = choices.some((c) => c.kind === "sorteio");
   const problem = !edition.useTeams
     ? "Esta edição é só com os jogadores, sem times."
-    : edition.status !== "inscricoes"
+    : locked && !drawnHere
       ? "A tabela já foi gerada: a escolha dos times só acontece antes."
       : players.length < 2
         ? "Adicione pelo menos 2 participantes para começar."
@@ -46,6 +49,8 @@ export default async function TeamChoicePage(
         <TeamChoiceAdmin
           editionId={edition.id}
           previousName={previousName}
+          withGroups={edition.format === "grupos"}
+          locked={locked}
           players={players}
           choices={choices}
           knownTeams={knownTeams}
