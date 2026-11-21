@@ -237,7 +237,7 @@ export function ProfileEditor({
                     )
                   }
                 >
-                  <Avatar name={initialName} avatar={variant} size={60} />
+                  <Avatar name={initialName} avatar={variant} size={60} tier={false} />
                 </OptionTile>
               );
             })}

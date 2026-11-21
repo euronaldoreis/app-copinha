@@ -4,13 +4,16 @@ import Link from "next/link";
 import { NavBar } from "@/components/NavBar";
 import { RegisterServiceWorker } from "@/components/RegisterServiceWorker";
 import { Splash } from "@/components/Splash";
+import { PlayerTiersProvider } from "@/components/PlayerTiers";
 import { TeamBadgesProvider } from "@/components/TeamBadges";
 import { TopBarBrand } from "@/components/TopBarBrand";
 import { LockIcon, SettingsIcon } from "@/components/icons";
 import { Ball3D, Trophy3D } from "@/components/icons3d";
 import { isAdmin } from "@/lib/auth";
 import { getData } from "@/lib/data";
+import { computeRanking } from "@/lib/stats";
 import { badgeKey, badgePath } from "@/lib/teamBadge";
+import { tierOf } from "@/lib/tier";
 import "./globals.css";
 
 // Texto corrido: redonda e legível, com peso para os destaques.
@@ -86,6 +89,13 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       .map((t) => [badgeKey(t.name), badgePath(t.id, t.badgeUrl!)]),
   );
   const games = data.matches.filter((m) => m.homeScore != null).length;
+  // Categoria de cada jogador, para a moldura dos retratos em todas as telas.
+  const tiers = Object.fromEntries(
+    computeRanking(data).map((r) => [
+      badgeKey(r.player.name),
+      tierOf(r.bestResult, r.titles),
+    ]),
+  );
   return (
     <html
       lang="pt-BR"
@@ -128,7 +138,9 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           </div>
         </div>
         <main className="mx-auto w-full max-w-3xl px-4 pb-36 pt-5">
-          <TeamBadgesProvider badges={badges}>{children}</TeamBadgesProvider>
+          <PlayerTiersProvider tiers={tiers}>
+            <TeamBadgesProvider badges={badges}>{children}</TeamBadgesProvider>
+          </PlayerTiersProvider>
         </main>
         <NavBar />
       </body>

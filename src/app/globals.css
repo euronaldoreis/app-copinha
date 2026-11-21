@@ -2540,8 +2540,9 @@ fieldset label:has(input[type="radio"]:checked) {
 
   /* Retrato com a moldura da categoria do jogador. */
   .lb-avatar {
+    display: inline-block;
     flex-shrink: 0;
-    padding: 2px;
+    padding: var(--ring, 2px);
     border-radius: 26%;
     background: var(--color-night);
   }

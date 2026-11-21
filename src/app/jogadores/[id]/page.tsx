@@ -210,6 +210,7 @@ export default async function PlayerPage(props: PageProps<"/jogadores/[id]">) {
                 photoUrl={player.photoUrl}
                 avatar={player.avatar}
                 size={104}
+                tier={false}
               />
             </span>
             <span className="player-plate whitespace-nowrap text-[12px] font-black uppercase tracking-wide text-accent">
