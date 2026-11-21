@@ -1,14 +1,16 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { eq } from "drizzle-orm";
 import { migrate } from "drizzle-orm/libsql/migrator";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { createDb } from "@/db";
-import { teams } from "@/db/schema";
+import { teamBadges, teams } from "@/db/schema";
 import {
   ApiFootballError,
   bestMatch,
   currentSeason,
+  downloadBadge,
   rankCandidates,
   searchTeams,
   searchTerm,
@@ -16,7 +18,15 @@ import {
   suggestedTerm,
   type BadgeCandidate,
 } from "@/lib/apiFootball";
-import { UserError, fillLeagueBadges, mergeTeams, setTeamBadge } from "@/lib/services";
+import {
+  UserError,
+  deleteTeam,
+  fillLeagueBadges,
+  getTeamBadge,
+  mergeTeams,
+  setTeamBadge,
+} from "@/lib/services";
+import { badgePath } from "@/lib/teamBadge";
 
 const logo = (id: number) => `https://media.api-sports.io/football/teams/${id}.png`;
 const team = (id: number, name: string, country: string): BadgeCandidate => ({
@@ -33,6 +43,16 @@ function reply(body: unknown, status = 200) {
     headers: { "content-type": "application/json" },
   });
 }
+/** PNG mínimo (cabeçalho) — o conteúdo não importa para os testes. */
+const PNG = Buffer.from("89504e470d0a1a0a0000000d49484452", "hex");
+const image = (type = "image/png", body: Buffer = PNG) =>
+  new Response(new Uint8Array(body), { status: 200, headers: { "content-type": type } });
+/** fetch falso: imagens respondem PNG; o resto vai para `api`. */
+const fakeFetch = (api: (url: URL) => Response) =>
+  vi.fn(async (input: URL | string) => {
+    const url = new URL(String(input));
+    return url.pathname.endsWith(".png") ? image() : api(url);
+  });
 const ok = (list: BadgeCandidate[]) =>
   reply({ errors: [], response: list.map((t) => ({ team: { ...t, national: false } })) });
 
@@ -120,6 +140,19 @@ describe("chamadas à API-Football", () => {
     }
   });
 
+  it("baixa só imagens PNG/JPG/WebP/GIF pequenas", async () => {
+    const f = (r: Response) => vi.fn(async () => r) as unknown as typeof fetch;
+    const got = await downloadBadge("https://x.com/a.png", f(image()));
+    expect(got.contentType).toBe("image/png");
+    expect(Buffer.from(got.data, "base64").equals(PNG)).toBe(true);
+    await expect(downloadBadge("https://x.com/a.svg", f(image("image/svg+xml")))).rejects.toThrow();
+    await expect(downloadBadge("https://x.com/a", f(image("text/html")))).rejects.toThrow();
+    await expect(
+      downloadBadge("https://x.com/a.png", f(image("image/png", Buffer.alloc(400_000)))),
+    ).rejects.toThrow(/grande/);
+    await expect(downloadBadge("http://x.com/a.png", f(image()))).rejects.toThrow(/https/);
+  });
+
   it("não busca com menos de 3 letras", async () => {
     vi.stubEnv("API_FOOTBALL_KEY", "abc");
     await expect(searchTeams("PS")).rejects.toBeInstanceOf(ApiFootballError);
@@ -152,15 +185,43 @@ describe("escudos no banco", () => {
   const byName = async () =>
     Object.fromEntries((await db.select().from(teams)).map((t) => [t.name, t.badgeUrl]));
 
-  it("só aceita link https e tira o escudo com texto vazio", async () => {
+  it("guarda a imagem no banco, só aceita https e tira o escudo com texto vazio", async () => {
+    vi.stubGlobal("fetch", fakeFetch(() => reply({}, 404)));
     const [ibis] = (await db.select().from(teams)).filter((t) => t.name === "Íbis");
     await expect(setTeamBadge(db, ibis.id, "javascript:alert(1)")).rejects.toBeInstanceOf(
       UserError,
     );
     await setTeamBadge(db, ibis.id, "https://exemplo.com/ibis.png");
     expect((await byName())["Íbis"]).toBe("https://exemplo.com/ibis.png");
+    expect((await getTeamBadge(db, ibis.id))?.contentType).toBe("image/png");
+    // Link que não é imagem: não troca nada.
+    await expect(setTeamBadge(db, ibis.id, "https://exemplo.com/pagina")).rejects.toBeInstanceOf(
+      UserError,
+    );
+    expect((await byName())["Íbis"]).toBe("https://exemplo.com/ibis.png");
     await setTeamBadge(db, ibis.id, "");
     expect((await byName())["Íbis"]).toBeNull();
+    expect(await getTeamBadge(db, ibis.id)).toBeNull();
+    expect(await db.select().from(teamBadges)).toHaveLength(0);
+  });
+
+  it("baixa na primeira vez o escudo que só tinha o link", async () => {
+    const [ibis] = (await db.select().from(teams)).filter((t) => t.name === "Íbis");
+    await db.update(teams).set({ badgeUrl: "https://exemplo.com/velho.png" }).where(
+      eq(teams.id, ibis.id),
+    );
+    const fetcher = fakeFetch(() => reply({}, 404));
+    vi.stubGlobal("fetch", fetcher);
+    expect(await getTeamBadge(db, ibis.id)).not.toBeNull();
+    expect(await getTeamBadge(db, ibis.id)).not.toBeNull();
+    expect(fetcher).toHaveBeenCalledTimes(1); // a segunda já vem do banco
+    await setTeamBadge(db, ibis.id, "");
+  });
+
+  it("o caminho do escudo muda quando o link muda", () => {
+    expect(badgePath(3, "https://a/1.png")).toMatch(/^\/escudo\/3\?v=/);
+    expect(badgePath(3, "https://a/1.png")).toBe(badgePath(3, "https://a/1.png"));
+    expect(badgePath(3, "https://a/1.png")).not.toBe(badgePath(3, "https://a/2.png"));
   });
 
   it("preenche a liga com uma consulta e desce a temporada se o plano pedir", async () => {
@@ -168,7 +229,7 @@ describe("escudos no banco", () => {
     const seasons: string[] = [];
     vi.stubGlobal(
       "fetch",
-      vi.fn(async (url: URL) => {
+      fakeFetch((url: URL) => {
         const season = url.searchParams.get("season") ?? "";
         seasons.push(season);
         if (Number(season) > 2024)
@@ -188,6 +249,7 @@ describe("escudos no banco", () => {
     const now = await byName();
     expect(now.Arsenal).toBe(logo(42));
     expect(now.Tottenham).toBe(logo(47));
+    expect(await db.select().from(teamBadges)).toHaveLength(2);
 
     // De novo: só o Hull falta, e a temporada já começa na que funcionou.
     seasons.length = 0;
@@ -211,5 +273,16 @@ describe("escudos no banco", () => {
     const [spurs] = await db.insert(teams).values({ name: "Spurs" }).returning();
     await mergeTeams(db, tot.id, spurs.id);
     expect((await byName()).Spurs).toBe(logo(47));
+    const fetcher = vi.fn();
+    vi.stubGlobal("fetch", fetcher);
+    expect(await getTeamBadge(db, spurs.id)).not.toBeNull();
+    expect(fetcher).not.toHaveBeenCalled(); // a imagem foi junto
+  });
+
+  it("apagar o time apaga a imagem", async () => {
+    const spurs = (await db.select().from(teams)).find((t) => t.name === "Spurs")!;
+    await deleteTeam(db, spurs.id);
+    const left = await db.select().from(teamBadges);
+    expect(left.some((b) => b.teamId === spurs.id)).toBe(false);
   });
 });

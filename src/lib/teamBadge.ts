@@ -3,6 +3,19 @@
 /** Chave do mapa de escudos (nome -> link) que o layout passa para as telas. */
 export const badgeKey = (name: string) => name.trim().toLocaleLowerCase("pt-BR");
 
+/**
+ * Caminho do escudo guardado no banco. A versão sai do link de origem: trocou
+ * o escudo, muda a URL e o navegador busca de novo (o resto fica em cache).
+ */
+export function badgePath(teamId: number, sourceUrl: string) {
+  let h = 2166136261;
+  for (let i = 0; i < sourceUrl.length; i++) {
+    h ^= sourceUrl.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return `/escudo/${teamId}?v=${(h >>> 0).toString(36)}`;
+}
+
 /** Siglas que não saem das 3 primeiras letras do nome (padrão FIFA). */
 const CODES: Record<string, string> = {
   alemanha: "GER",

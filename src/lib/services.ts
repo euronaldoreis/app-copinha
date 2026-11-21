@@ -8,6 +8,7 @@ import {
   entries,
   matches,
   playerPhotos,
+  teamBadges,
   players,
   teamChoices,
   teams,
@@ -23,6 +24,7 @@ import {
   bestMatch,
   catalogLeague,
   currentSeason,
+  downloadBadge,
   leagueCountries,
   leagueTeams,
   rankCandidates,
@@ -937,11 +939,18 @@ export async function mergeTeams(db: Db, fromId: number, intoId: number) {
         .set({ teamPool: next })
         .where(eq(editions.id, edition.id));
     }
-    if (!into.badgeUrl && from.badgeUrl)
+    if (!into.badgeUrl && from.badgeUrl) {
       await tx
         .update(teams)
         .set({ badgeUrl: from.badgeUrl })
         .where(eq(teams.id, intoId));
+      await tx.delete(teamBadges).where(eq(teamBadges.teamId, intoId));
+      await tx
+        .update(teamBadges)
+        .set({ teamId: intoId })
+        .where(eq(teamBadges.teamId, fromId));
+    }
+    await tx.delete(teamBadges).where(eq(teamBadges.teamId, fromId));
     await tx.delete(teams).where(eq(teams.id, fromId));
   });
   return { from: from.name, into: into.name };
@@ -991,6 +1000,7 @@ export async function deleteTeam(db: Db, id: number) {
     throw new UserError(
       `${team.name} já foi usado por participantes e não pode ser apagado. Dá para renomear ou juntar com outro.`,
     );
+  await db.delete(teamBadges).where(eq(teamBadges.teamId, id));
   await db.delete(teams).where(eq(teams.id, id));
 }
 
@@ -1004,7 +1014,52 @@ export async function setTeamBadge(db: Db, id: number, rawUrl: unknown) {
     throw new UserError("O link do escudo precisa começar com https://");
   const [team] = await db.select().from(teams).where(eq(teams.id, id));
   if (!team) throw new UserError("Time não encontrado.");
-  await db.update(teams).set({ badgeUrl: url || null }).where(eq(teams.id, id));
+  if (!url) {
+    await db.delete(teamBadges).where(eq(teamBadges.teamId, id));
+    await db.update(teams).set({ badgeUrl: null }).where(eq(teams.id, id));
+    return;
+  }
+  await storeBadge(db, id, url);
+}
+
+/** Baixa a imagem e guarda junto com o link (o link só vale se a imagem veio). */
+async function storeBadge(db: Db, teamId: number, url: string) {
+  let image: { contentType: string; data: string };
+  try {
+    image = await downloadBadge(url);
+  } catch (err) {
+    if (err instanceof ApiFootballError) throw new UserError(err.message);
+    throw err;
+  }
+  await db.transaction(async (tx) => {
+    await tx
+      .insert(teamBadges)
+      .values({ teamId, ...image, sourceUrl: url })
+      .onConflictDoUpdate({
+        target: teamBadges.teamId,
+        set: { ...image, sourceUrl: url, updatedAt: sql`CURRENT_TIMESTAMP` },
+      });
+    await tx.update(teams).set({ badgeUrl: url }).where(eq(teams.id, teamId));
+  });
+}
+
+/**
+ * Imagem guardada do escudo. Times que só têm o link (salvos antes de as
+ * imagens irem para o banco) têm a imagem baixada e guardada na primeira vez.
+ */
+export async function getTeamBadge(db: Db, teamId: number) {
+  const [row] = await db.select().from(teamBadges).where(eq(teamBadges.teamId, teamId));
+  const [team] = await db.select().from(teams).where(eq(teams.id, teamId));
+  if (!team?.badgeUrl) return null;
+  if (row && row.sourceUrl === team.badgeUrl)
+    return { contentType: row.contentType, data: row.data };
+  try {
+    await storeBadge(db, teamId, team.badgeUrl);
+  } catch {
+    return null;
+  }
+  const [fresh] = await db.select().from(teamBadges).where(eq(teamBadges.teamId, teamId));
+  return fresh ? { contentType: fresh.contentType, data: fresh.data } : null;
 }
 
 /** Procura escudos para um time na API-Football (1 consulta). */
@@ -1066,7 +1121,13 @@ export async function fillLeagueBadges(
       missing.push(team.name);
       continue;
     }
-    await db.update(teams).set({ badgeUrl: hit.logo }).where(eq(teams.id, team.id));
+    try {
+      await storeBadge(db, team.id, hit.logo);
+    } catch {
+      // Achou na API, mas a imagem não veio: fica para a busca individual.
+      missing.push(team.name);
+      continue;
+    }
     matched.push(team.name);
   }
   return { matched, missing, season: year, calls };
@@ -1096,6 +1157,12 @@ export async function deleteUnusedTeams(db: Db) {
   );
   const unused = (await db.select().from(teams)).filter((t) => !used.has(t.id));
   if (unused.length === 0) return [];
+  await db.delete(teamBadges).where(
+    inArray(
+      teamBadges.teamId,
+      unused.map((t) => t.id),
+    ),
+  );
   await db.delete(teams).where(
     inArray(
       teams.id,

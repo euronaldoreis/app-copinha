@@ -12,7 +12,10 @@ export interface ManagedTeam {
   name: string;
   uses: number;
   titles: number;
+  /** Link de origem do escudo (da API ou colado). */
   badgeUrl: string | null;
+  /** Caminho do escudo guardado no banco, para mostrar. */
+  badgeSrc: string | null;
   /** Nome sugerido para buscar o escudo na API (em inglês, sem acento). */
   searchTerm: string;
 }
@@ -75,7 +78,7 @@ function TeamRow({ team, hasKey }: { team: ManagedTeam; hasKey: boolean }) {
           title={team.badgeUrl ? "Trocar escudo" : "Buscar escudo"}
           onClick={() => setBadge((v) => !v)}
         >
-          <TeamShield team={team.name} size={34} badgeUrl={team.badgeUrl} />
+          <TeamShield team={team.name} size={34} badgeUrl={team.badgeSrc} />
           {!team.badgeUrl && <span className="team-badge-plus" aria-hidden="true">+</span>}
         </button>
         <span className="min-w-0 flex-1">
