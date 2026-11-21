@@ -9,6 +9,7 @@ import {
   matches,
   playerPhotos,
   players,
+  teamChoices,
   teams,
   type Edition,
   type Entry,
@@ -17,6 +18,12 @@ import {
   type Team,
 } from "@/db/schema";
 import { RESULT_ORDER } from "./labels";
+import {
+  BANS_PER_PLAYER,
+  PICKS_PER_PLAYER,
+  choiceState,
+  foldTeam,
+} from "./teamChoice";
 import { PHOTO_MAX_BYTES, isUploadedPhoto, photoPath } from "./photo";
 import { parseAvatar, type AvatarLook } from "./sprite";
 import type { AllData } from "./stats";
@@ -557,6 +564,145 @@ export async function setTeamPool(db: Db, editionId: number, names: unknown[]) {
     .update(editions)
     .set({ teamPool: cleanTeamList(names) })
     .where(eq(editions.id, editionId));
+}
+
+// ---------------------------------------------------------------------------
+// Escolha dos times: cada jogador cita times, depois cada um bane um deles.
+// Quando todos baniram, o que sobrou vira a lista de times do sorteio.
+
+/** Escolhas e banimentos já lançados numa edição, na ordem em que foram feitos. */
+export async function listTeamChoices(db: Db, editionId: number) {
+  return db
+    .select()
+    .from(teamChoices)
+    .where(eq(teamChoices.editionId, editionId))
+    .orderBy(teamChoices.id);
+}
+
+async function choiceContext(db: Db, editionId: number) {
+  const edition = await getEdition(db, editionId);
+  if (!edition.useTeams)
+    throw new UserError("Esta edição é só com os jogadores, sem times.");
+  if (edition.status !== "inscricoes")
+    throw new UserError(
+      "A escolha dos times só pode ser feita antes de gerar a tabela.",
+    );
+  const playerIds = (
+    await db
+      .select({ playerId: entries.playerId })
+      .from(entries)
+      .where(eq(entries.editionId, editionId))
+  ).map((e) => e.playerId);
+  const state = choiceState(playerIds, await listTeamChoices(db, editionId));
+  return { playerIds, state };
+}
+
+async function playerName(db: Db, playerId: number) {
+  const [row] = await db
+    .select({ name: players.name })
+    .from(players)
+    .where(eq(players.id, playerId));
+  return row?.name ?? "outro jogador";
+}
+
+/** Com todos os banimentos feitos, os times que sobraram vão para o sorteio. */
+async function syncChoicePool(db: Db, editionId: number) {
+  const { state } = await choiceContext(db, editionId);
+  if (state.phase !== "concluida") return;
+  await db
+    .update(editions)
+    .set({ teamPool: cleanTeamList(state.remaining) })
+    .where(eq(editions.id, editionId));
+}
+
+/** Um jogador cita um time (cada um cita PICKS_PER_PLAYER, sem repetir). */
+export async function addTeamPick(
+  db: Db,
+  editionId: number,
+  playerId: number,
+  rawTeam: unknown,
+) {
+  const { playerIds, state } = await choiceContext(db, editionId);
+  if (playerIds.length < 2)
+    throw new UserError("Adicione pelo menos 2 participantes antes.");
+  if (!playerIds.includes(playerId))
+    throw new UserError("Esse jogador não está nesta edição.");
+  if (state.phase !== "escolha")
+    throw new UserError("Todos já citaram seus times. Agora é o banimento.");
+  let team = clean(rawTeam, 60);
+  if (!team) throw new UserError("Informe o time.");
+  // Usa a grafia do time já cadastrado, se houver.
+  const known = (await db.select().from(teams)).find(
+    (t) => foldTeam(t.name) === foldTeam(team),
+  );
+  if (known) team = known.name;
+  if (state.picks.filter((p) => p.playerId === playerId).length >= PICKS_PER_PLAYER)
+    throw new UserError(
+      `${await playerName(db, playerId)} já citou ${PICKS_PER_PLAYER} times.`,
+    );
+  const taken = state.picks.find((p) => foldTeam(p.team) === foldTeam(team));
+  if (taken)
+    throw new UserError(
+      taken.playerId === playerId
+        ? `${taken.team} já está na lista dele.`
+        : `${taken.team} já foi citado por ${await playerName(db, taken.playerId)}.`,
+    );
+  await db
+    .insert(teamChoices)
+    .values({ editionId, playerId, kind: "escolha", team });
+  await syncChoicePool(db, editionId);
+}
+
+/** Um jogador bane um dos times citados (cada um bane BANS_PER_PLAYER). */
+export async function banTeam(
+  db: Db,
+  editionId: number,
+  playerId: number,
+  rawTeam: unknown,
+) {
+  const { playerIds, state } = await choiceContext(db, editionId);
+  if (!playerIds.includes(playerId))
+    throw new UserError("Esse jogador não está nesta edição.");
+  if (state.phase === "escolha")
+    throw new UserError("O banimento começa quando todos citarem seus times.");
+  if (state.phase === "concluida")
+    throw new UserError("Todos já baniram. Os times estão definidos.");
+  if (state.bans.filter((b) => b.playerId === playerId).length >= BANS_PER_PLAYER)
+    throw new UserError(`${await playerName(db, playerId)} já baniu um time.`);
+  const pick = state.picks.find(
+    (p) => foldTeam(p.team) === foldTeam(clean(rawTeam, 60)),
+  );
+  if (!pick) throw new UserError("Escolha um dos times citados.");
+  const by = state.bannedBy.get(foldTeam(pick.team));
+  if (by != null)
+    throw new UserError(
+      `${pick.team} já foi banido por ${await playerName(db, by)}.`,
+    );
+  await db
+    .insert(teamChoices)
+    .values({ editionId, playerId, kind: "veto", team: pick.team });
+  await syncChoicePool(db, editionId);
+}
+
+/** Desfaz uma escolha ou um banimento lançado errado. */
+export async function removeTeamChoice(db: Db, choiceId: number) {
+  const [row] = await db
+    .select()
+    .from(teamChoices)
+    .where(eq(teamChoices.id, choiceId));
+  if (!row) throw new UserError("Essa escolha já foi desfeita.");
+  const { state } = await choiceContext(db, row.editionId);
+  if (row.kind === "escolha" && state.bans.length > 0)
+    throw new UserError(
+      "O banimento já começou. Desfaça os banimentos antes de trocar um time citado.",
+    );
+  await db.delete(teamChoices).where(eq(teamChoices.id, choiceId));
+}
+
+/** Apaga todas as escolhas e banimentos da edição, para começar de novo. */
+export async function resetTeamChoices(db: Db, editionId: number) {
+  await choiceContext(db, editionId);
+  await db.delete(teamChoices).where(eq(teamChoices.editionId, editionId));
 }
 
 async function getEntry(db: Db, entryId: number) {

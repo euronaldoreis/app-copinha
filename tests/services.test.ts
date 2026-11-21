@@ -38,7 +38,13 @@ import {
   setEntryResult,
   setEntryTeam,
   startEdition,
+  addTeamPick,
+  banTeam,
+  listTeamChoices,
+  removeTeamChoice,
+  resetTeamChoices,
 } from "@/lib/services";
+import { choiceState } from "@/lib/teamChoice";
 import { computeHeadToHead, computeRanking, computeRecords } from "@/lib/stats";
 
 const dir = mkdtempSync(join(tmpdir(), "copinha-test-"));
@@ -1420,5 +1426,62 @@ describe("repescagem", () => {
     v = await view(id);
     expect(v.edition.status).toBe("encerrada");
     expect(v.entries.filter((e) => e.result === "campeao")).toHaveLength(1);
+  });
+});
+
+describe("escolha dos times (citar e banir)", () => {
+  it("cada um cita 2, cada um bane 1 e sobra um time por jogador", async () => {
+    const [a, b, c] = playerIds;
+    const edition = await createEdition(db, {
+      ...baseEdition,
+      name: "Copinha da escolha",
+      number: 70,
+      config: { ...baseEdition.config, format: "liga", groupsCount: 0, qualifiers: 0 },
+      playerIds: [a, b, c],
+    });
+    const id = edition.id;
+    const state = async () =>
+      choiceState([a, b, c], await listTeamChoices(db, id));
+
+    // banir antes de todos citarem não pode
+    await expect(banTeam(db, id, a, "Íbis")).rejects.toThrow(/banimento começa/);
+
+    await addTeamPick(db, id, a, "Íbis");
+    // mesmo time, sem acento: já citado
+    await expect(addTeamPick(db, id, b, "ibis")).rejects.toThrow(/já foi citado por Ronaldo/);
+    await addTeamPick(db, id, a, "Tabajara");
+    await expect(addTeamPick(db, id, a, "Bangu")).rejects.toThrow(/já citou 2/);
+    await addTeamPick(db, id, b, "Bangu");
+    await addTeamPick(db, id, b, "Olaria");
+    await addTeamPick(db, id, c, "Andorra");
+    // desfazer uma escolha enquanto ninguém baniu
+    const last = (await listTeamChoices(db, id)).at(-1)!;
+    await removeTeamChoice(db, last.id);
+    await addTeamPick(db, id, c, "Gibraltar");
+    await addTeamPick(db, id, c, "San Marino");
+    expect((await state()).phase).toBe("banimento");
+    await expect(addTeamPick(db, id, c, "Liechtenstein")).rejects.toBeInstanceOf(UserError);
+
+    // pode banir qualquer citado, inclusive o próprio
+    await banTeam(db, id, a, "tabajara");
+    await expect(banTeam(db, id, b, "Tabajara")).rejects.toThrow(/já foi banido por Ronaldo/);
+    await expect(banTeam(db, id, a, "Bangu")).rejects.toThrow(/já baniu/);
+    await expect(banTeam(db, id, b, "Flamengo")).rejects.toThrow(/times citados/);
+    // trocar time citado depois do banimento começar não pode
+    const pick = (await listTeamChoices(db, id)).find((r) => r.team === "Bangu")!;
+    await expect(removeTeamChoice(db, pick.id)).rejects.toThrow(/Desfaça os banimentos/);
+    await banTeam(db, id, b, "Gibraltar");
+    await banTeam(db, id, c, "Olaria");
+
+    const done = await state();
+    expect(done.phase).toBe("concluida");
+    expect(done.remaining).toEqual(["Íbis", "Bangu", "San Marino"]);
+    // o que sobrou vira a lista do sorteio
+    expect((await view(id)).edition.teamPool).toEqual(["Íbis", "Bangu", "San Marino"]);
+    const draw = await drawTeams(db, id);
+    expect(new Set(draw.map((d) => d.teamName))).toEqual(new Set(["Íbis", "Bangu", "San Marino"]));
+
+    await resetTeamChoices(db, id);
+    expect(await listTeamChoices(db, id)).toHaveLength(0);
   });
 });
