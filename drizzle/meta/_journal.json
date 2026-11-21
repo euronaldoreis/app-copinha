@@ -64,6 +64,13 @@
       "when": 1795062249990,
       "tag": "0008_repescagem",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1795244920067,
+      "tag": "0009_escudo_times",
+      "breakpoints": true
     }
   ]
 }

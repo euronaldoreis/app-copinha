@@ -46,6 +46,8 @@ Ranking: mostra o pódio dos três primeiros do filtro escolhido (mais títulos,
 
 Configurações da edição: o botão "Configurações" (só para o admin) na página de uma edição abre a tela com participantes, times do sorteio, grupos e rodadas, fases e confrontos do mata-mata, dados, desfazer tabela e excluir.
 
+Escudos dos times: em Admin → Times, toque no escudo de um time para buscar a imagem na [API-Football](https://www.api-football.com) (aparecem as opções, com o país; escolha a certa), colar o link de uma imagem ou tirar o escudo. O botão "Buscar escudos das ligas" preenche de uma vez os times do catálogo (`npm run db:seed:times`) que ainda não têm escudo, com uma consulta por liga; os que ela não achar ficam listados para a busca individual. Precisa da chave do plano grátis da API-Football (100 consultas por dia) em `API_FOOTBALL_KEY`, no `.env.local` e nas variáveis da Vercel. O escudo aparece dentro da moldura dourada nos cartões dos jogos, nas tabelas e no ranking; sem escudo (ou se o link quebrar), continua a sigla com a cor do time.
+
 Imagens, ícones, fontes, cores e desenhos do app (e como trocar cada um): veja [ASSETS.md](ASSETS.md).
 
 Regras que o site aplica:

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { deleteTeamAction, renameTeamAction } from "@/app/actions";
+import { BadgeEditor } from "./BadgeEditor";
 import { ActionForm, SubmitButton } from "./forms";
 import { CheckIcon, PencilIcon, TrashIcon } from "./icons";
 import { TeamShield } from "./TeamShield";
@@ -11,13 +12,16 @@ export interface ManagedTeam {
   name: string;
   uses: number;
   titles: number;
+  badgeUrl: string | null;
+  /** Nome sugerido para buscar o escudo na API (em inglês, sem acento). */
+  searchTerm: string;
 }
 
 const fold = (s: string) =>
   s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLocaleLowerCase("pt-BR");
 
 /** Lista de times do organizador: busca, renomear e apagar os sem uso. */
-export function TeamManager({ teams }: { teams: ManagedTeam[] }) {
+export function TeamManager({ teams, hasKey }: { teams: ManagedTeam[]; hasKey: boolean }) {
   const [query, setQuery] = useState("");
   const q = fold(query.trim());
   const shown = q ? teams.filter((t) => fold(t.name).includes(q)) : teams;
@@ -34,7 +38,7 @@ export function TeamManager({ teams }: { teams: ManagedTeam[] }) {
       />
       <div className="card px-3 py-1.5">
         {shown.map((t) => (
-          <TeamRow key={`${t.id}:${t.name}`} team={t} />
+          <TeamRow key={`${t.id}:${t.name}`} team={t} hasKey={hasKey} />
         ))}
         {shown.length === 0 && (
           <p className="px-2 py-4 text-body text-muted">
@@ -46,8 +50,9 @@ export function TeamManager({ teams }: { teams: ManagedTeam[] }) {
   );
 }
 
-function TeamRow({ team }: { team: ManagedTeam }) {
+function TeamRow({ team, hasKey }: { team: ManagedTeam; hasKey: boolean }) {
   const [editing, setEditing] = useState(false);
+  const [badge, setBadge] = useState(false);
   const detail = [
     team.uses
       ? `usado ${team.uses === 1 ? "1 vez" : `${team.uses} vezes`}`
@@ -62,7 +67,17 @@ function TeamRow({ team }: { team: ManagedTeam }) {
   return (
     <div className="flex min-h-[64px] flex-col justify-center gap-2 border-b border-bevel-dark/60 py-2 last:border-b-0">
       <div className="flex items-center gap-3">
-        <TeamShield team={team.name} size={34} />
+        <button
+          type="button"
+          className="team-badge-button"
+          aria-expanded={badge}
+          aria-label={`Escudo de ${team.name}`}
+          title={team.badgeUrl ? "Trocar escudo" : "Buscar escudo"}
+          onClick={() => setBadge((v) => !v)}
+        >
+          <TeamShield team={team.name} size={34} badgeUrl={team.badgeUrl} />
+          {!team.badgeUrl && <span className="team-badge-plus" aria-hidden="true">+</span>}
+        </button>
         <span className="min-w-0 flex-1">
           <span className="block truncate font-black">{team.name}</span>
           <span
@@ -96,6 +111,15 @@ function TeamRow({ team }: { team: ManagedTeam }) {
           <PencilIcon />
         </button>
       </div>
+      {badge && (
+        <BadgeEditor
+          teamId={team.id}
+          teamName={team.name}
+          badgeUrl={team.badgeUrl}
+          suggestedTerm={team.searchTerm}
+          hasKey={hasKey}
+        />
+      )}
       {editing && (
         <ActionForm
           action={renameTeamAction}
