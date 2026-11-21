@@ -68,8 +68,15 @@
     {
       "idx": 9,
       "version": "6",
-      "when": 1795240829888,
-      "tag": "0009_escolha_times",
+      "when": 1795244920067,
+      "tag": "0009_escudo_times",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1795246274794,
+      "tag": "0010_escolha_times",
       "breakpoints": true
     }
   ]

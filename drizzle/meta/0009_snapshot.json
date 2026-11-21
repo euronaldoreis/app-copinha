@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "73de09de-8bdc-49e2-bb16-3b14576aeca8",
+  "id": "e97f3689-24bd-4099-ab47-ffbef882b4b3",
   "prevId": "7bc5e7c6-00b9-43a5-9368-ee872b4f4ba2",
   "tables": {
     "editions": {
@@ -583,94 +583,6 @@
       "uniqueConstraints": {},
       "checkConstraints": {}
     },
-    "team_choices": {
-      "name": "team_choices",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "edition_id": {
-          "name": "edition_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "player_id": {
-          "name": "player_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "team": {
-          "name": "team",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "CURRENT_TIMESTAMP"
-        }
-      },
-      "indexes": {
-        "team_choices_edition_idx": {
-          "name": "team_choices_edition_idx",
-          "columns": [
-            "edition_id"
-          ],
-          "isUnique": false
-        }
-      },
-      "foreignKeys": {
-        "team_choices_edition_id_editions_id_fk": {
-          "name": "team_choices_edition_id_editions_id_fk",
-          "tableFrom": "team_choices",
-          "tableTo": "editions",
-          "columnsFrom": [
-            "edition_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "team_choices_player_id_players_id_fk": {
-          "name": "team_choices_player_id_players_id_fk",
-          "tableFrom": "team_choices",
-          "tableTo": "players",
-          "columnsFrom": [
-            "player_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "checkConstraints": {}
-    },
     "teams": {
       "name": "teams",
       "columns": {
@@ -686,6 +598,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true,
+          "autoincrement": false
+        },
+        "badge_url": {
+          "name": "badge_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false,
           "autoincrement": false
         }
       },

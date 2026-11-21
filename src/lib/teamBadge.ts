@@ -1,5 +1,8 @@
 // Sigla de 3 letras e cor do escudo de cada time, para os cartões dos jogos.
 
+/** Chave do mapa de escudos (nome -> link) que o layout passa para as telas. */
+export const badgeKey = (name: string) => name.trim().toLocaleLowerCase("pt-BR");
+
 /** Siglas que não saem das 3 primeiras letras do nome (padrão FIFA). */
 const CODES: Record<string, string> = {
   alemanha: "GER",

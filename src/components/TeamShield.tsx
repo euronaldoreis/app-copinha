@@ -1,6 +1,7 @@
 import type { AvatarLook } from "@/lib/sprite";
 import { teamCode, teamColor } from "@/lib/teamBadge";
 import { Avatar } from "./Avatar";
+import { ShieldLogo } from "./TeamBadges";
 
 export interface MatchSide {
   playerId: number;
@@ -10,8 +11,20 @@ export interface MatchSide {
   avatar?: AvatarLook | null;
 }
 
-/** Escudo com a sigla do time, como no placar da TV. Sem time: escudo cinza com "?". */
-export function TeamShield({ team, size = 46 }: { team: string | null; size?: number }) {
+/**
+ * Escudo com a sigla do time, como no placar da TV. Com escudo cadastrado, a
+ * imagem dele aparece dentro da moldura. Sem time: escudo cinza com "?".
+ */
+export function TeamShield({
+  team,
+  size = 46,
+  badgeUrl,
+}: {
+  team: string | null;
+  size?: number;
+  /** Força uma imagem (ex.: prévia antes de salvar); sem isso, usa a cadastrada. */
+  badgeUrl?: string | null;
+}) {
   const code = team ? teamCode(team) : "?";
   const fill = team ? teamColor(team) : "#8ea3cf";
   return (
@@ -53,6 +66,7 @@ export function TeamShield({ team, size = 46 }: { team: string | null; size?: nu
       >
         {code}
       </text>
+      <ShieldLogo team={team} url={badgeUrl} />
     </svg>
   );
 }

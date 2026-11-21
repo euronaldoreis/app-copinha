@@ -17,6 +17,18 @@ import {
   type Player,
   type Team,
 } from "@/db/schema";
+import {
+  ApiFootballError,
+  LEAGUES,
+  bestMatch,
+  catalogLeague,
+  currentSeason,
+  leagueCountries,
+  leagueTeams,
+  rankCandidates,
+  searchTeams,
+} from "./apiFootball";
+import catalog from "../../scripts/times.json";
 import { RESULT_ORDER, resultRank } from "./labels";
 import {
   BANS_PER_PLAYER,
@@ -925,6 +937,11 @@ export async function mergeTeams(db: Db, fromId: number, intoId: number) {
         .set({ teamPool: next })
         .where(eq(editions.id, edition.id));
     }
+    if (!into.badgeUrl && from.badgeUrl)
+      await tx
+        .update(teams)
+        .set({ badgeUrl: from.badgeUrl })
+        .where(eq(teams.id, intoId));
     await tx.delete(teams).where(eq(teams.id, fromId));
   });
   return { from: from.name, into: into.name };
@@ -975,6 +992,96 @@ export async function deleteTeam(db: Db, id: number) {
       `${team.name} já foi usado por participantes e não pode ser apagado. Dá para renomear ou juntar com outro.`,
     );
   await db.delete(teams).where(eq(teams.id, id));
+}
+
+// ---------------------------------------------------------------------------
+// Escudos
+
+/** Define (ou tira, com texto vazio) o link do escudo de um time. */
+export async function setTeamBadge(db: Db, id: number, rawUrl: unknown) {
+  const url = clean(rawUrl, 500);
+  if (url && !/^https:\/\/[^\s]+$/i.test(url))
+    throw new UserError("O link do escudo precisa começar com https://");
+  const [team] = await db.select().from(teams).where(eq(teams.id, id));
+  if (!team) throw new UserError("Time não encontrado.");
+  await db.update(teams).set({ badgeUrl: url || null }).where(eq(teams.id, id));
+}
+
+/** Procura escudos para um time na API-Football (1 consulta). */
+export async function searchTeamBadges(db: Db, id: number, rawTerm: unknown) {
+  const [team] = await db.select().from(teams).where(eq(teams.id, id));
+  if (!team) throw new UserError("Time não encontrado.");
+  const term = clean(rawTerm, 60) || team.name;
+  const found = await searchTeams(term);
+  return rankCandidates(team.name, found).slice(0, 8);
+}
+
+const CATALOG = catalog as Record<string, string[]>;
+
+/**
+ * Preenche os escudos que faltam nos times de uma liga do catálogo com uma
+ * única consulta (a lista de times da liga). Se o plano não liberar a
+ * temporada atual, tenta as anteriores (maxSeason evita repetir as tentativas
+ * que já falharam em outra liga). Times da liga que já têm escudo, ou que nem
+ * estão cadastrados, não gastam consulta.
+ */
+export async function fillLeagueBadges(
+  db: Db,
+  league: string,
+  maxSeason?: number,
+): Promise<{ matched: string[]; missing: string[]; season?: number; calls: number }> {
+  const info = LEAGUES[league];
+  if (!info || !CATALOG[league]) throw new UserError("Liga desconhecida.");
+  const pending = (await db.select().from(teams)).filter(
+    (t) => !t.badgeUrl && catalogLeague(t.name) === league,
+  );
+  if (pending.length === 0)
+    return { matched: [], missing: [], season: maxSeason, calls: 0 };
+
+  const countries = leagueCountries(league);
+  let year = Math.min(currentSeason(league), maxSeason ?? Infinity);
+  let calls = 0;
+  let list: Awaited<ReturnType<typeof leagueTeams>> = [];
+  for (;;) {
+    calls++;
+    try {
+      list = await leagueTeams(info.id, year);
+      break;
+    } catch (err) {
+      // Plano grátis: só algumas temporadas antigas. Desce um ano e tenta de novo.
+      if (err instanceof ApiFootballError && err.problem === "temporada" && year > 2021) {
+        year--;
+        continue;
+      }
+      throw err;
+    }
+  }
+  list = list.filter((c) => countries.includes(c.country));
+
+  const matched: string[] = [];
+  const missing: string[] = [];
+  for (const team of pending) {
+    const hit = bestMatch(team.name, list);
+    if (!hit) {
+      missing.push(team.name);
+      continue;
+    }
+    await db.update(teams).set({ badgeUrl: hit.logo }).where(eq(teams.id, team.id));
+    matched.push(team.name);
+  }
+  return { matched, missing, season: year, calls };
+}
+
+/** Ligas do catálogo e quantos times cadastrados de cada uma estão sem escudo. */
+export function badgeCoverage(list: Team[]) {
+  return Object.keys(LEAGUES).map((league) => {
+    const ours = list.filter((t) => catalogLeague(t.name) === league);
+    return {
+      league,
+      teams: ours.length,
+      missing: ours.filter((t) => !t.badgeUrl).length,
+    };
+  });
 }
 
 /**

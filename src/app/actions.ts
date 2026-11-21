@@ -11,6 +11,7 @@ import {
   logout,
   requireAdmin,
 } from "@/lib/auth";
+import { ApiFootballError } from "@/lib/apiFootball";
 import * as svc from "@/lib/services";
 import type { FormatConfig } from "@/lib/tournament";
 
@@ -412,4 +413,49 @@ export async function saveResultAction(
 
 export async function clearResultAction(matchId: number): Promise<ActionState> {
   return run(() => svc.clearMatchResult(getDb(), matchId));
+}
+
+// --- Escudos dos times -------------------------------------------------------
+
+export async function setTeamBadgeAction(_prev: ActionState, fd: FormData) {
+  return run(() => svc.setTeamBadge(getDb(), id(fd, "teamId"), fd.get("badgeUrl")));
+}
+
+/** Erro da API-Football para a tela, dizendo se vale esperar e tentar de novo. */
+function badgeError(err: unknown) {
+  if (err instanceof ApiFootballError)
+    return { error: err.message, waitMinute: err.problem === "minuto" };
+  if (err instanceof svc.UserError) return { error: err.message, waitMinute: false };
+  throw err;
+}
+
+export async function searchTeamBadgesAction(teamId: number, term: string) {
+  await requireAdmin();
+  try {
+    return { candidates: await svc.searchTeamBadges(getDb(), teamId, term) };
+  } catch (err) {
+    return badgeError(err);
+  }
+}
+
+export async function chooseTeamBadgeAction(teamId: number, url: string) {
+  await requireAdmin();
+  try {
+    await svc.setTeamBadge(getDb(), teamId, url);
+  } catch (err) {
+    return badgeError(err);
+  }
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+export async function fillLeagueBadgesAction(league: string, maxSeason?: number) {
+  await requireAdmin();
+  try {
+    const result = await svc.fillLeagueBadges(getDb(), league, maxSeason);
+    if (result.matched.length) revalidatePath("/", "layout");
+    return result;
+  } catch (err) {
+    return badgeError(err);
+  }
 }

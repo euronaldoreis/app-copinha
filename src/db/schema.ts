@@ -49,6 +49,8 @@ export const teams = sqliteTable(
   {
     id: integer("id").primaryKey({ autoIncrement: true }),
     name: text("name").notNull(),
+    /** Link da imagem do escudo (da API-Football ou colado pelo admin). */
+    badgeUrl: text("badge_url"),
   },
   (t) => [uniqueIndex("teams_name_idx").on(t.name)],
 );
