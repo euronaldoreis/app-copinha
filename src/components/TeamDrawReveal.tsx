@@ -38,6 +38,7 @@ export function TeamDrawReveal({
   candidates,
   number,
   total,
+  countLabel,
   onDone,
 }: {
   player: ChoicePlayer;
@@ -46,6 +47,8 @@ export function TeamDrawReveal({
   candidates: string[];
   number: number;
   total: number;
+  /** Texto no lugar de "Sorteio N de M" (ex.: um sorteio avulso). */
+  countLabel?: string;
   onDone: () => void;
 }) {
   const [stage, setStage] = useState<Stage>("player");
@@ -102,7 +105,7 @@ export function TeamDrawReveal({
       <div className="draw-reveal-rays" aria-hidden="true" />
       <div className="draw-reveal-body">
         <p className="draw-reveal-count num">
-          Sorteio {number} de {total}
+          {countLabel ?? `Sorteio ${number} de ${total}`}
         </p>
         <div className="draw-reveal-player anim-pop">
           <Avatar name={player.name} photoUrl={player.photoUrl} avatar={player.avatar} size={120} />
