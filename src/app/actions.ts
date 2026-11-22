@@ -459,3 +459,17 @@ export async function fillLeagueBadgesAction(league: string, maxSeason?: number)
     return badgeError(err);
   }
 }
+
+// --- Participante incluído com a edição em andamento -------------------------
+
+export async function addLateEntryAction(_prev: ActionState, fd: FormData) {
+  return run(async () => {
+    const raw = String(fd.get("playerId") ?? "");
+    await svc.addLateEntry(getDb(), id(fd, "editionId"), {
+      playerId: /^\d+$/.test(raw) ? Number(raw) : null,
+      newName: fd.get("newName"),
+      groupLabel: fd.get("groupLabel"),
+      team: fd.get("team"),
+    });
+  });
+}

@@ -497,6 +497,95 @@ export function planMatches(
   return out;
 }
 
+/**
+ * Jogos de quem entra com a fase de grupos (ou os pontos corridos) em
+ * andamento: enfrenta os mesmos adversários que os colegas de grupo enfrentam
+ * (o próprio grupo e, nos formatos cruzado e misto, o grupo do par), no mesmo
+ * número de turnos. Cada jogo vai para a primeira rodada do turno em que o
+ * adversário está de folga; sem rodada livre, abre uma rodada nova no fim.
+ * Os jogos existentes não mudam.
+ */
+export function planLateEntry(
+  raw: FormatConfig,
+  entries: EntryLike[],
+  existing: Pick<MatchLike, "stage" | "round" | "slot" | "groupLabel" | "homeEntryId" | "awayEntryId">[],
+  newId: number,
+  groupLabel: string,
+): PlannedMatch[] {
+  const config = normalizeConfig(raw);
+  if (config.format !== "grupos" && config.format !== "liga") return [];
+  const group = existing.filter((m) => m.stage === "grupo");
+  const membersOf = (label: string) =>
+    entries
+      .filter((e) => e.id !== newId && (e.groupLabel ?? "A") === label)
+      .sort((a, b) => a.seed - b.seed)
+      .map((e) => e.id);
+
+  // Quem enfrenta quem: [rótulo do jogo, adversários].
+  const plans: [string, number[]][] = [];
+  if (config.format === "liga") plans.push(["A", membersOf("A")]);
+  else {
+    if (config.pairing !== "cruzado") plans.push([groupLabel, membersOf(groupLabel)]);
+    if (config.pairing !== "interno") {
+      const labels = GROUP_LABELS.slice(0, config.groupsCount);
+      const i = labels.indexOf(groupLabel);
+      const mate = labels[i % 2 === 0 ? i + 1 : i - 1];
+      if (mate) {
+        const [a, b] = i % 2 === 0 ? [groupLabel, mate] : [mate, groupLabel];
+        plans.push([`${a}x${b}`, membersOf(mate)]);
+      }
+    }
+  }
+
+  const busy = new Map<number, Set<number>>();
+  const isBusy = (round: number, id: number) => busy.get(round)?.has(id) ?? false;
+  const mark = (round: number, ...ids: number[]) => {
+    const set = busy.get(round) ?? new Set<number>();
+    ids.forEach((id) => set.add(id));
+    busy.set(round, set);
+  };
+  for (const m of group)
+    mark(m.round, ...[m.homeEntryId, m.awayEntryId].filter((id): id is number => id != null));
+  let lastRound = group.reduce((max, m) => Math.max(max, m.round), 0);
+  const slots = new Map<string, number>();
+  for (const m of group) {
+    const key = `${m.groupLabel}:${m.round}`;
+    slots.set(key, Math.max(slots.get(key) ?? 0, m.slot + 1));
+  }
+
+  const out: PlannedMatch[] = [];
+  for (const [label, opponents] of plans) {
+    const rounds = [...new Set(group.filter((m) => m.groupLabel === label).map((m) => m.round))].sort(
+      (a, b) => a - b,
+    );
+    // Com ida e volta, a primeira metade das rodadas é a ida.
+    const half = Math.ceil(rounds.length / 2);
+    const legRounds = config.legs === 2 ? [rounds.slice(0, half), rounds.slice(half)] : [rounds];
+    for (let leg = 0; leg < config.legs; leg++) {
+      opponents.forEach((opp, i) => {
+        let round = (legRounds[leg] ?? []).find((r) => !isBusy(r, opp) && !isBusy(r, newId));
+        if (round == null) round = ++lastRound;
+        mark(round, opp, newId);
+        const key = `${label}:${round}`;
+        const slot = slots.get(key) ?? 0;
+        slots.set(key, slot + 1);
+        const newHome = (i + leg) % 2 === 0;
+        out.push({
+          stage: "grupo",
+          round,
+          slot,
+          groupLabel: label,
+          homeEntryId: newHome ? newId : opp,
+          awayEntryId: newHome ? opp : newId,
+          homeSource: null,
+          awaySource: null,
+        });
+      });
+    }
+  }
+  return out;
+}
+
 /** Quantidade de jogos que a configuração gera (para a prévia no formulário). */
 /** Participantes fictícios, só para simular a tabela nas prévias. */
 function sampleEntries(config: FormatConfig, n: number): EntryLike[] {

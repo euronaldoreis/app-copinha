@@ -50,6 +50,7 @@ import {
   computeResults,
   computeStandings,
   normalizeConfig,
+  planLateEntry,
   planMatches,
   resolveKnockout,
   validateConfig,
@@ -1474,6 +1475,115 @@ export async function setEntryGroups(
     .sort((a, b) => a.seed - b.seed)
     .map((e, seed) => ({ id: e.id, seed, groupLabel: labels.get(e.id)! }));
   await db.transaction((tx) => applyPlan(tx, editionId, config, seeded));
+}
+
+export interface LateEntryInput {
+  /** Jogador já cadastrado... */
+  playerId?: number | null;
+  /** ...ou o nome de alguém novo, que é cadastrado na hora. */
+  newName?: unknown;
+  /** Grupo em que entra (formato com grupos). Sem informar: o menor grupo. */
+  groupLabel?: unknown;
+  /** Time do participante (obrigatório nas edições com times). */
+  team?: unknown;
+}
+
+/**
+ * Inclui mais um participante com a edição em andamento, sem mexer nos jogos
+ * e placares que já existem: ele entra num grupo (ou na liga) e ganha só os
+ * jogos dele, encaixados nas rodadas em que o adversário folga ou em rodadas
+ * novas no fim. Não vale no mata-mata puro nem depois que o mata-mata (ou a
+ * repescagem) tiver algum placar.
+ */
+export async function addLateEntry(db: Db, editionId: number, input: LateEntryInput) {
+  const edition = await getEdition(db, editionId);
+  if (edition.status !== "andamento")
+    throw new UserError(
+      edition.status === "inscricoes"
+        ? "A tabela ainda não foi gerada: inclua o jogador em Participantes."
+        : "A edição já terminou.",
+    );
+  const config = configOf(edition);
+  if (config.format === "mata")
+    throw new UserError(
+      "No mata-mata puro não dá para incluir alguém com a chave montada. Para isso, desfaça a tabela.",
+    );
+  if (config.format !== "grupos" && config.format !== "liga")
+    throw new UserError("Esta edição não tem tabela de jogos.");
+
+  const [current, played] = await Promise.all([
+    db.select().from(entries).where(eq(entries.editionId, editionId)),
+    db.select().from(matches).where(eq(matches.editionId, editionId)),
+  ]);
+  if (played.some((m) => m.stage !== "grupo" && m.homeScore != null))
+    throw new UserError("O mata-mata já começou: não dá mais para incluir participantes.");
+
+  // Quem entra
+  let playerId = input.playerId ?? null;
+  const newName = clean(input.newName, 40);
+  if (playerId == null && !newName) throw new UserError("Escolha o jogador ou digite o nome.");
+  if (playerId != null) {
+    const [p] = await db.select().from(players).where(eq(players.id, playerId));
+    if (!p) throw new UserError("Jogador não encontrado.");
+  } else {
+    const found = await findPlayerByName(db, newName);
+    playerId = found?.id ?? null;
+  }
+  if (playerId != null && current.some((e) => e.playerId === playerId))
+    throw new UserError("Esse jogador já está na edição.");
+
+  // Em que grupo
+  let label = "A";
+  if (config.format === "grupos") {
+    const labels = GROUP_LABELS.slice(0, config.groupsCount);
+    const sizes = countByGroup(current.map((e) => e.groupLabel), config.groupsCount);
+    const wanted = clean(input.groupLabel, 2).toUpperCase();
+    if (wanted && !labels.includes(wanted)) throw new UserError("Grupo inválido.");
+    // Sem escolha: o menor grupo (no empate, o primeiro).
+    label = wanted || labels[sizes.indexOf(Math.min(...sizes))];
+    const after = sizes.map((n, i) => (labels[i] === label ? n + 1 : n));
+    const problem = validateGroupSizes(config, after);
+    if (problem) throw new UserError(problem);
+  } else {
+    const problem = validateConfig(config, current.length + 1);
+    if (problem) throw new UserError(problem);
+  }
+
+  // Time
+  const teamName = clean(input.team, 60);
+  if (edition.useTeams && !teamName) throw new UserError("Escolha o time do novo participante.");
+  if (!edition.useTeams && teamName)
+    throw new UserError("Esta edição é só com os jogadores, sem times.");
+  let teamId: number | null = null;
+  if (teamName) {
+    const team = await ensureTeam(db, teamName);
+    if (current.some((e) => e.teamId === team.id))
+      throw new UserError(`${team.name} já está com outro participante.`);
+    teamId = team.id;
+  }
+
+  if (playerId == null) playerId = (await createPlayer(db, newName)).id;
+  const seed = current.reduce((max, e) => Math.max(max, e.seed), -1) + 1;
+  const pid = playerId;
+  const games = await db.transaction(async (tx) => {
+    const [entry] = await tx
+      .insert(entries)
+      .values({ editionId, playerId: pid, seed, groupLabel: label, teamId })
+      .returning();
+    const planned = planLateEntry(
+      config,
+      [...current, entry].map((e) => ({ id: e.id, seed: e.seed, groupLabel: e.groupLabel })),
+      played,
+      entry.id,
+      label,
+    );
+    if (planned.length)
+      await tx.insert(matches).values(planned.map((m) => ({ ...m, editionId })));
+    return planned.length;
+  });
+  // O mata-mata volta a esperar o fim da fase de grupos.
+  await syncEdition(db, editionId);
+  return { groupLabel: config.format === "grupos" ? label : null, games };
 }
 
 /**
