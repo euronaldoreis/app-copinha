@@ -6,6 +6,7 @@ import {
   revokeAccessAction,
   type AccessLinkState,
 } from "@/app/actions";
+import { AccessQrCode } from "@/components/AccessQrCode";
 import { ActionForm, SubmitButton } from "@/components/forms";
 
 /**
@@ -75,8 +76,9 @@ export function AccessLinkPanel({
               Enviar no WhatsApp
             </a>
           </div>
+          <AccessQrCode link={link} playerName={playerName} />
           <p className="text-body text-muted">
-            Esse link só aparece agora. Quem o tiver edita o perfil de{" "}
+            Esse link (e o QR code) só aparece agora. Quem o tiver edita o perfil de{" "}
             {playerName}, então mande só para ele.
           </p>
         </div>
