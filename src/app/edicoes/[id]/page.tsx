@@ -233,13 +233,14 @@ function Tournament({
   const rounds = [...new Set(groupMatches.map((m) => m.round))].sort(
     (a, b) => a - b,
   );
+  // Dentro da rodada, um jogo de cada grupo por vez: A, B, A, B...
   const roundMatches = (round: number) =>
     groupMatches
       .filter((m) => m.round === round)
       .sort(
         (a, b) =>
-          (a.groupLabel ?? "").localeCompare(b.groupLabel ?? "") ||
-          a.slot - b.slot,
+          a.slot - b.slot ||
+          (a.groupLabel ?? "").localeCompare(b.groupLabel ?? ""),
       );
 
   // Numeração dos jogos na ordem em que acontecem: rodadas e depois o mata-mata.
