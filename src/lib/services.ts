@@ -1672,7 +1672,9 @@ export async function regenerateMatches(db: Db, editionId: number) {
  * Muda quantos avançam para o mata-mata (ou seja, quantas fases ele tem) e se
  * há disputa de 3º lugar, mesmo com a copa em andamento. Os jogos da fase de
  * grupos (ou dos pontos corridos) e os placares deles são mantidos; o
- * mata-mata é refeito do zero, então os placares dele são apagados.
+ * mata-mata é refeito do zero, então os placares dele são apagados. Se só a
+ * disputa de 3º lugar muda, só esse jogo é tirado (ou criado): o resto do
+ * mata-mata e os placares ficam como estão.
  */
 export async function setKnockoutPhases(
   db: Db,
@@ -1714,6 +1716,15 @@ export async function setKnockoutPhases(
       : validateConfig(config, current.length);
   if (problem) throw new UserError(problem);
 
+  const onlyThirdPlace =
+    qualifiers === edition.qualifiers &&
+    (config.playoffs ?? 0) === (edition.playoffs ?? 0) &&
+    config.thirdPlace !== edition.thirdPlace;
+  if (onlyThirdPlace) {
+    await toggleThirdPlace(db, editionId, config, current);
+    return;
+  }
+
   const knockout = planMatches(config, current).filter(
     (m) => m.stage !== "grupo",
   );
@@ -1743,6 +1754,41 @@ export async function setKnockoutPhases(
       .update(editions)
       .set({ status: "andamento" })
       .where(eq(editions.id, editionId));
+    await syncEdition(tx, editionId);
+  });
+}
+
+/**
+ * Tira (ou cria) só o jogo de 3º lugar. Os outros jogos e placares ficam;
+ * a colocação final é recalculada (sem a disputa, quem perdeu a semifinal
+ * fica como semifinalista).
+ */
+async function toggleThirdPlace(
+  db: Db,
+  editionId: number,
+  config: FormatConfig,
+  current: (typeof entries.$inferSelect)[],
+) {
+  const third = config.thirdPlace
+    ? planMatches(config, current).filter((m) => m.stage === "terceiro")
+    : [];
+  if (config.thirdPlace && third.length === 0)
+    throw new UserError(
+      "Esse mata-mata não tem semifinal para ter disputa de 3º lugar.",
+    );
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(matches)
+      .where(
+        and(eq(matches.editionId, editionId), eq(matches.stage, "terceiro")),
+      );
+    if (third.length)
+      await tx.insert(matches).values(third.map((m) => ({ ...m, editionId })));
+    await tx
+      .update(editions)
+      .set({ thirdPlace: config.thirdPlace })
+      .where(eq(editions.id, editionId));
+    // Recalcula quem joga a disputa (perdedores das semis) e a colocação final.
     await syncEdition(tx, editionId);
   });
 }
