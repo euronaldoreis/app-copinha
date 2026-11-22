@@ -36,6 +36,12 @@ export function KnockoutPhases({
 }) {
   const [k, setK] = useState(qualifiers);
   const [p, setP] = useState(Math.min(playoffs, Math.max(0, qualifiers - 1)));
+  const [third, setThird] = useState(thirdPlace);
+  // Só a disputa de 3º lugar mudou: mexe só nesse jogo, sem apagar placares.
+  const onlyThird =
+    k === qualifiers &&
+    p === Math.min(playoffs, Math.max(0, qualifiers - 1)) &&
+    third !== thirdPlace;
   // Repescagem: sempre sobra uma vaga direta, e cada jogo precisa de 2 jogadores
   // além dos diretos.
   const maxPlayoffs =
@@ -59,7 +65,8 @@ export function KnockoutPhases({
         andamento. Os jogos e placares da fase de{" "}
         {format === "liga" ? "pontos corridos" : "grupos"} continuam como estão.
         O mata-mata é refeito com a classificação atual, e os placares dele são
-        apagados.
+        apagados. Ligar ou desligar só a disputa de 3º lugar não apaga nenhum
+        placar.
       </p>
       <label>
         <span className="label">
@@ -105,18 +112,32 @@ export function KnockoutPhases({
         <input
           type="checkbox"
           name="thirdPlace"
-          defaultChecked={thirdPlace}
+          checked={third}
+          onChange={(e) => setThird(e.target.checked)}
           className="size-4 accent-accent"
         />
         Disputa de 3º lugar
       </label>
       <div>
-        <SubmitButton
-          className="btn btn-danger"
-          confirm="Refazer o mata-mata com essas fases? Os placares do mata-mata serão apagados; os jogos dos grupos continuam."
-        >
-          Salvar fases
-        </SubmitButton>
+        {onlyThird ? (
+          <SubmitButton
+            className="btn btn-primary"
+            confirm={
+              third
+                ? "Criar a disputa de 3º lugar? Os outros jogos e placares continuam como estão."
+                : "Tirar a disputa de 3º lugar? Os placares do mata-mata e dos grupos continuam como estão."
+            }
+          >
+            {third ? "Criar disputa de 3º lugar" : "Tirar disputa de 3º lugar"}
+          </SubmitButton>
+        ) : (
+          <SubmitButton
+            className="btn btn-danger"
+            confirm="Refazer o mata-mata com essas fases? Os placares do mata-mata serão apagados; os jogos dos grupos continuam."
+          >
+            Salvar fases
+          </SubmitButton>
+        )}
       </div>
     </ActionForm>
   );
