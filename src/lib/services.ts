@@ -2041,7 +2041,14 @@ export function editionView(
       .sort((a, b) => a.seed - b.seed || a.id - b.id),
     matches: data.matches
       .filter((m) => m.editionId === editionId)
-      .sort((a, b) => a.round - b.round || a.slot - b.slot || a.id - b.id),
+      // Na rodada, um jogo de cada grupo por vez (A, B, A, B...).
+      .sort(
+        (a, b) =>
+          a.round - b.round ||
+          a.slot - b.slot ||
+          (a.groupLabel ?? "").localeCompare(b.groupLabel ?? "") ||
+          a.id - b.id,
+      ),
   };
 }
 
