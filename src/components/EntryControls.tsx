@@ -24,6 +24,7 @@ export function EntryControls({
   useTeams,
   knownTeams = [],
   takenTeams = [],
+  removable = true,
 }: {
   entryId: number;
   playerName: string;
@@ -37,6 +38,8 @@ export function EntryControls({
   knownTeams?: string[];
   /** Times de outros participantes desta edição. */
   takenTeams?: string[];
+  /** Falso com a edição em andamento: só troca o time. */
+  removable?: boolean;
 }) {
   const [teamValue, setTeamValue] = useState(team ?? "");
   const [resultValue, setResultValue] = useState(result ?? "");
@@ -96,17 +99,19 @@ export function EntryControls({
         </ActionForm>
       )}
       {/* Formulário à parte: formulários não podem ficar um dentro do outro. */}
-      <ActionForm action={removeEntryAction}>
-        <input type="hidden" name="entryId" value={entryId} />
-        <SubmitButton
-          className="btn btn-icon btn-danger"
-          title="Remover da edição"
-          confirm={`Remover ${playerName} desta edição?`}
-        >
-          <TrashIcon />
-          <span className="sr-only">Remover da edição</span>
-        </SubmitButton>
-      </ActionForm>
+      {removable && (
+        <ActionForm action={removeEntryAction}>
+          <input type="hidden" name="entryId" value={entryId} />
+          <SubmitButton
+            className="btn btn-icon btn-danger"
+            title="Remover da edição"
+            confirm={`Remover ${playerName} desta edição?`}
+          >
+            <TrashIcon />
+            <span className="sr-only">Remover da edição</span>
+          </SubmitButton>
+        </ActionForm>
+      )}
     </div>
   );
 }

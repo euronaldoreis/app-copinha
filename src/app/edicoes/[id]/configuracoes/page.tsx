@@ -9,6 +9,7 @@ import {
   setTeamPoolAction,
   updateEditionAction,
 } from "@/app/actions";
+import { EntryControls } from "@/components/EntryControls";
 import { FormatFields } from "@/components/FormatFields";
 import { GroupsEditor } from "@/components/GroupsEditor";
 import { KnockoutEditor } from "@/components/KnockoutEditor";
@@ -49,11 +50,19 @@ export default async function EditionSettingsPage(
     edition.status === "andamento" &&
     (format === "grupos" || format === "liga") &&
     !matches.some((m) => m.stage !== "grupo" && m.homeScore != null);
-  const groupLabels = format === "grupos" ? GROUP_LABELS.slice(0, edition.groupsCount) : [];
-  const groupSize = (label: string) => entries.filter((e) => e.groupLabel === label).length;
+  const groupLabels =
+    format === "grupos" ? GROUP_LABELS.slice(0, edition.groupsCount) : [];
+  const groupSize = (label: string) =>
+    entries.filter((e) => e.groupLabel === label).length;
   const takenTeams = new Set(entries.map((e) => e.team?.name).filter(Boolean));
   const freeTeams = edition.teamPool.filter((t) => !takenTeams.has(t));
   const outside = allPlayers.filter((p) => !inEdition.has(p.id));
+  const knownTeams = [
+    ...new Set([...edition.teamPool, ...data.teams.map((t) => t.name)]),
+  ].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  const byName = [...entries].sort((a, b) =>
+    a.player.name.localeCompare(b.player.name, "pt-BR"),
+  );
 
   return (
     <>
@@ -98,9 +107,48 @@ export default async function EditionSettingsPage(
                 placeholder="Gente nova? Nomes separados por vírgula"
               />
               <div>
-                <SubmitButton className="btn">Salvar participantes</SubmitButton>
+                <SubmitButton className="btn">
+                  Salvar participantes
+                </SubmitButton>
               </div>
             </ActionForm>
+          </Disclosure>
+        )}
+
+        {!manual && !setup && edition.useTeams && entries.length > 0 && (
+          <Disclosure title="Times dos participantes">
+            <div className="flex flex-col gap-3">
+              <p className="text-body text-muted">
+                Troca só o time: jogos, placares e grupos continuam como estão.
+              </p>
+              <ul className="flex flex-col gap-2">
+                {byName.map((e) => (
+                  <li
+                    key={e.id}
+                    className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-3"
+                  >
+                    <span className="min-w-0 font-black sm:w-32 sm:truncate">
+                      {e.player.name}
+                    </span>
+                    <EntryControls
+                      // recria o estado quando o time muda no servidor
+                      key={`${e.id}:${e.teamId}`}
+                      entryId={e.id}
+                      playerName={e.player.name}
+                      team={e.team?.name ?? null}
+                      result={e.result}
+                      manual={false}
+                      useTeams
+                      removable={false}
+                      knownTeams={knownTeams}
+                      takenTeams={entries
+                        .filter((x) => x.id !== e.id && x.team)
+                        .map((x) => x.team!.name)}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </div>
           </Disclosure>
         )}
 
@@ -115,8 +163,11 @@ export default async function EditionSettingsPage(
               <p className="text-body text-muted">
                 Os jogos e placares que já existem ficam como estão. O novo
                 participante ganha só os jogos dele
-                {format === "grupos" ? " contra os adversários do grupo" : " contra todos"}
-                , nas rodadas em que o adversário folga ou em rodadas novas no fim.
+                {format === "grupos"
+                  ? " contra os adversários do grupo"
+                  : " contra todos"}
+                , nas rodadas em que o adversário folga ou em rodadas novas no
+                fim.
               </p>
               <div className="grid gap-3 sm:grid-cols-2">
                 <label>
@@ -161,7 +212,11 @@ export default async function EditionSettingsPage(
                       list="late-entry-teams"
                       maxLength={60}
                       required
-                      placeholder={freeTeams.length ? "Um dos que sobraram ou outro" : "Nome do time"}
+                      placeholder={
+                        freeTeams.length
+                          ? "Um dos que sobraram ou outro"
+                          : "Nome do time"
+                      }
                     />
                     <datalist id="late-entry-teams">
                       {freeTeams.map((t) => (
@@ -254,12 +309,20 @@ export default async function EditionSettingsPage(
         )}
 
         <Disclosure title={setup ? "Dados e formato" : "Dados da edição"}>
-          <ActionForm action={updateEditionAction} className="flex flex-col gap-4">
+          <ActionForm
+            action={updateEditionAction}
+            className="flex flex-col gap-4"
+          >
             <input type="hidden" name="editionId" value={edition.id} />
             <div className="grid gap-3 sm:grid-cols-[1fr_120px]">
               <label>
                 <span className="label">Nome</span>
-                <input name="name" className="field" defaultValue={edition.name} required />
+                <input
+                  name="name"
+                  className="field"
+                  defaultValue={edition.name}
+                  required
+                />
               </label>
               <label>
                 <span className="label">Número</span>
@@ -276,7 +339,12 @@ export default async function EditionSettingsPage(
             <div className="grid gap-3 sm:grid-cols-2">
               <label>
                 <span className="label">Jogo</span>
-                <input name="game" className="field" defaultValue={edition.game} required />
+                <input
+                  name="game"
+                  className="field"
+                  defaultValue={edition.game}
+                  required
+                />
               </label>
               <label>
                 <span className="label">Data</span>

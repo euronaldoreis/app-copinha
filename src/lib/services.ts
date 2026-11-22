@@ -863,11 +863,18 @@ async function getEntry(db: Db, entryId: number) {
   return entry;
 }
 
-/** Define (ou remove) manualmente o time de um participante. */
+/**
+ * Define (ou remove) manualmente o time de um participante. Vale também com a
+ * edição em andamento ou encerrada: troca só o time, sem mexer em jogos,
+ * placares ou grupos (aí o time não pode ficar vazio).
+ */
 export async function setEntryTeam(db: Db, entryId: number, teamName: unknown) {
   const entry = await getEntry(db, entryId);
   const name = clean(teamName, 60);
   if (!name) {
+    const edition = await getEdition(db, entry.editionId);
+    if (edition.useTeams && edition.status !== "inscricoes" && edition.format !== "manual")
+      throw new UserError("Com a tabela gerada, o participante precisa ter um time.");
     await db
       .update(entries)
       .set({ teamId: null })
