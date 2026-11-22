@@ -52,6 +52,7 @@ import {
   normalizeConfig,
   planLateEntry,
   planMatches,
+  type Stage,
   resolveKnockout,
   validateConfig,
   validateGroupSizes,
@@ -1484,6 +1485,9 @@ export async function setEntryGroups(
   await db.transaction((tx) => applyPlan(tx, editionId, config, seeded));
 }
 
+/** Ordem das fases na lista de jogos da edição. */
+const STAGE_ORDER: Record<Stage, number> = { grupo: 0, repescagem: 1, mata: 2, terceiro: 3 };
+
 export interface LateEntryInput {
   /** Jogador já cadastrado... */
   playerId?: number | null;
@@ -2096,9 +2100,10 @@ export function editionView(
       .sort((a, b) => a.seed - b.seed || a.id - b.id),
     matches: data.matches
       .filter((m) => m.editionId === editionId)
-      // Na rodada, um jogo de cada grupo por vez (A, B, A, B...).
+      // Fase por fase; na rodada, um jogo de cada grupo por vez (A, B, A, B...).
       .sort(
         (a, b) =>
+          STAGE_ORDER[a.stage as Stage] - STAGE_ORDER[b.stage as Stage] ||
           a.round - b.round ||
           a.slot - b.slot ||
           (a.groupLabel ?? "").localeCompare(b.groupLabel ?? "") ||
