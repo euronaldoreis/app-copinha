@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import {
-  addLateEntryAction,
   deleteEditionAction,
   resetEditionAction,
   setParticipantsAction,
@@ -14,6 +13,7 @@ import { FormatFields } from "@/components/FormatFields";
 import { GroupsEditor } from "@/components/GroupsEditor";
 import { KnockoutEditor } from "@/components/KnockoutEditor";
 import { KnockoutPhases } from "@/components/KnockoutPhases";
+import { LateEntryForm } from "@/components/LateEntryForm";
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { ChevronIcon } from "@/components/icons";
 import { Disclosure, PageTitle } from "@/components/ui";
@@ -154,87 +154,17 @@ export default async function EditionSettingsPage(
 
         {canAddLate && (
           <Disclosure title="Incluir participante">
-            <ActionForm
-              key={entries.length}
-              action={addLateEntryAction}
-              className="flex flex-col gap-3"
-            >
-              <input type="hidden" name="editionId" value={edition.id} />
-              <p className="text-body text-muted">
-                Os jogos e placares que já existem ficam como estão. O novo
-                participante ganha só os jogos dele
-                {format === "grupos"
-                  ? " contra os adversários do grupo"
-                  : " contra todos"}
-                , nas rodadas em que o adversário folga ou em rodadas novas no
-                fim.
-              </p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <label>
-                  <span className="label">Jogador</span>
-                  <select name="playerId" className="field" defaultValue="">
-                    <option value="">Alguém novo (digite o nome)</option>
-                    {outside.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  <span className="label">Nome de quem é novo</span>
-                  <input
-                    name="newName"
-                    className="field"
-                    maxLength={40}
-                    placeholder="Só se não estiver na lista"
-                  />
-                </label>
-                {format === "grupos" && (
-                  <label>
-                    <span className="label">Grupo</span>
-                    <select name="groupLabel" className="field" defaultValue="">
-                      <option value="">O menor grupo</option>
-                      {groupLabels.map((g) => (
-                        <option key={g} value={g}>
-                          Grupo {g} ({groupSize(g)} participantes)
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-                {edition.useTeams && (
-                  <label>
-                    <span className="label">Time</span>
-                    <input
-                      name="team"
-                      className="field"
-                      list="late-entry-teams"
-                      maxLength={60}
-                      required
-                      placeholder={
-                        freeTeams.length
-                          ? "Um dos que sobraram ou outro"
-                          : "Nome do time"
-                      }
-                    />
-                    <datalist id="late-entry-teams">
-                      {freeTeams.map((t) => (
-                        <option key={t} value={t} />
-                      ))}
-                    </datalist>
-                  </label>
-                )}
-              </div>
-              <div>
-                <SubmitButton
-                  className="btn btn-primary"
-                  confirm="Incluir na edição e criar os jogos dele?"
-                >
-                  Incluir participante
-                </SubmitButton>
-              </div>
-            </ActionForm>
+            <LateEntryForm
+              editionId={edition.id}
+              groups={groupLabels.map((g) => ({
+                label: g,
+                size: groupSize(g),
+              }))}
+              liga={format === "liga"}
+              useTeams={edition.useTeams}
+              freeTeams={freeTeams}
+              players={outside.map((p) => ({ id: p.id, name: p.name }))}
+            />
           </Disclosure>
         )}
 

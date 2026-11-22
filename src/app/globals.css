@@ -3781,7 +3781,8 @@ label:has(> input[type="date"]) {
     text-transform: uppercase;
     text-shadow: 0 2px 0 var(--color-night);
   }
-  .choice-tv-player > span:first-child {
+  .choice-tv-player > span:first-child:not(.lb-avatar),
+  .choice-tv-player > .lb-avatar > span {
     width: 2.2em !important;
     height: 2.2em !important;
   }
@@ -4090,7 +4091,9 @@ label:has(> input[type="date"]) {
     align-items: center;
     gap: 0.8em;
   }
-  .draw-reveal-player > span:first-child {
+  /* O retrato (dentro da moldura da categoria, quando houver) acompanha o em. */
+  .draw-reveal-player > span:first-child:not(.lb-avatar),
+  .draw-reveal-player > .lb-avatar > span {
     width: 4.4em !important;
     height: 4.4em !important;
   }
@@ -4286,7 +4289,8 @@ label:has(> input[type="date"]) {
     border: 2px solid #4d7fe0;
     border-radius: 10px;
   }
-  .choice-tv-group-row > span:first-child {
+  .choice-tv-group-row > span:first-child:not(.lb-avatar),
+  .choice-tv-group-row > .lb-avatar > span {
     width: 2em !important;
     height: 2em !important;
   }
@@ -4385,4 +4389,9 @@ label:has(> input[type="date"]) {
   display: block;
   width: 100%;
   height: auto;
+}
+
+/* Roleta do time de quem entra no meio da edição (fora da TV): tamanho pela tela. */
+.late-draw {
+  font-size: clamp(10px, min(2.6vw, 1.9vh), 18px);
 }

@@ -462,14 +462,30 @@ export async function fillLeagueBadgesAction(league: string, maxSeason?: number)
 
 // --- Participante incluído com a edição em andamento -------------------------
 
-export async function addLateEntryAction(_prev: ActionState, fd: FormData) {
-  return run(async () => {
-    const raw = String(fd.get("playerId") ?? "");
-    await svc.addLateEntry(getDb(), id(fd, "editionId"), {
+/** Resultado da inclusão; com time sorteado, traz o que a tela anima. */
+export type LateEntryState =
+  | (NonNullable<ActionState> & { result?: svc.LateEntryResult; at?: number })
+  | null;
+
+export async function addLateEntryAction(
+  _prev: LateEntryState,
+  fd: FormData,
+): Promise<LateEntryState> {
+  await requireAdmin();
+  const raw = String(fd.get("playerId") ?? "");
+  try {
+    const result = await svc.addLateEntry(getDb(), id(fd, "editionId"), {
       playerId: /^\d+$/.test(raw) ? Number(raw) : null,
       newName: fd.get("newName"),
       groupLabel: fd.get("groupLabel"),
       team: fd.get("team"),
+      drawTeam: fd.get("teamMode") === "sortear",
     });
-  });
+    revalidatePath("/", "layout");
+    // `at` muda a cada inclusão, para a tela animar de novo.
+    return { ok: true, result, at: Date.now() };
+  } catch (err) {
+    if (err instanceof svc.UserError) return { error: err.message };
+    throw err;
+  }
 }

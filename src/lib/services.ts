@@ -1491,8 +1491,20 @@ export interface LateEntryInput {
   newName?: unknown;
   /** Grupo em que entra (formato com grupos). Sem informar: o menor grupo. */
   groupLabel?: unknown;
-  /** Time do participante (obrigatório nas edições com times). */
+  /** Time do participante (obrigatório nas edições com times)... */
   team?: unknown;
+  /** ...ou sortear entre os times do sorteio que ninguém pegou. */
+  drawTeam?: boolean;
+}
+
+/** Quem entrou no meio da edição e, se o time foi sorteado, a urna do sorteio. */
+export interface LateEntryResult {
+  groupLabel: string | null;
+  games: number;
+  player: { id: number; name: string; photoUrl: string | null; avatar: AvatarLook | null };
+  team: string | null;
+  /** Times que estavam na urna (inclui o sorteado); null se o time foi escolhido. */
+  drawnFrom: string[] | null;
 }
 
 /**
@@ -1502,7 +1514,11 @@ export interface LateEntryInput {
  * novas no fim. Não vale no mata-mata puro nem depois que o mata-mata (ou a
  * repescagem) tiver algum placar.
  */
-export async function addLateEntry(db: Db, editionId: number, input: LateEntryInput) {
+export async function addLateEntry(
+  db: Db,
+  editionId: number,
+  input: LateEntryInput,
+): Promise<LateEntryResult> {
   const edition = await getEdition(db, editionId);
   if (edition.status !== "andamento")
     throw new UserError(
@@ -1556,8 +1572,25 @@ export async function addLateEntry(db: Db, editionId: number, input: LateEntryIn
     if (problem) throw new UserError(problem);
   }
 
-  // Time
-  const teamName = clean(input.team, 60);
+  // Time: escolhido ou sorteado entre os do sorteio que ninguém pegou.
+  let teamName = clean(input.team, 60);
+  let drawnFrom: string[] | null = null;
+  if (edition.useTeams && input.drawTeam) {
+    const taken = new Set(
+      (await db.select().from(teams))
+        .filter((t) => current.some((e) => e.teamId === t.id))
+        .map((t) => t.name.toLocaleLowerCase("pt-BR")),
+    );
+    const free = [...new Set(edition.teamPool)].filter(
+      (t) => !taken.has(t.toLocaleLowerCase("pt-BR")),
+    );
+    if (free.length === 0)
+      throw new UserError(
+        "Não sobrou nenhum time do sorteio. Digite o time do novo participante.",
+      );
+    teamName = free[Math.floor(Math.random() * free.length)];
+    drawnFrom = free;
+  }
   if (edition.useTeams && !teamName) throw new UserError("Escolha o time do novo participante.");
   if (!edition.useTeams && teamName)
     throw new UserError("Esta edição é só com os jogadores, sem times.");
@@ -1569,7 +1602,11 @@ export async function addLateEntry(db: Db, editionId: number, input: LateEntryIn
     teamId = team.id;
   }
 
-  if (playerId == null) playerId = (await createPlayer(db, newName)).id;
+  const player =
+    playerId == null
+      ? await createPlayer(db, newName)
+      : (await db.select().from(players).where(eq(players.id, playerId)))[0];
+  playerId = player.id;
   const seed = current.reduce((max, e) => Math.max(max, e.seed), -1) + 1;
   const pid = playerId;
   const games = await db.transaction(async (tx) => {
@@ -1590,7 +1627,18 @@ export async function addLateEntry(db: Db, editionId: number, input: LateEntryIn
   });
   // O mata-mata volta a esperar o fim da fase de grupos.
   await syncEdition(db, editionId);
-  return { groupLabel: config.format === "grupos" ? label : null, games };
+  return {
+    groupLabel: config.format === "grupos" ? label : null,
+    games,
+    player: {
+      id: player.id,
+      name: player.name,
+      photoUrl: player.photoUrl,
+      avatar: parseAvatar(player.avatar),
+    },
+    team: teamName || null,
+    drawnFrom,
+  };
 }
 
 /**
