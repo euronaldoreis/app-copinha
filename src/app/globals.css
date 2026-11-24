@@ -4153,6 +4153,59 @@ label:has(> input[type="date"]) {
       rotate: 4deg;
     }
   }
+  /* Contagem regressiva antes da roleta: cada número chega grande e some. */
+  .draw-reveal-countdown {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 1.5em;
+    height: 1.5em;
+    font-family: var(--font-pixel);
+    font-size: 9em;
+    line-height: 1;
+    color: var(--color-accent);
+    text-shadow:
+      0 0.06em 0 rgb(4 10 40 / 0.9),
+      0 0 0.35em rgb(255 210 63 / 0.75);
+    animation: count-hit 1s cubic-bezier(0.2, 0.9, 0.3, 1.2) both;
+  }
+  /* anel que se espalha a cada número */
+  .draw-reveal-countdown::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: 0.05em solid rgb(255 210 63 / 0.8);
+    border-radius: 50%;
+    animation: count-ring 1s ease-out both;
+  }
+  @keyframes count-hit {
+    0% {
+      scale: 2.4;
+      opacity: 0;
+    }
+    15% {
+      scale: 1;
+      opacity: 1;
+    }
+    85% {
+      scale: 0.95;
+      opacity: 1;
+    }
+    100% {
+      scale: 0.7;
+      opacity: 0;
+    }
+  }
+  @keyframes count-ring {
+    from {
+      scale: 0.5;
+      opacity: 1;
+    }
+    to {
+      scale: 1.5;
+      opacity: 0;
+    }
+  }
   /* o escudo sorteado chega grande e assenta */
   .draw-reveal-shield .is-final {
     animation: shield-land 650ms cubic-bezier(0.25, 1.6, 0.45, 1) both;
@@ -4189,7 +4242,9 @@ label:has(> input[type="date"]) {
     .draw-reveal-rays,
     .draw-reveal-says,
     .draw-reveal-shield .is-mystery,
-    .draw-reveal-shield .is-final {
+    .draw-reveal-shield .is-final,
+    .draw-reveal-countdown,
+    .draw-reveal-countdown::before {
       animation: none;
     }
   }

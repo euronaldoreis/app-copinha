@@ -119,7 +119,15 @@ export function TeamChoiceTv({
   // pausa curta entre uma revelação e a próxima, para ver o quadro atualizar
   const [resting, setResting] = useState(false);
   const drawing = !resting && reveals.length > shown ? reveals[shown] : null;
+  // Leva de sorteios em andamento: a contagem regressiva vem só antes do
+  // primeiro; os seguintes saem direto, um atrás do outro.
+  const [inRun, setInRun] = useState(false);
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (!resting && !drawing) setInRun(false);
+  }, [resting, drawing]);
   const revealed = () => {
+    setInRun(true);
     setShown((s) => s + 1);
     setResting(true);
     setTimeout(() => setResting(false), REST_MS);
@@ -436,6 +444,7 @@ export function TeamChoiceTv({
             number={shownFirst + 1}
             total={players.length}
             countLabel={drawing.kind === "resorteio" ? "Novo sorteio" : undefined}
+            countdown={!inRun}
             onDone={revealed}
           />
         )}

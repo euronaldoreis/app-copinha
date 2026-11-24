@@ -192,6 +192,7 @@ export function LateEntryForm({
               number={1}
               total={1}
               countLabel="Sorteio do time"
+              countdown
               onDone={() => setClosedAt(state?.at)}
             />
           </div>,
