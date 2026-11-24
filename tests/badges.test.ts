@@ -87,8 +87,22 @@ describe("comparação de nomes", () => {
   });
 
   it("não escolhe sozinho quando a dúvida é grande", () => {
-    const list = [team(1, "Nacional", "Uruguay"), team(2, "Nacional", "Paraguay")];
-    expect(bestMatch("Nacional", list)).toBeNull();
+    // Rangers fora do catálogo: sem país para desempatar
+    const list = [team(1, "Rangers", "Scotland"), team(2, "Rangers", "Chile")];
+    expect(bestMatch("Rangers", list)).toBeNull();
+  });
+
+  it("desempata pelo país da liga do catálogo", () => {
+    const list = [
+      team(1, "Nacional", "Uruguay"),
+      team(2, "Nacional", "Paraguay"),
+      team(3, "Everton", "England"),
+      team(4, "Everton", "Chile"),
+    ];
+    expect(bestMatch("Nacional", list)?.id).toBe(1);
+    expect(bestMatch("Nacional Asunción", list)?.id).toBe(2);
+    expect(bestMatch("Everton de Viña del Mar", list)?.id).toBe(4);
+    expect(bestMatch("Everton", list)?.id).toBe(3);
   });
 
   it("aceita os times canadenses na MLS", () => {
@@ -100,6 +114,8 @@ describe("comparação de nomes", () => {
     expect(currentSeason("Premier League 2026/27", nov)).toBe(2026);
     expect(currentSeason("Premier League 2026/27", new Date(2027, 2, 1))).toBe(2026);
     expect(currentSeason("Brasileirão Série A 2026", new Date(2027, 2, 1))).toBe(2027);
+    expect(currentSeason("Liga MX 2026/27", new Date(2027, 2, 1))).toBe(2026);
+    expect(currentSeason("Liga Chilena 2026", nov)).toBe(2026);
   });
 });
 

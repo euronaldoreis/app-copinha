@@ -28,6 +28,15 @@ export const LEAGUES: Record<string, { id: number; country: string; calendarYear
   "Eredivisie 2026/27": { id: 88, country: "Netherlands" },
   "Campeonato Argentino 2026": { id: 128, country: "Argentina", calendarYear: true },
   "MLS 2026": { id: 253, country: "USA", calendarYear: true },
+  "Liga Chilena 2026": { id: 265, country: "Chile", calendarYear: true },
+  "Liga Paraguaia 2026": { id: 250, country: "Paraguay", calendarYear: true },
+  "Liga Uruguaia 2026": { id: 268, country: "Uruguay", calendarYear: true },
+  "Liga Venezuelana 2026": { id: 299, country: "Venezuela", calendarYear: true },
+  "Liga Boliviana 2026": { id: 344, country: "Bolivia", calendarYear: true },
+  "Liga Colombiana 2026": { id: 239, country: "Colombia", calendarYear: true },
+  "Liga Peruana 2026": { id: 281, country: "Peru", calendarYear: true },
+  "Liga Equatoriana 2026": { id: 242, country: "Ecuador", calendarYear: true },
+  "Liga MX 2026/27": { id: 262, country: "Mexico" },
 };
 
 const CATALOG = catalog as Record<string, string[]>;
@@ -88,6 +97,47 @@ const ALIASES: Record<string, string[]> = {
   "seattle sounders": ["Seattle Sounders"],
   "los angeles fc": ["Los Angeles FC"],
   "inter miami": ["Inter Miami"],
+  "everton de vina del mar": ["Everton"],
+  "deportes la serena": ["La Serena", "Deportes La Serena"],
+  "deportes limache": ["Deportes Limache", "Limache"],
+  "club guarani": ["Guarani"],
+  "nacional asuncion": ["Nacional Asuncion", "Nacional"],
+  "deportivo recoleta": ["Recoleta"],
+  "sportivo san lorenzo": ["Sportivo San Lorenzo", "San Lorenzo"],
+  "juventud de las piedras": ["Juventud"],
+  "liverpool montevideo": ["Liverpool Montevideo", "Liverpool"],
+  "racing montevideo": ["Racing Montevideo", "Racing"],
+  "caracas fc": ["Caracas FC", "Caracas"],
+  "anzoategui fc": ["Anzoategui", "Deportivo Anzoategui"],
+  "estudiantes de merida": ["Estudiantes Merida"],
+  "rayo zuliano": ["Deportivo Rayo Zuliano", "Rayo Zuliano"],
+  "abb": ["ABB", "Academia del Balompie Boliviano"],
+  "gv san jose": ["GV San Jose", "San Jose"],
+  "atletico bucaramanga": ["Bucaramanga", "Atletico Bucaramanga"],
+  "deportes tolima": ["Deportes Tolima", "Tolima"],
+  "independiente santa fe": ["Independiente Santa Fe", "Santa Fe"],
+  "internacional de bogota": ["Internacional de Bogota", "La Equidad"],
+  "jaguares de cordoba": ["Jaguares", "Jaguares de Cordoba"],
+  "fortaleza ceif": ["Fortaleza FC", "Fortaleza CEIF"],
+  "alianza fc": ["Alianza FC", "Alianza Valledupar"],
+  "adt tarma": ["ADT", "Asociacion Deportiva Tarma"],
+  "fc cajamarca": ["Cajamarca", "FC Cajamarca"],
+  "utc cajamarca": ["UTC", "Universidad Tecnica de Cajamarca"],
+  "cusco fc": ["Cusco", "Cusco FC"],
+  "melgar": ["FBC Melgar", "Melgar"],
+  "barcelona de guayaquil": ["Barcelona SC", "Barcelona Guayaquil"],
+  "universidad catolica de quito": ["Universidad Catolica"],
+  "libertad fc": ["Libertad"],
+  "leones fc": ["Leones"],
+  "manta fc": ["Manta"],
+  "ldu quito": ["LDU de Quito", "LDU Quito"],
+  "club america": ["Club America", "America"],
+  guadalajara: ["Guadalajara Chivas", "Chivas"],
+  "pumas unam": ["U.N.A.M. - Pumas", "Pumas"],
+  "tigres uanl": ["Tigres UANL"],
+  "fc juarez": ["FC Juarez"],
+  "atletico san luis": ["Atletico San Luis"],
+  tijuana: ["Club Tijuana", "Tijuana"],
 };
 
 /** Sem acento e em minúsculas: "São Paulo" -> "sao paulo". */
@@ -284,7 +334,8 @@ export async function searchTeams(term: string, fetcher?: typeof fetch) {
 
 /**
  * Temporada atual da liga no formato da API: o ano em que ela começou (as
- * europeias começam em agosto; Brasil, Argentina e MLS seguem o ano).
+ * europeias e a Liga MX começam em julho/agosto; Brasil e o resto da América
+ * do Sul e a MLS seguem o ano).
  */
 export function currentSeason(league: string, now = new Date()) {
   const year = now.getFullYear();
