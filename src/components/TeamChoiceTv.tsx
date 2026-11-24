@@ -109,12 +109,16 @@ export function TeamChoiceTv({
   const playerById = new Map(players.map((p) => [p.id, p]));
   const nameOf = (id: number) => playerById.get(id)?.name ?? "";
 
+  // Sorteios (e trocas de time que não tem no jogo) na ordem em que saíram.
+  const reveals = useMemo(
+    () => [...state.draws, ...state.redraws].sort((a, b) => a.id - b.id),
+    [state.draws, state.redraws],
+  );
   // Sorteios já revelados. Os que já existiam ao abrir a TV não são repetidos.
-  const [shown, setShown] = useState(state.draws.length);
+  const [shown, setShown] = useState(reveals.length);
   // pausa curta entre uma revelação e a próxima, para ver o quadro atualizar
   const [resting, setResting] = useState(false);
-  const drawing =
-    !resting && state.draws.length > shown ? state.draws[shown] : null;
+  const drawing = !resting && reveals.length > shown ? reveals[shown] : null;
   const revealed = () => {
     setShown((s) => s + 1);
     setResting(true);
@@ -123,14 +127,16 @@ export function TeamChoiceTv({
   useEffect(() => {
     // sorteio refeito no celular: volta junto
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (state.draws.length < shown) setShown(state.draws.length);
-  }, [state.draws.length, shown]);
+    if (reveals.length < shown) setShown(reveals.length);
+  }, [reveals.length, shown]);
 
-  const shownDraws = state.draws.slice(0, shown);
+  const shownDraws = reveals.slice(0, shown);
+  // Quantos do primeiro sorteio já apareceram (as trocas vêm depois).
+  const shownFirst = shownDraws.filter((d) => d.kind === "sorteio").length;
   const drawPhase = state.phase === "sorteio" || state.phase === "concluida";
   const shownTeams = new Set(shownDraws.map((d) => foldTeam(d.team)));
   const inUrn = state.remaining.filter((t) => !shownTeams.has(foldTeam(t)));
-  const allShown = state.phase === "concluida" && shown >= state.draws.length;
+  const allShown = state.phase === "concluida" && shown >= reveals.length;
 
   // Sorteio dos grupos: espera os times serem revelados, roda no estádio e
   // termina no quadro dos grupos. Se a TV abrir com tudo pronto, vai direto
@@ -249,7 +255,7 @@ export function TeamChoiceTv({
         <ChoiceSteps
           state={state}
           tv
-          shownDraws={drawPhase ? shown : undefined}
+          shownDraws={drawPhase ? shownFirst : undefined}
           withGroups={withGroups}
           groupsDone={groupsShown}
         />
@@ -278,7 +284,9 @@ export function TeamChoiceTv({
                   ? "baniu"
                   : last.kind === "sorteio"
                     ? "vai jogar de"
-                    : "escolheu"}{" "}
+                    : last.kind === "resorteio"
+                      ? "agora vai jogar de"
+                      : "escolheu"}{" "}
                 <b>{last.team}</b>
               </span>
             </p>
@@ -309,7 +317,8 @@ export function TeamChoiceTv({
               style={{ "--cols": columns(players.length) } as CSSProperties}
             >
               {players.map((p) => {
-                const draw = shownDraws.find((d) => d.playerId === p.id);
+                // O time de agora: a última troca dele, se houver.
+                const draw = shownDraws.findLast((d) => d.playerId === p.id);
                 const fresh = last?.playerId === p.id && !allShown;
                 return (
                   <article
@@ -420,9 +429,13 @@ export function TeamChoiceTv({
             key={drawing.id}
             player={playerById.get(drawing.playerId)!}
             team={drawing.team}
-            candidates={inUrn}
-            number={shown + 1}
+            // Na troca, a roleta gira pelos times banidos.
+            candidates={
+              drawing.kind === "resorteio" ? state.bans.map((b) => b.team) : inUrn
+            }
+            number={shownFirst + 1}
             total={players.length}
+            countLabel={drawing.kind === "resorteio" ? "Novo sorteio" : undefined}
             onDone={revealed}
           />
         )}

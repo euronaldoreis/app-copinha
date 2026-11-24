@@ -3982,6 +3982,28 @@ label:has(> input[type="date"]) {
     font-size: 14px;
   }
 
+  /* Time que não tem no jogo: marcação no time sorteado e o bloco do novo sorteio. */
+  .choice-missing {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 6px;
+    padding: 3px 8px;
+    border-radius: 8px;
+    background: rgb(91 54 0 / 0.14);
+    font-size: 12px;
+    font-weight: 900;
+    cursor: pointer;
+  }
+  .choice-redraw {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px;
+    border: 2px dashed #4d7fe0;
+    border-radius: 12px;
+  }
+
   /* TV: times que ainda estão na urna. */
   .choice-tv-urn {
     display: flex;

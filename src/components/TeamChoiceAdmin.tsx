@@ -6,6 +6,7 @@ import {
   addTeamPickAction,
   banTeamAction,
   drawChoiceGroupsAction,
+  redrawFromBansAction,
   drawChoiceTeamsAction,
   removeTeamChoiceAction,
   resetTeamChoicesAction,
@@ -90,6 +91,9 @@ export function TeamChoiceAdmin({
   );
   const [team, setTeam] = useState("");
   const [showDraws, setShowDraws] = useState(false);
+  // Quem caiu com time que não tem no jogo (para sortear de novo entre os
+  // últimos banidos).
+  const [missing, setMissing] = useState<number[]>([]);
   const [banTarget, setBanTarget] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -180,8 +184,21 @@ export function TeamChoiceAdmin({
 
   // Os times sorteados só aparecem aqui quando o admin pede, para não estragar
   // a revelação na TV.
-  const drawOf = (id: number) =>
-    showDraws ? state.draws.find((d) => d.playerId === id) : undefined;
+  const drawOf = (id: number) => (showDraws ? state.teamOf.get(id) : undefined);
+  const toggleMissing = (id: number) =>
+    setMissing((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]));
+  const canRedraw = state.phase === "concluida" && showDraws;
+  const nextBans = state.redrawPool.slice(0, Math.max(missing.length, 1));
+  const redraw = async () => {
+    const ok = await ask({
+      title: "Sortear de novo",
+      message: `Sortear para ${missing.map(nameOf).join(", ")} entre os últimos banidos (${state.redrawPool
+        .slice(0, missing.length)
+        .join(", ")})? Só o time muda; jogos e grupos continuam. A TV mostra o novo sorteio.`,
+      confirmLabel: "Sortear",
+    });
+    if (ok) act(() => redrawFromBansAction(editionId, missing), () => setMissing([]));
+  };
   const pickedNames = state.picks.map((p) => p.team);
   const open = state.picks.filter((p) => !state.bannedBy.has(foldTeam(p.team)));
 
@@ -369,6 +386,30 @@ export function TeamChoiceAdmin({
               >
                 {showDraws ? "Esconder times sorteados" : "Ver times sorteados"}
               </button>
+              {canRedraw && (
+                <div className="choice-redraw">
+                  <p className="label">Time que não tem no jogo</p>
+                  <p className="text-body text-muted">
+                    Marque abaixo quem caiu com time que não existe no jogo. Eles
+                    ganham um novo sorteio entre os últimos times banidos
+                    {state.redrawPool.length
+                      ? ` (próximos: ${nextBans.join(", ")})`
+                      : ", mas não sobrou nenhum"}
+                    .
+                  </p>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={redraw}
+                    disabled={pending || missing.length === 0}
+                  >
+                    <ShuffleIcon width={20} height={20} />
+                    {missing.length
+                      ? `Sortear de novo para ${missing.length} ${missing.length === 1 ? "jogador" : "jogadores"}`
+                      : "Marque os jogadores"}
+                  </button>
+                </div>
+              )}
               <Link href={`/edicoes/${editionId}`} className="btn btn-primary">
                 Voltar para a edição
               </Link>
@@ -435,10 +476,21 @@ export function TeamChoiceAdmin({
               </div>
               {drawOf(p.id) && (
                 <p className="choice-drawn">
-                  <TeamShield team={drawOf(p.id)!.team} size={26} />
-                  <span className="min-w-0 truncate">
-                    Vai jogar de <b>{drawOf(p.id)!.team}</b>
+                  <TeamShield team={drawOf(p.id)!} size={26} />
+                  <span className="min-w-0 flex-1 truncate">
+                    Vai jogar de <b>{drawOf(p.id)}</b>
                   </span>
+                  {canRedraw && (
+                    <label className="choice-missing">
+                      <input
+                        type="checkbox"
+                        checked={missing.includes(p.id)}
+                        onChange={() => toggleMissing(p.id)}
+                        className="size-4 accent-accent"
+                      />
+                      Não tem no jogo
+                    </label>
+                  )}
                 </p>
               )}
             </div>

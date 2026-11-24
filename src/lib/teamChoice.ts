@@ -5,8 +5,12 @@
 export const PICKS_PER_PLAYER = 2;
 export const BANS_PER_PLAYER = 1;
 
-/** escolha = time citado; veto = time banido; sorteio = time sorteado para o jogador. */
-export type ChoiceKind = "escolha" | "veto" | "sorteio";
+/**
+ * escolha = time citado; veto = time banido; sorteio = time sorteado para o
+ * jogador; resorteio = time trocado depois do sorteio (o sorteado não tem no
+ * jogo), sorteado entre os últimos banidos.
+ */
+export type ChoiceKind = "escolha" | "veto" | "sorteio" | "resorteio";
 export type ChoicePhase = "escolha" | "banimento" | "sorteio" | "concluida";
 
 export interface ChoiceRow {
@@ -55,6 +59,15 @@ export interface ChoiceState {
   bans: ChoiceRow[];
   /** Times já sorteados, na ordem do sorteio. */
   draws: ChoiceRow[];
+  /** Trocas depois do sorteio (time que não tem no jogo), na ordem. */
+  redraws: ChoiceRow[];
+  /** Time de cada jogador agora: o do último sorteio ou troca dele. */
+  teamOf: Map<number, string>;
+  /**
+   * Banidos que ainda podem ir para uma troca, do último banido para o
+   * primeiro (sem os que já foram usados numa troca).
+   */
+  redrawPool: string[];
   picksTotal: number;
   bansTotal: number;
   /** Times citados e não banidos, na ordem em que foram citados. */
@@ -78,6 +91,11 @@ export function choiceState(playerIds: number[], rows: ChoiceRow[]): ChoiceState
   const picks = mine.filter((r) => r.kind === "escolha");
   const bans = mine.filter((r) => r.kind === "veto");
   const draws = mine.filter((r) => r.kind === "sorteio");
+  const redraws = mine.filter((r) => r.kind === "resorteio");
+  const teamOf = new Map<number, string>();
+  for (const r of [...draws, ...redraws].sort((a, b) => a.id - b.id))
+    teamOf.set(r.playerId, r.team);
+  const usedInRedraw = new Set(redraws.map((r) => foldTeam(r.team)));
   const picksTotal = playerIds.length * PICKS_PER_PLAYER;
   const bansTotal = playerIds.length * BANS_PER_PLAYER;
   const bannedBy = new Map(bans.map((b) => [foldTeam(b.team), b.playerId]));
@@ -107,6 +125,12 @@ export function choiceState(playerIds: number[], rows: ChoiceRow[]): ChoiceState
     picks,
     bans,
     draws,
+    redraws,
+    teamOf,
+    redrawPool: [...bans]
+      .reverse()
+      .map((b) => b.team)
+      .filter((t) => !usedInRedraw.has(foldTeam(t))),
     picksTotal,
     bansTotal,
     remaining,

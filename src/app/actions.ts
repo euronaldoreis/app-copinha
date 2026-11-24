@@ -295,6 +295,11 @@ export async function drawChoiceGroupsAction(editionId: number) {
   return run(() => svc.startEdition(getDb(), editionId));
 }
 
+/** Sorteia de novo, entre os últimos banidos, para quem caiu com time que não tem no jogo. */
+export async function redrawFromBansAction(editionId: number, playerIds: number[]) {
+  return run(() => svc.redrawFromBans(getDb(), editionId, playerIds));
+}
+
 export async function resetTeamDrawAction(editionId: number) {
   return run(() => svc.resetTeamDraw(getDb(), editionId));
 }

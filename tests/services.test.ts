@@ -45,6 +45,7 @@ import {
   resetTeamChoices,
   drawRemainingTeams,
   resetTeamDraw,
+  redrawFromBans,
   choiceTurnOrder,
   drawChoiceTeams,
 } from "@/lib/services";
@@ -1434,6 +1435,84 @@ describe("repescagem", () => {
 });
 
 describe("escolha dos times (citar e banir)", () => {
+  it("time que não tem no jogo: sorteia de novo entre os últimos banidos", async () => {
+    const edition = await createEdition(db, {
+      ...baseEdition,
+      name: "Copinha do resorteio",
+      number: 72,
+      config: { ...baseEdition.config, format: "liga", groupsCount: 0, qualifiers: 0 },
+      playerIds: playerIds.slice(0, 3),
+    });
+    const id = edition.id;
+    const [a, b, c] = choiceTurnOrder(await loadAll(db), id).order;
+    const state = async () => choiceState([a, b, c], await listTeamChoices(db, id));
+    const teamOf = async (pid: number) =>
+      (await view(id)).entries.find((e) => e.playerId === pid)?.team?.name;
+
+    for (const [pid, teams] of [[a, ["Íbis", "Tabajara"]], [b, ["Bangu", "Olaria"]], [c, ["Andorra", "Gibraltar"]]] as const)
+      for (const t of teams) await addTeamPick(db, id, pid, t);
+    await banTeam(db, id, a, "Tabajara");
+    await banTeam(db, id, b, "Olaria");
+    await banTeam(db, id, c, "Gibraltar");
+    // Antes do sorteio não dá.
+    await expect(redrawFromBans(db, id, [a])).rejects.toThrow(/Termine o sorteio/);
+    await drawRemainingTeams(db, id);
+    expect((await state()).redrawPool).toEqual(["Gibraltar", "Olaria", "Tabajara"]);
+
+    // Um jogador: leva o último banido.
+    const first = await redrawFromBans(db, id, [b]);
+    expect(first).toEqual([{ playerId: b, team: "Gibraltar" }]);
+    expect(await teamOf(b)).toBe("Gibraltar");
+    let st = await state();
+    expect(st.teamOf.get(b)).toBe("Gibraltar");
+    expect(st.phase).toBe("concluida");
+    expect(st.redrawPool).toEqual(["Olaria", "Tabajara"]);
+
+    // Dois jogadores: os dois próximos banidos, um para cada.
+    const second = await redrawFromBans(db, id, [a, c]);
+    expect(new Set(second.map((r) => r.team))).toEqual(new Set(["Olaria", "Tabajara"]));
+    expect(new Set([await teamOf(a), await teamOf(c)])).toEqual(new Set(["Olaria", "Tabajara"]));
+    st = await state();
+    expect(st.redraws).toHaveLength(3);
+    expect(st.redrawPool).toEqual([]);
+    // Acabaram os banidos.
+    await expect(redrawFromBans(db, id, [a])).rejects.toThrow(/Não sobrou time banido/);
+    await expect(redrawFromBans(db, id, [])).rejects.toThrow(/Marque/);
+
+    // Refazer o sorteio também desfaz as trocas.
+    await resetTeamDraw(db, id);
+    st = await state();
+    expect(st.redraws).toHaveLength(0);
+    expect(st.phase).toBe("sorteio");
+  });
+
+  it("a troca vale com a tabela já gerada, sem mexer nos jogos", async () => {
+    const edition = await createEdition(db, {
+      ...baseEdition,
+      name: "Copinha do resorteio com grupos",
+      number: 73,
+      config: { ...baseEdition.config, format: "liga", groupsCount: 0, qualifiers: 0 },
+      playerIds: playerIds.slice(0, 3),
+    });
+    const id = edition.id;
+    const [a, b, c] = choiceTurnOrder(await loadAll(db), id).order;
+    for (const [pid, teams] of [[a, ["Íbis", "Tabajara"]], [b, ["Bangu", "Olaria"]], [c, ["Andorra", "Gibraltar"]]] as const)
+      for (const t of teams) await addTeamPick(db, id, pid, t);
+    await banTeam(db, id, a, "Tabajara");
+    await banTeam(db, id, b, "Olaria");
+    await banTeam(db, id, c, "Gibraltar");
+    await drawRemainingTeams(db, id);
+    await startEdition(db, id);
+    const before = await view(id);
+    expect(before.edition.status).toBe("andamento");
+    const matchesBefore = before.matches.map((m) => [m.id, m.homeEntryId, m.awayEntryId]);
+
+    await redrawFromBans(db, id, [a]);
+    const after = await view(id);
+    expect(after.entries.find((e) => e.playerId === a)?.team?.name).toBe("Gibraltar");
+    expect(after.matches.map((m) => [m.id, m.homeEntryId, m.awayEntryId])).toEqual(matchesBefore);
+  });
+
   it("o admin pode citar e banir por qualquer jogador, fora da vez", async () => {
     const edition = await createEdition(db, {
       ...baseEdition,
