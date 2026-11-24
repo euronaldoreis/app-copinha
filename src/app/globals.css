@@ -4201,6 +4201,28 @@ label:has(> input[type="date"]) {
   .choice-order li.is-done {
     opacity: 0.5;
   }
+  /* Na tela do admin cada linha é um botão: toca para escolher por ele. */
+  .choice-order li:has(> .choice-order-btn) {
+    padding: 0;
+  }
+  .choice-order-btn {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    gap: 10px;
+    min-height: 34px;
+    padding: 4px 10px;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+  .choice-order-btn:disabled {
+    cursor: default;
+  }
+  .choice-order li:not(.is-turn):not(.is-done):hover {
+    border-color: #ffe9a3;
+  }
   .choice-order-pos {
     width: 2em;
     font-family: var(--font-pixel);

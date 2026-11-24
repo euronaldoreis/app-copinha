@@ -99,12 +99,21 @@ export function TeamChoiceAdmin({
   const banOf = (id: number) => state.bans.find((b) => b.playerId === id);
   const nameOf = (id: number) => players.find((p) => p.id === id)?.name ?? "";
 
-  // A vez é fixa: a ordem da colocação na edição anterior (players já vem nela).
+  // A ordem sugerida é a da colocação na edição anterior (players já vem
+  // nela), mas o admin pode tocar em qualquer jogador que ainda falta e
+  // escolher por ele, fora da vez.
   const turn = state.turn;
   const doneWith = (id: number) =>
     state.phase === "escolha"
       ? picksOf(id).length >= PICKS_PER_PLAYER
       : banOf(id) != null;
+  const [picked, setPicked] = useState<number | null>(null);
+  // Quem já terminou (ou mudou de fase) volta para a ordem da vez.
+  const acting =
+    picked != null && players.some((p) => p.id === picked) && !doneWith(picked)
+      ? picked
+      : turn;
+  const outOfOrder = acting != null && acting !== turn;
 
   const act = (fn: () => Promise<{ error?: string } | null>, after?: () => void) =>
     startTransition(async () => {
@@ -116,17 +125,17 @@ export function TeamChoiceAdmin({
 
   const cite = (e: React.FormEvent) => {
     e.preventDefault();
-    if (turn == null || !team.trim()) return;
+    if (acting == null || !team.trim()) return;
     act(
-      () => addTeamPickAction(editionId, turn, team),
+      () => addTeamPickAction(editionId, acting, team),
       () => setTeam(""),
     );
   };
 
   const ban = () => {
-    if (turn == null || !banTarget) return;
+    if (acting == null || !banTarget) return;
     act(
-      () => banTeamAction(editionId, turn, banTarget),
+      () => banTeamAction(editionId, acting, banTarget),
       () => setBanTarget(null),
     );
   };
@@ -209,15 +218,24 @@ export function TeamChoiceAdmin({
                   state.phase === "escolha"
                     ? `${picksOf(p.id).length}/${PICKS_PER_PLAYER}`
                     : `${banOf(p.id) ? 1 : 0}/${BANS_PER_PLAYER}`;
+                const done = doneWith(p.id);
                 return (
                   <li
                     key={p.id}
-                    className={turn === p.id ? "is-turn" : doneWith(p.id) ? "is-done" : ""}
-                    aria-current={turn === p.id ? "step" : undefined}
+                    className={acting === p.id ? "is-turn" : done ? "is-done" : ""}
+                    aria-current={acting === p.id ? "step" : undefined}
                   >
-                    <span className="num choice-order-pos">{i + 1}º</span>
-                    <span className="min-w-0 truncate">{p.name}</span>
-                    <span className="num choice-order-count">{count}</span>
+                    <button
+                      type="button"
+                      className="choice-order-btn"
+                      disabled={done || pending}
+                      onClick={() => setPicked(p.id === turn ? null : p.id)}
+                      title={done ? undefined : `Escolher por ${p.name}`}
+                    >
+                      <span className="num choice-order-pos">{i + 1}º</span>
+                      <span className="min-w-0 truncate">{p.name}</span>
+                      <span className="num choice-order-count">{count}</span>
+                    </button>
                   </li>
                 );
               })}
@@ -225,14 +243,16 @@ export function TeamChoiceAdmin({
             <p className="mt-2 text-[13px] font-bold text-muted">
               {previousName
                 ? `Pela colocação na ${previousName}. Quem não jogou ou é estreante vai por último.`
-                : "Sem edição anterior encerrada: vale a ordem de inscrição."}
+                : "Sem edição anterior encerrada: vale a ordem de inscrição."}{" "}
+              Toque em outro jogador para escolher por ele fora da vez.
             </p>
           </div>
 
-          {state.phase === "escolha" && turn != null && (
+          {state.phase === "escolha" && acting != null && (
             <form onSubmit={cite} className="flex flex-col gap-2">
               <label className="label" htmlFor="choice-team">
-                Vez de {nameOf(turn)} · {picksOf(turn).length + 1}º time
+                {outOfOrder ? "Fora da vez: " : "Vez de "}
+                {nameOf(acting)} · {picksOf(acting).length + 1}º time
               </label>
               <div className="flex gap-2">
                 <TeamAutocomplete
@@ -241,7 +261,7 @@ export function TeamChoiceAdmin({
                   onChange={setTeam}
                   options={knownTeams}
                   taken={pickedNames}
-                  ariaLabel={`Time citado por ${nameOf(turn)}`}
+                  ariaLabel={`Time citado por ${nameOf(acting)}`}
                   className="min-w-0 flex-1"
                 />
                 <button type="submit" className="btn btn-primary" disabled={pending || !team.trim()}>
@@ -251,9 +271,13 @@ export function TeamChoiceAdmin({
             </form>
           )}
 
-          {state.phase === "banimento" && turn != null && (
+          {state.phase === "banimento" && acting != null && (
             <div className="flex flex-col gap-3">
-              <p className="label">Vez de {nameOf(turn)} banir</p>
+              <p className="label">
+                {outOfOrder
+                  ? `Fora da vez: ${nameOf(acting)} bane`
+                  : `Vez de ${nameOf(acting)} banir`}
+              </p>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                 {open.map((p) => (
                   <button

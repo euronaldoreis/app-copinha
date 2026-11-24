@@ -1434,6 +1434,42 @@ describe("repescagem", () => {
 });
 
 describe("escolha dos times (citar e banir)", () => {
+  it("o admin pode citar e banir por qualquer jogador, fora da vez", async () => {
+    const edition = await createEdition(db, {
+      ...baseEdition,
+      name: "Copinha da escolha livre",
+      number: 71,
+      config: { ...baseEdition.config, format: "liga", groupsCount: 0, qualifiers: 0 },
+      playerIds: playerIds.slice(0, 3),
+    });
+    const id = edition.id;
+    const [a, b, c] = choiceTurnOrder(await loadAll(db), id).order;
+    const state = async () => choiceState([a, b, c], await listTeamChoices(db, id));
+    const free = { anyOrder: true };
+
+    // O último da ordem cita antes de todos.
+    await addTeamPick(db, id, c, "Andorra", free);
+    await addTeamPick(db, id, c, "Gibraltar", free);
+    // A vez sugerida continua a do primeiro.
+    expect((await state()).turn).toBe(a);
+    // As regras continuam: sem repetir e no máximo 2 por jogador.
+    await expect(addTeamPick(db, id, b, "andorra", free)).rejects.toThrow(/já foi citado/);
+    await expect(addTeamPick(db, id, c, "Malta", free)).rejects.toThrow(/já citou/);
+    await addTeamPick(db, id, b, "Bangu", free);
+    await addTeamPick(db, id, a, "Íbis", free);
+    await addTeamPick(db, id, b, "Olaria", free);
+    await addTeamPick(db, id, a, "Tabajara", free);
+    expect((await state()).phase).toBe("banimento");
+
+    // Banimento também fora da ordem.
+    await banTeam(db, id, b, "Tabajara", free);
+    await expect(banTeam(db, id, b, "Olaria", free)).rejects.toThrow(/já baniu/);
+    await banTeam(db, id, c, "Olaria", free);
+    await banTeam(db, id, a, "Gibraltar", free);
+    expect((await state()).phase).toBe("sorteio");
+    expect((await state()).remaining).toEqual(["Andorra", "Bangu", "Íbis"]);
+  });
+
   it("cada um cita 2, cada um bane 1 e sobra um time por jogador", async () => {
     const edition = await createEdition(db, {
       ...baseEdition,

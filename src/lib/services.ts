@@ -675,12 +675,19 @@ async function syncChoicePool(db: Db, editionId: number) {
     .where(eq(editions.id, editionId));
 }
 
+/** Opções da escolha dos times. */
+export interface ChoiceOptions {
+  /** O admin escolhe por qualquer jogador, fora da ordem da vez. */
+  anyOrder?: boolean;
+}
+
 /** Um jogador cita um time (cada um cita PICKS_PER_PLAYER, sem repetir). */
 export async function addTeamPick(
   db: Db,
   editionId: number,
   playerId: number,
   rawTeam: unknown,
+  options: ChoiceOptions = {},
 ) {
   const { playerIds, state } = await choiceContext(db, editionId);
   if (playerIds.length < 2)
@@ -689,7 +696,7 @@ export async function addTeamPick(
     throw new UserError("Esse jogador não está nesta edição.");
   if (state.phase !== "escolha")
     throw new UserError("Todos já citaram seus times. Agora é o banimento.");
-  await requireTurn(db, state, playerId);
+  if (!options.anyOrder) await requireTurn(db, state, playerId);
   let team = clean(rawTeam, 60);
   if (!team) throw new UserError("Informe o time.");
   // Usa a grafia do time já cadastrado, se houver.
@@ -720,6 +727,7 @@ export async function banTeam(
   editionId: number,
   playerId: number,
   rawTeam: unknown,
+  options: ChoiceOptions = {},
 ) {
   const { playerIds, state } = await choiceContext(db, editionId);
   if (!playerIds.includes(playerId))
@@ -728,7 +736,7 @@ export async function banTeam(
     throw new UserError("O banimento começa quando todos citarem seus times.");
   if (state.phase !== "banimento")
     throw new UserError("Todos já baniram. Os times estão definidos.");
-  await requireTurn(db, state, playerId);
+  if (!options.anyOrder) await requireTurn(db, state, playerId);
   if (state.bans.filter((b) => b.playerId === playerId).length >= BANS_PER_PLAYER)
     throw new UserError(`${await playerName(db, playerId)} já baniu um time.`);
   const pick = state.picks.find(

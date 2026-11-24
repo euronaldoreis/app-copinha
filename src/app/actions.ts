@@ -262,7 +262,10 @@ export async function addTeamPickAction(
   playerId: number,
   team: string,
 ) {
-  return run(() => svc.addTeamPick(getDb(), editionId, playerId, team));
+  // Só o admin chega aqui: ele pode citar por qualquer jogador, fora da vez.
+  return run(() =>
+    svc.addTeamPick(getDb(), editionId, playerId, team, { anyOrder: true }),
+  );
 }
 
 export async function banTeamAction(
@@ -270,7 +273,9 @@ export async function banTeamAction(
   playerId: number,
   team: string,
 ) {
-  return run(() => svc.banTeam(getDb(), editionId, playerId, team));
+  return run(() =>
+    svc.banTeam(getDb(), editionId, playerId, team, { anyOrder: true }),
+  );
 }
 
 export async function removeTeamChoiceAction(choiceId: number) {
