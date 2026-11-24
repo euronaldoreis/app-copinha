@@ -282,13 +282,11 @@ export function TeamChoiceTv({
                 <b>{last.team}</b>
               </span>
             </p>
-          ) : (
+          ) : drawPhase ? (
             <p className="choice-tv-event is-idle">
-              {drawPhase
-                ? "Os times vão ser sorteados um por um."
-                : `Pela ordem da última copinha, cada jogador cita ${PICKS_PER_PLAYER} times. Depois, cada um bane 1.`}
+              Os times vão ser sorteados um por um.
             </p>
-          )}
+          ) : null}
         </div>
 
         {groupsShown ? (
