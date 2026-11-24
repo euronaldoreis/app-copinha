@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import leagues from "../scripts/times.json";
+import { LEAGUES, fold } from "@/lib/apiFootball";
 
 const key = (name: string) => name.trim().toLocaleLowerCase("pt-BR");
 
@@ -21,12 +22,30 @@ describe("catálogo de times do seed", () => {
       "Eredivisie 2026/27": 18,
       "Campeonato Argentino 2026": 30,
       "MLS 2026": 30,
+      "Liga Chilena 2026": 16,
+      "Liga Paraguaia 2026": 12,
+      "Liga Uruguaia 2026": 16,
+      "Liga Venezuelana 2026": 14,
+      "Liga Boliviana 2026": 16,
+      "Liga Colombiana 2026": 20,
+      "Liga Peruana 2026": 18,
+      "Liga Equatoriana 2026": 16,
+      "Liga MX 2026/27": 18,
     });
   });
 
   it("não repete nomes, nem entre ligas", () => {
     const all = entries.flatMap(([, t]) => t.map(key));
     expect(new Set(all).size).toBe(all.length);
+  });
+
+  it("não repete nomes nem ignorando acentos (a busca de escudos compara assim)", () => {
+    const all = entries.flatMap(([, t]) => t.map(fold));
+    expect(new Set(all).size).toBe(all.length);
+  });
+
+  it("toda liga do catálogo tem como achar os escudos na API", () => {
+    for (const [league] of entries) expect(LEAGUES[league], league).toBeDefined();
   });
 
   it("usa nomes limpos que cabem no campo do time", () => {

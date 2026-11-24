@@ -1,6 +1,7 @@
 // Cadastra os times das ligas listadas em scripts/times.json (Brasileirão A, B
 // e C, Inglaterra, Itália, Espanha, Portugal, França, Alemanha, Holanda,
-// Argentina e MLS). Só acrescenta: times que já existem (mesmo nome, sem
+// Argentina, MLS, Chile, Paraguai, Uruguai, Venezuela, Bolívia, Colômbia, Peru,
+// Equador e México). Só acrescenta: times que já existem (mesmo nome, sem
 // diferenciar maiúsculas) ficam como estão, e dá para rodar quantas vezes quiser.
 //
 // Usa o mesmo banco do app: o arquivo local em ./data ou, se definido, o banco
