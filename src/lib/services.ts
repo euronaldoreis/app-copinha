@@ -675,12 +675,19 @@ async function syncChoicePool(db: Db, editionId: number) {
     .where(eq(editions.id, editionId));
 }
 
+/** Opções da escolha dos times. */
+export interface ChoiceOptions {
+  /** O admin escolhe por qualquer jogador, fora da ordem da vez. */
+  anyOrder?: boolean;
+}
+
 /** Um jogador cita um time (cada um cita PICKS_PER_PLAYER, sem repetir). */
 export async function addTeamPick(
   db: Db,
   editionId: number,
   playerId: number,
   rawTeam: unknown,
+  options: ChoiceOptions = {},
 ) {
   const { playerIds, state } = await choiceContext(db, editionId);
   if (playerIds.length < 2)
@@ -689,7 +696,7 @@ export async function addTeamPick(
     throw new UserError("Esse jogador não está nesta edição.");
   if (state.phase !== "escolha")
     throw new UserError("Todos já citaram seus times. Agora é o banimento.");
-  await requireTurn(db, state, playerId);
+  if (!options.anyOrder) await requireTurn(db, state, playerId);
   let team = clean(rawTeam, 60);
   if (!team) throw new UserError("Informe o time.");
   // Usa a grafia do time já cadastrado, se houver.
@@ -720,6 +727,7 @@ export async function banTeam(
   editionId: number,
   playerId: number,
   rawTeam: unknown,
+  options: ChoiceOptions = {},
 ) {
   const { playerIds, state } = await choiceContext(db, editionId);
   if (!playerIds.includes(playerId))
@@ -728,7 +736,7 @@ export async function banTeam(
     throw new UserError("O banimento começa quando todos citarem seus times.");
   if (state.phase !== "banimento")
     throw new UserError("Todos já baniram. Os times estão definidos.");
-  await requireTurn(db, state, playerId);
+  if (!options.anyOrder) await requireTurn(db, state, playerId);
   if (state.bans.filter((b) => b.playerId === playerId).length >= BANS_PER_PLAYER)
     throw new UserError(`${await playerName(db, playerId)} já baniu um time.`);
   const pick = state.picks.find(
@@ -849,9 +857,70 @@ export async function resetTeamDraw(db: Db, editionId: number) {
       .where(
         and(
           eq(teamChoices.editionId, editionId),
-          eq(teamChoices.kind, "sorteio"),
+          inArray(teamChoices.kind, ["sorteio", "resorteio"]),
         ),
       );
+  });
+}
+
+/**
+ * Time sorteado que não tem no jogo: sorteia de novo, só para os jogadores
+ * marcados, entre os últimos times banidos (tantos quantos forem os
+ * jogadores, do último banido para trás, sem repetir banido já usado). Vale
+ * também com a tabela gerada: muda só o time, sem mexer em jogos e grupos.
+ */
+export async function redrawFromBans(
+  db: Db,
+  editionId: number,
+  rawPlayerIds: number[],
+) {
+  const edition = await getEdition(db, editionId);
+  if (!edition.useTeams)
+    throw new UserError("Esta edição é só com os jogadores, sem times.");
+  if (edition.status === "encerrada")
+    throw new UserError("A edição já terminou.");
+  const { order: playerIds } = choiceTurnOrder(await loadAll(db), editionId);
+  const state = choiceState(playerIds, await listTeamChoices(db, editionId));
+  if (state.phase !== "concluida")
+    throw new UserError("Termine o sorteio dos times antes.");
+  const chosen = [...new Set(rawPlayerIds)].filter((id) => playerIds.includes(id));
+  if (chosen.length === 0)
+    throw new UserError("Marque quem caiu com time que não tem no jogo.");
+
+  // Banido que já está com alguém (trocado à mão) não entra.
+  const rows = await db.select().from(entries).where(eq(entries.editionId, editionId));
+  const names = new Map((await db.select().from(teams)).map((t) => [t.id, t.name]));
+  const inUse = new Set(
+    rows
+      .filter((e) => e.teamId != null && !chosen.includes(e.playerId))
+      .map((e) => foldTeam(names.get(e.teamId!) ?? "")),
+  );
+  const pool = state.redrawPool
+    .filter((t) => !inUse.has(foldTeam(t)))
+    .slice(0, chosen.length);
+  if (pool.length < chosen.length)
+    throw new UserError(
+      pool.length === 0
+        ? "Não sobrou time banido para sortear. Troque o time à mão em Configurações."
+        : `Só ${pool.length === 1 ? "sobrou 1 time banido" : `sobraram ${pool.length} times banidos`} para sortear. Marque menos jogadores.`,
+    );
+
+  const order = shuffle(chosen);
+  const teamsDrawn = shuffle(pool);
+  return db.transaction(async (tx) => {
+    const out: { playerId: number; team: string }[] = [];
+    for (const [i, playerId] of order.entries()) {
+      const team = await ensureTeam(tx, teamsDrawn[i]);
+      await tx
+        .update(entries)
+        .set({ teamId: team.id })
+        .where(and(eq(entries.editionId, editionId), eq(entries.playerId, playerId)));
+      await tx
+        .insert(teamChoices)
+        .values({ editionId, playerId, kind: "resorteio", team: team.name });
+      out.push({ playerId, team: team.name });
+    }
+    return out;
   });
 }
 

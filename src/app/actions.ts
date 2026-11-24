@@ -262,7 +262,10 @@ export async function addTeamPickAction(
   playerId: number,
   team: string,
 ) {
-  return run(() => svc.addTeamPick(getDb(), editionId, playerId, team));
+  // Só o admin chega aqui: ele pode citar por qualquer jogador, fora da vez.
+  return run(() =>
+    svc.addTeamPick(getDb(), editionId, playerId, team, { anyOrder: true }),
+  );
 }
 
 export async function banTeamAction(
@@ -270,7 +273,9 @@ export async function banTeamAction(
   playerId: number,
   team: string,
 ) {
-  return run(() => svc.banTeam(getDb(), editionId, playerId, team));
+  return run(() =>
+    svc.banTeam(getDb(), editionId, playerId, team, { anyOrder: true }),
+  );
 }
 
 export async function removeTeamChoiceAction(choiceId: number) {
@@ -288,6 +293,11 @@ export async function drawChoiceTeamsAction(editionId: number) {
 /** Sorteia os grupos depois do sorteio dos times (quando não saiu junto). */
 export async function drawChoiceGroupsAction(editionId: number) {
   return run(() => svc.startEdition(getDb(), editionId));
+}
+
+/** Sorteia de novo, entre os últimos banidos, para quem caiu com time que não tem no jogo. */
+export async function redrawFromBansAction(editionId: number, playerIds: number[]) {
+  return run(() => svc.redrawFromBans(getDb(), editionId, playerIds));
 }
 
 export async function resetTeamDrawAction(editionId: number) {
