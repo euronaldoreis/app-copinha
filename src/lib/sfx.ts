@@ -172,6 +172,13 @@ export const sfx = {
       noise(v, t, 0.05, { gain: 0.03 + 0.07 * (t / dur), cutoff: 1800 });
     }
   },
+  /** Bipe da contagem regressiva. */
+  tick() {
+    const v = start();
+    if (!v) return;
+    tone(v, 0, 0.14, 880, { gain: 0.08 });
+    tone(v, 0, 0.14, 440, { type: "triangle", gain: 0.07 });
+  },
   /** O campeão aparece: prato e uma subida. */
   champion() {
     const v = start();
