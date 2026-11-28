@@ -164,6 +164,13 @@ export const ExpandIcon = icon(
   <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />,
 );
 
+export const TvIcon = icon(
+  <>
+    <rect x="3" y="5" width="18" height="12" rx="2" />
+    <path d="M8 21h8M12 17v4" />
+  </>,
+);
+
 export const TrashIcon = icon(
   <>
     <path d="M4 7h16M9.5 7V4.5h5V7" />

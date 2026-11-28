@@ -19,6 +19,7 @@ import {
   SettingsIcon,
   SwordsIcon,
   TrophyIcon,
+  TvIcon,
 } from "@/components/icons";
 import { Empty, PageTitle, Section } from "@/components/ui";
 import { LeaderRow, PlayerMedia } from "@/components/Leaderboard";
@@ -49,6 +50,7 @@ import {
 } from "@/lib/services";
 import {
   knockoutRounds,
+  playOrder,
   standingsByGroup,
   validateConfig,
   type Format,
@@ -244,12 +246,9 @@ function Tournament({
       );
 
   // Numeração dos jogos na ordem em que acontecem: rodadas e depois o mata-mata.
-  const numbers = new Map<number, number>();
-  for (const m of [
-    ...rounds.flatMap(roundMatches),
-    ...stages.flatMap((s) => [...s.matches].sort((a, b) => a.slot - b.slot)),
-  ])
-    numbers.set(m.id, numbers.size + 1);
+  const numbers = new Map(
+    playOrder(edition.format, matches).map((p) => [p.match.id, p.number]),
+  );
 
   const groupLabel = (m: Match) =>
     edition.format === "liga" || !m.groupLabel || tables.length <= 1
@@ -541,15 +540,29 @@ export default async function EditionPage(props: PageProps<"/edicoes/[id]">) {
         title={edition.name}
         subtitle={subtitle}
         action={
-          admin && (
-            <Link
-              href={`/edicoes/${edition.id}/configuracoes`}
-              className="btn btn-icon"
-              title="Configurações"
-              aria-label="Configurações da edição"
-            >
-              <SettingsIcon width={22} height={22} />
-            </Link>
+          (admin || (!manual && !setup)) && (
+            <div className="flex gap-2">
+              {!manual && !setup && (
+                <Link
+                  href={`/edicoes/${edition.id}/tv`}
+                  className="btn btn-icon"
+                  title="Abrir na TV"
+                  aria-label="Abrir a edição na TV"
+                >
+                  <TvIcon width={22} height={22} />
+                </Link>
+              )}
+              {admin && (
+                <Link
+                  href={`/edicoes/${edition.id}/configuracoes`}
+                  className="btn btn-icon"
+                  title="Configurações"
+                  aria-label="Configurações da edição"
+                >
+                  <SettingsIcon width={22} height={22} />
+                </Link>
+              )}
+            </div>
           )
         }
       />
