@@ -1,6 +1,7 @@
 // Estatísticas históricas, calculadas a partir de todas as edições.
 import type { Edition, Entry, Match, Player, Team } from "@/db/schema";
-import { resultRank } from "./labels";
+import { resultRank, roundLabel } from "./labels";
+import { knockoutRounds } from "./tournament";
 
 export interface AllData {
   players: Player[];
@@ -196,6 +197,157 @@ export function computeHeadToHead(data: AllData, playerId: number) {
       b.played - a.played ||
       a.opponent.name.localeCompare(b.opponent.name, "pt-BR"),
   );
+}
+
+/** Um jogo do confronto direto, sempre visto do lado de A. */
+export interface RivalryGame {
+  matchId: number;
+  edition: Edition;
+  /** Fase do jogo: "Grupo A", "Rodada 2", "Semifinal", "Final"... */
+  label: string;
+  knockout: boolean;
+  final: boolean;
+  aScore: number;
+  bScore: number;
+  aPens: number | null;
+  bPens: number | null;
+  aTeam: string | null;
+  bTeam: string | null;
+  /** Quem levou o jogo (no mata-mata, os pênaltis decidem o empate). */
+  winner: "a" | "b" | null;
+}
+
+export interface Rivalry {
+  /** Vitórias, empates e gols do ponto de vista de A. */
+  record: Record_;
+  /** Do mais recente para o mais antigo. */
+  games: RivalryGame[];
+  /** Maior vitória de cada lado (maior saldo; empate de saldo, mais gols). */
+  biggest: { a: RivalryGame | null; b: RivalryGame | null };
+  /** Quantas vezes cada um despachou o outro no mata-mata (final inclusa). */
+  knockouts: { a: number; b: number };
+  finals: { a: number; b: number };
+  /** Sequência atual: quem vem ganhando (ou empatando) e há quantos jogos. */
+  streak: { who: "a" | "b" | "empate"; count: number } | null;
+}
+
+/** Ordem dos jogos dentro de uma edição: grupos, repescagem, mata-mata. */
+function matchOrder(m: Match, totalRounds: number) {
+  if (m.stage === "grupo") return m.round;
+  if (m.stage === "repescagem") return 1000;
+  // o 3º lugar é jogado antes da final
+  if (m.stage === "terceiro") return 2000 + totalRounds * 10 - 5;
+  return 2000 + m.round * 10;
+}
+
+function stageName(m: Match, edition: Edition, totalRounds: number) {
+  if (m.stage === "repescagem") return "Repescagem";
+  if (m.stage === "terceiro") return "Disputa de 3º lugar";
+  if (m.stage === "mata") return roundLabel(m.round, totalRounds);
+  return edition.format === "grupos" && m.groupLabel
+    ? `Grupo ${m.groupLabel}`
+    : `Rodada ${m.round}`;
+}
+
+/** Tudo o que aconteceu entre dois jogadores, jogo a jogo. */
+export function computeRivalry(data: AllData, aId: number, bId: number): Rivalry {
+  const entryById = new Map(data.entries.map((e) => [e.id, e]));
+  const teamById = new Map(data.teams.map((t) => [t.id, t.name]));
+  const editionById = new Map(data.editions.map((e) => [e.id, e]));
+  const roundsOf = new Map<number, number>();
+  for (const ed of data.editions)
+    roundsOf.set(
+      ed.id,
+      knockoutRounds(data.matches.filter((m) => m.editionId === ed.id)),
+    );
+
+  const record = emptyRecord();
+  const ordered: { game: RivalryGame; key: [number, number, number] }[] = [];
+  for (const m of data.matches) {
+    if (!isPlayed(m)) continue;
+    const home = entryById.get(m.homeEntryId!);
+    const away = entryById.get(m.awayEntryId!);
+    const edition = editionById.get(m.editionId);
+    if (!home || !away || !edition) continue;
+    const aHome = home.playerId === aId && away.playerId === bId;
+    const aAway = home.playerId === bId && away.playerId === aId;
+    if (!aHome && !aAway) continue;
+    const [aEntry, bEntry] = aHome ? [home, away] : [away, home];
+    const aScore = aHome ? m.homeScore! : m.awayScore!;
+    const bScore = aHome ? m.awayScore! : m.homeScore!;
+    const aPens = aHome ? m.homePens : m.awayPens;
+    const bPens = aHome ? m.awayPens : m.homePens;
+    const knockout = m.stage !== "grupo";
+    const totalRounds = roundsOf.get(edition.id) ?? 0;
+    const diff = aScore - bScore || (knockout ? (aPens ?? 0) - (bPens ?? 0) : 0);
+    addGame(record, aScore, bScore);
+    ordered.push({
+      key: [edition.number, matchOrder(m, totalRounds), m.id],
+      game: {
+        matchId: m.id,
+        edition,
+        label: stageName(m, edition, totalRounds),
+        knockout,
+        final: m.stage === "mata" && m.round === totalRounds,
+        aScore,
+        bScore,
+        aPens,
+        bPens,
+        aTeam: aEntry.teamId != null ? (teamById.get(aEntry.teamId) ?? null) : null,
+        bTeam: bEntry.teamId != null ? (teamById.get(bEntry.teamId) ?? null) : null,
+        winner: diff > 0 ? "a" : diff < 0 ? "b" : null,
+      },
+    });
+  }
+  // mais recente primeiro
+  ordered.sort(
+    (x, y) =>
+      y.key[0] - x.key[0] || y.key[1] - x.key[1] || y.key[2] - x.key[2],
+  );
+  const games = ordered.map((o) => o.game);
+
+  const biggestOf = (side: "a" | "b") => {
+    let best: RivalryGame | null = null;
+    const margin = (g: RivalryGame) =>
+      side === "a" ? g.aScore - g.bScore : g.bScore - g.aScore;
+    const goals = (g: RivalryGame) => (side === "a" ? g.aScore : g.bScore);
+    for (const g of games) {
+      if (margin(g) <= 0) continue;
+      if (
+        !best ||
+        margin(g) > margin(best) ||
+        (margin(g) === margin(best) && goals(g) > goals(best))
+      )
+        best = g;
+    }
+    return best;
+  };
+
+  const knockouts = { a: 0, b: 0 };
+  const finals = { a: 0, b: 0 };
+  for (const g of games) {
+    // a disputa de 3º lugar não elimina ninguém
+    if (!g.winner || !g.knockout || g.label === "Disputa de 3º lugar") continue;
+    knockouts[g.winner]++;
+    if (g.final) finals[g.winner]++;
+  }
+
+  let streak: Rivalry["streak"] = null;
+  for (const g of games) {
+    const who = g.winner ?? "empate";
+    if (!streak) streak = { who, count: 1 };
+    else if (streak.who === who) streak.count++;
+    else break;
+  }
+
+  return {
+    record,
+    games,
+    biggest: { a: biggestOf("a"), b: biggestOf("b") },
+    knockouts,
+    finals,
+    streak,
+  };
 }
 
 export interface TeamStats {

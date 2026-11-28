@@ -330,7 +330,7 @@ export default async function PlayerPage(props: PageProps<"/jogadores/[id]">) {
       )}
 
       {rivals.length > 0 && (
-        <Section title="Retrospecto contra cada um">
+        <Section title="Retrospecto contra cada um" aside="Toque no rival para ver o confronto">
           <div className="card px-5 pb-2 pt-4">
             <table className="w-full text-body">
               <thead className="text-muted">
@@ -379,7 +379,7 @@ export default async function PlayerPage(props: PageProps<"/jogadores/[id]">) {
                   <tr key={r.opponent.id} className="h-[52px]">
                     <td className="w-full max-w-0">
                       <Link
-                        href={`/jogadores/${r.opponent.id}`}
+                        href={`/confronto?a=${player.id}&b=${r.opponent.id}`}
                         className="block truncate text-name font-semibold"
                       >
                         {r.opponent.name}

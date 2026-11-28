@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { createPlayerAction } from "@/app/actions";
 import { ActionForm, SubmitButton } from "@/components/forms";
 import { PhotoField } from "@/components/PhotoField";
 import { PlayersList } from "@/components/PlayersList";
+import { SwordsIcon } from "@/components/icons";
 import { Empty, PageTitle, Section } from "@/components/ui";
 import { isAdmin } from "@/lib/auth";
 import { getData } from "@/lib/data";
@@ -26,6 +28,13 @@ export default async function PlayersPage() {
           players.length ? plural(players.length, "cadastrado", "cadastrados") : undefined
         }
       />
+
+      {players.length > 1 && (
+        <Link href="/confronto" className="btn mb-5 w-full">
+          <SwordsIcon width={20} height={20} />
+          Comparar dois jogadores
+        </Link>
+      )}
 
       {players.length === 0 ? (
         <Empty>

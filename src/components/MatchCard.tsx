@@ -136,6 +136,14 @@ export function MatchCard(props: MatchCardProps) {
                 pên. {homePens}–{awayPens}
               </span>
             )}
+            {home && away && (
+              <Link
+                href={`/confronto?a=${home.playerId}&b=${away.playerId}`}
+                className="match-card-h2h"
+              >
+                Retrospecto
+              </Link>
+            )}
           </span>
           <Side
             side={away}
