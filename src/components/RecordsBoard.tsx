@@ -68,7 +68,7 @@ const reducedMotion = () =>
   window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 /** Número que sobe de 0 até o valor quando `run` liga. */
-function CountUp({
+export function CountUp({
   value,
   run,
   decimals = 0,

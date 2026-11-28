@@ -180,6 +180,327 @@ fieldset label:has(input[type="radio"]:checked) {
   .rivalry-bar-b {
     background: #4fb6ff;
   }
+  /* Destaque do confronto: os dois lados, as vitórias no meio e o veredito. */
+  .rivalry-hero {
+    position: relative;
+    overflow: hidden;
+    padding: 16px 14px 18px;
+    border: 2px solid #4d7fe0;
+    border-radius: 22px;
+    background:
+      radial-gradient(ellipse 55% 60% at 50% 38%, rgb(255 200 61 / 0.22), transparent 70%),
+      linear-gradient(180deg, #1f4cb8 0%, #12307e 100%);
+    box-shadow:
+      0 0 0 2px var(--color-night),
+      0 6px 0 2px var(--color-night);
+  }
+  .rivalry-hero-kicker {
+    text-align: center;
+    color: var(--color-accent);
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+  .rivalry-hero-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .rivalry-hero-side {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    text-align: center;
+  }
+  .rivalry-hero-name {
+    max-width: 100%;
+    overflow: hidden;
+    font-family: var(--font-pixel);
+    font-size: 19px;
+    line-height: 1;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    white-space: nowrap;
+    text-shadow: 0 2px 0 var(--color-night);
+  }
+  .rivalry-hero-score {
+    display: grid;
+    grid-template-columns: auto auto auto;
+    align-items: center;
+    justify-items: center;
+    column-gap: 8px;
+  }
+  .rivalry-hero-num {
+    min-width: 1ch;
+    font-family: var(--font-pixel);
+    font-size: 58px;
+    line-height: 1;
+    color: var(--color-accent);
+    text-shadow:
+      -3px 0 var(--color-night),
+      3px 0 var(--color-night),
+      0 -3px var(--color-night),
+      0 5px var(--color-night);
+  }
+  .rivalry-hero-num.is-b {
+    color: #4fb6ff;
+  }
+  .rivalry-hero-x {
+    font-family: var(--font-pixel);
+    font-size: 26px;
+    color: #bcd0ff;
+  }
+  .rivalry-hero-caption {
+    grid-column: 1 / -1;
+    margin-top: 4px;
+    color: #bcd0ff;
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .rivalry-hero-sub {
+    margin: 12px 0 10px;
+    text-align: center;
+    color: #dce6ff;
+    font-weight: 800;
+  }
+  .rivalry-hero .rivalry-bar {
+    animation: rivalry-bar-in 900ms ease-out both 450ms;
+  }
+  @keyframes rivalry-bar-in {
+    from {
+      clip-path: inset(0 100% 0 0 round 999px);
+    }
+    to {
+      clip-path: inset(0 0 0 0 round 999px);
+    }
+  }
+  .rivalry-verdict {
+    width: fit-content;
+    margin: 14px auto 0;
+    padding: 6px 16px;
+    border: 2px solid #ffe9a3;
+    border-radius: 999px;
+    background: linear-gradient(#ffd95e, #f7a81d);
+    box-shadow:
+      0 0 0 2px var(--color-night),
+      0 4px 0 2px var(--color-night);
+    color: #5b3600;
+    font-family: var(--font-pixel);
+    font-size: 15px;
+    text-align: center;
+    text-transform: uppercase;
+  }
+  .rivalry-streak {
+    margin-top: 10px;
+    text-align: center;
+    color: #fff;
+    font-weight: 800;
+  }
+  .rivalry-form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    margin-top: 14px;
+  }
+  .rivalry-form-label {
+    color: #bcd0ff;
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 800;
+    text-align: center;
+  }
+  .rivalry-form-list {
+    display: flex;
+    gap: 6px;
+  }
+  .rivalry-form-chip {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border: 2px solid var(--color-night);
+    border-radius: 8px;
+    font-family: var(--font-pixel);
+    font-size: 15px;
+    color: #fff;
+    box-shadow: 0 3px 0 var(--color-night);
+  }
+  .rivalry-form-chip.is-V {
+    background: #2fa63c;
+  }
+  .rivalry-form-chip.is-E {
+    background: #7184b8;
+  }
+  .rivalry-form-chip.is-D {
+    background: #d9473b;
+  }
+  .rivalry-share {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 46px;
+    padding: 0 20px;
+    border: 2px solid var(--color-night);
+    border-radius: 14px;
+    background: linear-gradient(#5be06b, #2fa63c);
+    box-shadow:
+      inset 0 -3px 0 #1d7a2a,
+      0 4px 0 var(--color-night);
+    color: #fff;
+    font-family: var(--font-pixel);
+    font-size: 16px;
+    text-transform: uppercase;
+  }
+  .rivalry-share:active {
+    transform: translateY(2px);
+    box-shadow:
+      inset 0 -2px 0 #1d7a2a,
+      0 2px 0 var(--color-night);
+  }
+  .rivalry-share:disabled {
+    opacity: 0.7;
+  }
+
+  /* Comparação lado a lado, como as estatísticas de uma partida. */
+  .rivalry-compare-head {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    font-family: var(--font-pixel);
+    font-size: 15px;
+    text-transform: uppercase;
+    color: var(--color-accent);
+  }
+  .rivalry-compare-head .is-b {
+    color: #4fb6ff;
+  }
+  .rivalry-compare-row {
+    display: grid;
+    grid-template-columns: 4.5em minmax(0, 1fr) 4.5em;
+    align-items: center;
+    row-gap: 6px;
+  }
+  .rivalry-compare-val {
+    font-weight: 800;
+    color: #bcd0ff;
+    font-variant-numeric: tabular-nums;
+  }
+  .rivalry-compare-val.is-b {
+    text-align: right;
+  }
+  .rivalry-compare-val.is-lead {
+    font-weight: 900;
+    color: #fff;
+  }
+  .rivalry-compare-label {
+    text-align: center;
+    color: #dce6ff;
+    font-size: 14px;
+    font-weight: 800;
+  }
+  .rivalry-compare-bars {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+  }
+  .rivalry-compare-bar {
+    display: flex;
+    height: 8px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #24346b;
+  }
+  .rivalry-compare-bar.is-a {
+    justify-content: flex-end;
+  }
+  .rivalry-compare-bar > span {
+    width: var(--w);
+    height: 100%;
+    border-radius: 999px;
+    animation: rivalry-grow 800ms cubic-bezier(0.2, 0.9, 0.3, 1) both;
+    animation-delay: calc(250ms + var(--i, 0) * 90ms);
+  }
+  .rivalry-compare-bar.is-a > span {
+    background: var(--color-accent);
+  }
+  .rivalry-compare-bar.is-b > span {
+    background: #4fb6ff;
+  }
+  @keyframes rivalry-grow {
+    from {
+      width: 0;
+    }
+  }
+
+  /* Jogo do confronto: faixa da cor do resultado de quem está à esquerda. */
+  .rivalry-game {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 6px 8px;
+    padding: 10px 14px 12px;
+    border-left-width: 6px;
+  }
+  .rivalry-game.is-V {
+    border-left-color: #2fa63c;
+  }
+  .rivalry-game.is-E {
+    border-left-color: #7184b8;
+  }
+  .rivalry-game.is-D {
+    border-left-color: #d9473b;
+  }
+  .rivalry-game-tag {
+    grid-column: 1 / -1;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    color: var(--color-muted, #a9b8e6);
+    font-size: 13px;
+    font-weight: 700;
+  }
+  .rivalry-game-side {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 0;
+    font-weight: 600;
+    opacity: 0.75;
+  }
+  .rivalry-game-side.is-b {
+    flex-direction: row-reverse;
+    text-align: right;
+  }
+  .rivalry-game-side.is-win {
+    font-weight: 900;
+    opacity: 1;
+  }
+  .rivalry-game-side svg,
+  .rivalry-game-side img {
+    flex-shrink: 0;
+  }
+  .rivalry-game-score {
+    font-family: var(--font-pixel);
+    font-size: 18px;
+    white-space: nowrap;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .rivalry-hero .rivalry-bar,
+    .rivalry-compare-bar > span {
+      animation: none;
+    }
+  }
+
   .match-card-h2h {
     margin-top: 6px;
     font-size: 12px;

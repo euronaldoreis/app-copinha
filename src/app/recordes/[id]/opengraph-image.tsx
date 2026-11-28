@@ -1,71 +1,20 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
 import { ImageResponse } from "next/og";
 import type { RecordItem, RecordPerson } from "@/components/RecordsBoard";
-import { getDb } from "@/db";
 import { getData } from "@/lib/data";
-import { isUploadedPhoto } from "@/lib/photo";
-import { portraitSvg } from "@/lib/portrait";
+import { Face, NIGHT, OG_SIZE, OUTLINE, ROYAL, ogBrasao, ogFont, photoOf } from "@/lib/og";
 import { recordItems } from "@/lib/recordItems";
-import { getPlayerPhoto } from "@/lib/services";
 import { computeRecords } from "@/lib/stats";
 
 // Prévia do link de um recorde (WhatsApp, Telegram...): o próprio cartão do
 // recorde ou do vexame, no estilo do mural.
 export const alt = "Recorde da Copinha dos Lixos";
-export const size = { width: 1200, height: 630 };
+export const size = OG_SIZE;
 export const contentType = "image/png";
 // Os recordes mudam a cada placar: a imagem é feita na hora.
 export const dynamic = "force-dynamic";
 
-const font = readFile(
-  join(process.cwd(), "node_modules/@fontsource/lilita-one/files/lilita-one-latin-400-normal.woff"),
-);
-const brasao = readFile(join(process.cwd(), "public/brasao.png")).then(
-  (b) => `data:image/png;base64,${b.toString("base64")}`,
-);
-
-const NIGHT = "#0a1a52";
-const ROYAL = "#1c47ad";
-const OUTLINE = (w: number) =>
-  [[-w, 0], [w, 0], [0, -w], [0, w], [-w, -w], [w, -w], [-w, w], [w, w]]
-    .map(([x, y]) => `${x}px ${y}px 0 ${NIGHT}`)
-    .join(", ");
-
-const svgUri = (svg: string) => `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
-
-/** Foto do jogador como data URI; sem foto (ou se não der para baixar), o retrato desenhado. */
-async function photoOf(p: RecordPerson): Promise<string> {
-  const fallback = svgUri(portraitSvg(p.name, p.avatar));
-  if (!p.photoUrl) return fallback;
-  try {
-    if (isUploadedPhoto(p.photoUrl)) {
-      const photo = await getPlayerPhoto(getDb(), p.id);
-      return photo && /png|jpe?g/.test(photo.contentType) ? `data:${photo.contentType};base64,${photo.data}` : fallback;
-    }
-    if (!/^https?:\/\//.test(p.photoUrl)) return fallback;
-    const res = await fetch(p.photoUrl, { signal: AbortSignal.timeout(2500) });
-    const type = res.headers.get("content-type") ?? "";
-    if (!res.ok || !/png|jpe?g/.test(type)) return fallback;
-    return `data:${type};base64,${Buffer.from(await res.arrayBuffer()).toString("base64")}`;
-  } catch {
-    return fallback;
-  }
-}
-
-function Face({ src, size, dim = false }: { src: string; size: number; dim?: boolean }) {
-  return (
-    <div style={{ display: "flex", padding: 6, borderRadius: size * 0.26, background: "rgba(10,26,82,0.85)" }}>
-      <img
-        src={src}
-        width={size}
-        height={size}
-        alt=""
-        style={{ borderRadius: size * 0.22, border: `4px solid ${NIGHT}`, objectFit: "cover", opacity: dim ? 0.85 : 1 }}
-      />
-    </div>
-  );
-}
+const font = ogFont;
+const brasao = ogBrasao;
 
 const Num = ({ children, fontSize }: { children: React.ReactNode; fontSize: number }) => (
   <div style={{ display: "flex", fontSize, lineHeight: 1, color: "#ffffff", textShadow: `${OUTLINE(5)}, 0 8px 0 ${NIGHT}` }}>

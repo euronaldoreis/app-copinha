@@ -138,7 +138,7 @@ export function MatchCard(props: MatchCardProps) {
             )}
             {home && away && (
               <Link
-                href={`/confronto?a=${home.playerId}&b=${away.playerId}`}
+                href={`/confronto/${home.playerId}/${away.playerId}`}
                 className="match-card-h2h"
               >
                 Retrospecto

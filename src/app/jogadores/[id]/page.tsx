@@ -379,7 +379,7 @@ export default async function PlayerPage(props: PageProps<"/jogadores/[id]">) {
                   <tr key={r.opponent.id} className="h-[52px]">
                     <td className="w-full max-w-0">
                       <Link
-                        href={`/confronto?a=${player.id}&b=${r.opponent.id}`}
+                        href={`/confronto/${player.id}/${r.opponent.id}`}
                         className="block truncate text-name font-semibold"
                       >
                         {r.opponent.name}
