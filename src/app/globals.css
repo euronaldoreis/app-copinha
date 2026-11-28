@@ -159,6 +159,36 @@ fieldset label:has(input[type="radio"]:checked) {
   }
 
   /* Cartão de jogo: faixa marinha no topo e corpo claro, como o placar da TV. */
+  /* Confronto direto: vitórias de um, empates e vitórias do outro. */
+  .rivalry-bar {
+    display: flex;
+    height: 14px;
+    overflow: hidden;
+    border: 2px solid var(--color-night);
+    border-radius: 999px;
+    background: #24346b;
+  }
+  .rivalry-bar > span {
+    height: 100%;
+  }
+  .rivalry-bar-a {
+    background: var(--color-accent);
+  }
+  .rivalry-bar-d {
+    background: #8ea3cf;
+  }
+  .rivalry-bar-b {
+    background: #4fb6ff;
+  }
+  .match-card-h2h {
+    margin-top: 6px;
+    font-size: 12px;
+    font-weight: 800;
+    color: #4a6cb8;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
   .match-card {
     overflow: hidden;
     background: linear-gradient(180deg, #eef4ff 0%, #d6e3fa 100%);
