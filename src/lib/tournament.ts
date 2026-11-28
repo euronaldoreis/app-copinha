@@ -2,6 +2,8 @@
 // Tudo aqui é função pura (sem banco), para poder ser testado e reutilizado
 // tanto no servidor quanto nos formulários.
 
+import { roundLabel } from "./labels";
+
 export type Format = "grupos" | "liga" | "mata" | "manual";
 /** Fases dos jogos. "repescagem": jogo extra que vale uma vaga no mata-mata. */
 export type Stage = "grupo" | "repescagem" | "mata" | "terceiro";
@@ -899,6 +901,59 @@ export function knockoutRounds(matches: { stage: string; round: number }[]) {
   return matches
     .filter((m) => m.stage === "mata")
     .reduce((max, m) => Math.max(max, m.round), 0);
+}
+
+interface Orderable {
+  id: number;
+  stage: string;
+  round: number;
+  slot: number;
+  groupLabel: string | null;
+}
+
+/**
+ * Jogos na ordem em que acontecem, com o número (Jogo 01, 02...) e a fase de
+ * cada um: as rodadas (um jogo de cada grupo por vez: A, B, A, B...) e depois
+ * o mata-mata (repescagem, fases, 3º lugar e a final).
+ */
+export function playOrder<M extends Orderable>(format: string, matches: M[]) {
+  const totalRounds = knockoutRounds(matches);
+  const group = matches.filter((m) => m.stage === "grupo");
+  const groups = new Set(group.map((m) => m.groupLabel)).size;
+  const rounds = [...new Set(group.map((m) => m.round))].sort((a, b) => a - b);
+  const bySlot = (list: M[]) => [...list].sort((a, b) => a.slot - b.slot);
+
+  const out: { match: M; number: number; label: string }[] = [];
+  const push = (list: M[], label: (m: M) => string) => {
+    for (const m of list) out.push({ match: m, number: out.length + 1, label: label(m) });
+  };
+  for (const round of rounds)
+    push(
+      group
+        .filter((m) => m.round === round)
+        .sort(
+          (a, b) =>
+            a.slot - b.slot ||
+            (a.groupLabel ?? "").localeCompare(b.groupLabel ?? ""),
+        ),
+      (m) =>
+        format === "liga" || !m.groupLabel || groups <= 1
+          ? `Rodada ${m.round}`
+          : `Grupo ${m.groupLabel}`,
+    );
+  push(bySlot(matches.filter((m) => m.stage === "repescagem")), () => "Repescagem");
+  for (let r = 1; r <= totalRounds; r++) {
+    if (r === totalRounds)
+      push(
+        bySlot(matches.filter((m) => m.stage === "terceiro")),
+        () => "Disputa de 3º lugar",
+      );
+    push(
+      bySlot(matches.filter((m) => m.stage === "mata" && m.round === r)),
+      () => roundLabel(r, totalRounds),
+    );
+  }
+  return out;
 }
 
 /** Colocações finais. `finished` só é verdadeiro quando o campeão está definido. */
